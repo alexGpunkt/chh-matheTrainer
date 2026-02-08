@@ -126,7 +126,9 @@ const EXAM_TIME = 90 * 60;
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
 const TOTAL_POINTS = TASKS_TOTAL * POINTS_PER_TASK;
-const TEACHER_PIN = "1234";
+// ⚠️ WICHTIG: Diese PIN ist im Quellcode sichtbar!
+// Für echten Einsatz sollte die PIN serverseitig validiert werden.
+const TEACHER_PIN = "1234"; // ⚠️ NUR ZU DEMONSTRATIONSZWECKEN
 
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -150,17 +152,14 @@ let timerInt = null;
 let running = false;
 
 /* =====================
-   AUFGABEN (100 % BBR)
-===================== */
-/* =====================
-   AUFGABEN (100 % BBR)
+   ERWEITERTER AUFGABENPOOL (100 % BBR)
 ===================== */
 function hardTask(idx) {
 
   const POOL = {
 
     /* =====================
-       ALGEBRA
+       ALGEBRA (4 Aufgaben)
     ===================== */
     algebra: [
       () => {
@@ -176,11 +175,29 @@ function hardTask(idx) {
           text: `Bestimme x:<br>2(x − 4) + 6 = ${2*(sol-4)+6}`,
           sol
         };
+      },
+      () => {
+        const a = rand(2, 8);
+        const b = rand(3, 10);
+        const c = rand(1, 6);
+        const x = rand(-3, 5);
+        return {
+          text: `Berechne für x = ${x}:<br>${a}x² + ${b}x + ${c}`,
+          sol: a*x*x + b*x + c
+        };
+      },
+      () => {
+        const x = rand(2, 10);
+        const y = rand(2, 10);
+        return {
+          text: `Vereinfache den Ausdruck:<br>(${x}x + ${y}) + (${2*x}x - ${y})`,
+          sol: 3*x
+        };
       }
     ],
 
     /* =====================
-       PROZENT / ZINS
+       PROZENT / ZINS (4 Aufgaben)
     ===================== */
     prozent: [
       () => {
@@ -190,11 +207,39 @@ function hardTask(idx) {
           text: `Berechne ${p}% von ${g}.`,
           sol: g*p/100
         };
+      },
+      () => {
+        const g = rand(200, 800);
+        const p = rand(15, 40);
+        const neuerPreis = round2(g * (1 - p/100));
+        return {
+          text: `Ein Preis von ${g} € wird um ${p}% reduziert. Neuer Preis?`,
+          sol: neuerPreis
+        };
+      },
+      () => {
+        const alt = rand(150, 400);
+        const neu = alt + rand(30, 100);
+        const prozent = round2(((neu - alt) / alt) * 100);
+        return {
+          text: `Preis steigt von ${alt} € auf ${neu} €. Prozentuale Steigerung?`,
+          sol: prozent
+        };
+      },
+      () => {
+        const g = rand(300, 700);
+        const p1 = rand(10, 20);
+        const p2 = rand(5, 15);
+        const ans = round2(g * (1 - p1/100) * (1 + p2/100));
+        return {
+          text: `Preis: ${g} €, erst ${p1}% Rabatt, dann ${p2}% Steuer. Endpreis?`,
+          sol: ans
+        };
       }
     ],
 
     /* =====================
-       EBENE GEOMETRIE
+       EBENE GEOMETRIE (4 Aufgaben)
     ===================== */
     geometrie: [
       () => {
@@ -203,14 +248,36 @@ function hardTask(idx) {
           text: `Bestimme die Länge der Hypotenuse eines rechtwinkligen Dreiecks mit Katheten ${a} cm und ${b} cm.`,
           sol: round2(Math.sqrt(a*a+b*b))
         };
+      },
+      () => {
+        const a = rand(8, 20);
+        const b = rand(10, 25);
+        return {
+          text: `Rechteck: Länge ${a} cm, Breite ${b} cm. Berechne die Fläche.`,
+          sol: a*b
+        };
+      },
+      () => {
+        const r = rand(5, 12);
+        return {
+          text: `Kreis: Radius ${r} cm. Berechne den Umfang (π ≈ 3,14).`,
+          sol: round2(2 * 3.14 * r)
+        };
+      },
+      () => {
+        const g = rand(8, 18);
+        const h = rand(6, 15);
+        return {
+          text: `Dreieck: Grundseite ${g} cm, Höhe ${h} cm. Berechne die Fläche.`,
+          sol: round2(g*h/2)
+        };
       }
     ],
 
     /* =====================
-       KÖRPER – PRISMEN
+       KÖRPER – PRISMEN (4 Aufgaben)
     ===================== */
     koerper: [
-
       // Prisma mit rechteckiger Grundfläche – Volumen
       () => {
         const a = rand(4, 10);
@@ -222,7 +289,6 @@ function hardTask(idx) {
           sol: a*b*h
         };
       },
-
       // Prisma mit quadratischer Grundfläche – Oberfläche
       () => {
         const a = rand(4, 10);
@@ -233,7 +299,6 @@ function hardTask(idx) {
           sol: 2*a*a + 4*a*h
         };
       },
-
       // Prisma mit dreieckiger Grundfläche – Volumen
       () => {
         const g = rand(6, 14);
@@ -245,14 +310,29 @@ function hardTask(idx) {
                  Berechne das Volumen des Prismas.`,
           sol: (g*hD/2)*hP
         };
+      },
+      // Prisma – komplexere Berechnung
+      () => {
+        const a = rand(3, 8);
+        const b = rand(4, 10);
+        const c = rand(5, 12);
+        return {
+          text: `Ein Prisma hat eine dreiseitige Grundfläche mit Seiten: a=${a} cm, b=${b} cm, c=${c} cm.<br>
+                 Höhe h = ${rand(7, 15)} cm. Berechne das Volumen (Grundfläche mit Heron).`,
+          sol: () => {
+            const h = rand(7, 15);
+            const s = (a+b+c)/2;
+            const G = Math.sqrt(s*(s-a)*(s-b)*(s-c));
+            return round2(G*h);
+          }()
+        };
       }
     ],
 
     /* =====================
-       PYTHAGORAS AN KÖRPERN
+       PYTHAGORAS AN KÖRPERN (4 Aufgaben)
     ===================== */
     pythagoras: [
-
       // Raumdiagonale im Quader
       () => {
         const a = rand(4, 10);
@@ -264,7 +344,6 @@ function hardTask(idx) {
           sol: round2(Math.sqrt(a*a + b*b + h*h))
         };
       },
-
       // Seitenhöhe im Prisma
       () => {
         const a = rand(4, 10);
@@ -274,14 +353,34 @@ function hardTask(idx) {
                  Bestimme die Länge der Seitenkante (Pythagoras).`,
           sol: round2(Math.sqrt(a*a + h*h))
         };
+      },
+      // Körperdiagonale komplex
+      () => {
+        const l = rand(5, 12);
+        const w = rand(4, 10);
+        const h = rand(7, 15);
+        return {
+          text: `Berechne die Raumdiagonale eines Quaders: Länge ${l} cm, Breite ${w} cm, Höhe ${h} cm.`,
+          sol: round2(Math.sqrt(l*l + w*w + h*h))
+        };
+      },
+      // Pyramide Höhe berechnen
+      () => {
+        const s = rand(6, 12); // Seitenlänge Grundfläche
+        const d = rand(8, 16); // Seitenkante
+        const h = round2(Math.sqrt(d*d - (s*Math.sqrt(2)/2)*(s*Math.sqrt(2)/2)));
+        return {
+          text: `Eine quadratische Pyramide hat Grundkante ${s} cm und Seitenkante ${d} cm.<br>
+                 Berechne die Höhe der Pyramide.`,
+          sol: round2(h)
+        };
       }
     ],
 
     /* =====================
-       ZYLINDER
+       ZYLINDER (4 Aufgaben)
     ===================== */
     zylinder: [
-
       // Volumen
       () => {
         const r = rand(3, 8);
@@ -292,7 +391,6 @@ function hardTask(idx) {
           sol: round2(3.14*r*r*h)
         };
       },
-
       // Mantellinie mit Pythagoras
       () => {
         const r = rand(3, 8);
@@ -303,6 +401,82 @@ function hardTask(idx) {
                  Radius r = ${r} cm, Höhe h = ${h} cm.<br>
                  Bestimme die Länge der Diagonale dieses Rechtecks (Pythagoras).`,
           sol: round2(Math.sqrt(u*u + h*h))
+        };
+      },
+      // Oberfläche
+      () => {
+        const r = rand(4, 10);
+        const h = rand(6, 18);
+        return {
+          text: `Berechne die Oberfläche eines Zylinders mit Radius r = ${r} cm und Höhe h = ${h} cm.<br>
+                 (π ≈ 3,14)`,
+          sol: round2(2*3.14*r*r + 2*3.14*r*h)
+        };
+      },
+      // Volumen aus Umfang
+      () => {
+        const u = rand(25, 60);
+        const h = rand(10, 25);
+        const r = u/(2*3.14);
+        return {
+          text: `Ein Zylinder hat einen Umfang von ${u} cm und Höhe ${h} cm.<br>
+                 Berechne das Volumen. (π ≈ 3,14)`,
+          sol: round2(3.14*r*r*h)
+        };
+      }
+    ],
+
+    /* =====================
+       SACH- & ANWENDUNGSAUFGABEN (4 Aufgaben)
+    ===================== */
+    sach: [
+      // Geschwindigkeit
+      () => {
+        const km = rand(80, 420);
+        const h  = rand(2, 7);
+        const ans = Number((km / h).toFixed(1));
+        return {
+          text: `Ein Auto fährt ${km} km in ${h} h.<br>
+                 Berechne die Durchschnittsgeschwindigkeit in km/h.`,
+          sol: ans
+        };
+      },
+      // Zeitrechnung komplexer
+      () => {
+        const startH = rand(8, 14);
+        const durMin = rand(85, 240);
+        const total = startH*60 + durMin;
+        const hh = Math.floor(total/60) % 24;
+        const mm = String(total%60).padStart(2,"0");
+        const ans = `${hh}:${mm}`;
+        return {
+          text: `Ein Zug startet um <b>${startH}:00</b> Uhr und fährt <b>${durMin}</b> Minuten.<br>
+                 Ankunftszeit?`,
+          sol: ans
+        };
+      },
+      // Mischungsaufgabe
+      () => {
+        const c1 = rand(10, 30);
+        const m1 = rand(100, 300);
+        const c2 = rand(40, 60);
+        const m2 = rand(50, 150);
+        const gesamt = m1 + m2;
+        const konz = round2((c1*m1 + c2*m2) / gesamt);
+        return {
+          text: `${m1}g einer ${c1}%igen Lösung werden mit ${m2}g einer ${c2}%igen Lösung gemischt.<br>
+                 Konzentration der Mischung?`,
+          sol: konz
+        };
+      },
+      // Skalierung/Verhältnis
+      () => {
+        const real = rand(20, 100);
+        const scale = rand(10, 50);
+        const map = real/scale;
+        return {
+          text: `Im Maßstab 1:${scale} entspricht ${map} cm auf der Karte wie vielen Metern in Wirklichkeit?`,
+          sol: real
         };
       }
     ]
@@ -315,10 +489,20 @@ function hardTask(idx) {
     "geometrie",
     "koerper",
     "pythagoras",
-    "zylinder"
+    "zylinder",
+    "sach",
+    "algebra",      // Wiederholung für mehr Vielfalt
+    "prozent",
+    "koerper"
   ];
 
   const cat = cats[idx % cats.length];
+  // Sicherstellen, dass die Kategorie existiert
+  if (!POOL[cat] || POOL[cat].length === 0) {
+    // Fallback auf algebra
+    return POOL.algebra[rand(0, POOL.algebra.length - 1)]();
+  }
+  
   return POOL[cat][rand(0, POOL[cat].length - 1)]();
 }
 
@@ -366,8 +550,11 @@ function nextTask() {
 }
 
 function finishExam() {
-  const pin = prompt("Lehrer-PIN:");
-  if (pin !== TEACHER_PIN) return;
+  const pin = prompt("Lehrer-PIN eingeben:");
+  if (pin !== TEACHER_PIN) {
+    alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
+    return;
+  }
 
   clearInterval(timerInt);
   running = false;
