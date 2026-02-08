@@ -161,7 +161,9 @@ const EXAM_TIME = 90 * 60;        // 90 Minuten
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
 const PASS_POINTS = 15;           // Note-4-Training (50%)
-const TEACHER_PIN = "1234";       // <— hier ändern
+// ⚠️ WICHTIG: Diese PIN ist im Quellcode sichtbar!
+// Für echten Einsatz sollte die PIN serverseitig validiert werden.
+const TEACHER_PIN = "1234";       // ⚠️ NUR ZU DEMONSTRATIONSZWECKEN
 
 /* =======================
    DOM (robust für iPad/Safari)
@@ -469,7 +471,7 @@ function baseTask(level, idx) {
 
 function starTask() {
   // Abwechslungsreichere Stern-Aufgaben (BBR)
-  const type = rand(1, 3);
+  const type = rand(1, 5);
 
   if (type === 1) {
     const g = rand(200, 400);
@@ -490,11 +492,33 @@ function starTask() {
     };
   }
 
-  const km = rand(30, 50);
-  const min = rand(20, 40);
+  if (type === 3) {
+    const km = rand(30, 50);
+    const min = rand(20, 40);
+    return {
+      text: `⭐ Ein Auto fährt ${km} km in ${min} Minuten.<br>Wie viele Minuten pro km?`,
+      sol: min / km,
+      star: true
+    };
+  }
+  
+  if (type === 4) {
+    const a = rand(10, 30);
+    const b = rand(5, 15);
+    const c = rand(2, 8);
+    return {
+      text: `⭐ Berechne: (${a} + ${b}) × ${c} − ${a}`,
+      sol: (a + b) * c - a,
+      star: true
+    };
+  }
+  
+  // type === 5
+  const price = rand(50, 150);
+  const p = rand(15, 30);
   return {
-    text: `⭐ Ein Auto fährt ${km} km in ${min} Minuten.<br>Wie viele Minuten pro km?`,
-    sol: min / km,
+    text: `⭐ Artikel: ${price} €, ${p}% Rabatt.<br>Neuer Preis?`,
+    sol: price * (1 - p/100),
     star: true
   };
 }
@@ -503,10 +527,11 @@ function starTask() {
    PRÜFUNG
 ======================= */
 function startExam() {
-  // Unterricht-sicher: Vollbild versuchen (muss durch Klick ausgelöst werden)
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  }
+  // ❌ ENTFERNT: Fullscreen-Aufruf, der im iFrame Probleme macht
+  // Unterricht-sicher: KEIN Fullscreen mehr, da iFrame-Kompatibilität
+  // if (!document.fullscreenElement) {
+  //   document.documentElement.requestFullscreen().catch(() => {});
+  // }
 
   tasks = [];
   current = 0;
@@ -530,7 +555,7 @@ function startExam() {
     else tasks.push(baseTask(lvl, i));
   }
   
-    // ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
+  // ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
   toggleStarOption();
 
   // Steuerelemente sperren
@@ -581,9 +606,9 @@ function saveAndNext() {
 function finishExam() {
   if (!examRunning) return;
 
-  const pin = prompt("Lehrer-PIN eingeben:");
+  const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
   if (pin !== TEACHER_PIN) {
-    alert("Falsche PIN");
+    alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
     return;
   }
 
@@ -610,9 +635,11 @@ function finishExam() {
   levelEl.disabled = false;
   starsEl.disabled = false;
 
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch(() => {});
-  }
+  // ❌ ENTFERNT: exitFullscreen, da kein Fullscreen mehr
+  // if (document.fullscreenElement) {
+  //   document.exitFullscreen().catch(() => {});
+  // }
+  
   toggleStarOption();
 }
 
