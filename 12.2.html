@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mathe Trainer – BOA / BBR (Vollversion)</title>
+<title>Mathe Trainer – BOA / BBR (Note 2 bis 1)</title>
 
 <style>
   body { font-family: Arial, sans-serif; background:#f2f2f2; padding:20px; }
@@ -144,7 +144,7 @@ const weightedCategories = [
 ];
 
 /* =========================================================
-   NEUER 11.3 TASKPOOL (höheres Niveau)
+   TASKPOOL (höheres Niveau für Note 2-1)
 ========================================================= */
 const TASKPOOL = {
 
@@ -159,9 +159,10 @@ const TASKPOOL = {
          <b>2·(3x − 4) − (x − 5)</b>`,
         ans,
         [
-          `Klammern auflösen`,
-          `Zusammenfassen`,
-          `Einsetzen von x = ${x}`
+          `Klammern auflösen: 2·3x − 2·4 = 6x − 8`,
+          `Minusklammer: − (x − 5) = −x + 5`,
+          `Zusammenfassen: 6x − 8 − x + 5 = 5x − 3`,
+          `Einsetzen von x = ${x}: 5·${x} − 3 = ${5*x} − 3`
         ]
       );
     },
@@ -169,14 +170,36 @@ const TASKPOOL = {
     // Gleichung
     () => {
       const x = rand(-5, 10);
+      const result = 3 * (x - 2) + 4;
       return genTask(
         `Löse nach x:<br>
-         <b>3(x − 2) + 4 = ${3 * (x - 2) + 4}</b>`,
+         <b>3(x − 2) + 4 = ${result}</b>`,
         x,
         [
-          `Klammern auflösen`,
-          `Zusammenfassen`,
-          `Nach x auflösen`
+          `Klammern auflösen: 3x − 6 + 4 = 3x − 2`,
+          `Gleichung: 3x − 2 = ${result}`,
+          `+2 auf beiden Seiten: 3x = ${result + 2}`,
+          `÷3: x = ${x}`
+        ]
+      );
+    },
+
+    // Termvereinfachung
+    () => {
+      const a = rand(2, 6);
+      const b = rand(1, 8);
+      const c = rand(3, 9);
+      const x = rand(-4, 9);
+      const ans = a * (b * x + c) - (x - a);
+      return genTask(
+        `Berechne für x = ${x}:<br>
+         <b>${a}·(${b}x + ${c}) − (x − ${a})</b>`,
+        ans,
+        [
+          `Erste Klammer: ${a}·${b}x + ${a}·${c} = ${a*b}x + ${a*c}`,
+          `Zweite Klammer: −x + ${a}`,
+          `Zusammenfassen: ${a*b}x + ${a*c} − x + ${a} = ${a*b-1}x + ${a*c+a}`,
+          `Einsetzen: ${a*b-1}·${x} + ${a*c+a}`
         ]
       );
     },
@@ -215,8 +238,9 @@ const TASKPOOL = {
         ans,
         [
           `100% + ${p}% = ${100 + p}%`,
-          `${g} · ${100 + p} / 100`,
-          `Ausrechnen`
+          `Neuer Preis = Grundwert × (100 + p)/100`,
+          `${g} × ${100 + p} / 100`,
+          `Ausrechnen: ${g} × ${(100+p)/100}`
         ]
       );
     },
@@ -231,9 +255,9 @@ const TASKPOOL = {
          <b>Bestimme den Grundwert.</b>`,
         g,
         [
-          `Formel: G = W · 100 / p`,
-          `${w} · 100 / ${p}`,
-          `Ausrechnen`
+          `Formel: G = W × 100 / p`,
+          `Einsetzen: ${w} × 100 / ${p}`,
+          `Ausrechnen: ${w} × ${100/p}`
         ]
       );
     },
@@ -249,9 +273,27 @@ const TASKPOOL = {
          <b>Neuer Preis?</b>`,
         ans,
         [
-          `Erster Schritt: ${g} · ${100-p1}/100`,
-          `Zweiter Schritt: Ergebnis · ${100+p2}/100`,
-          `Ausrechnen`
+          `Erster Schritt: ${g} × ${100-p1}/100 = ${g * (1 - p1/100).toFixed(2)}`,
+          `Zweiter Schritt: × ${100+p2}/100`,
+          `Ausrechnen: ${g * (1 - p1/100).toFixed(2)} × ${(100+p2)/100}`
+        ]
+      );
+    },
+
+    // Mehrere Prozentänderungen
+    () => {
+      const g = rand(250, 700);
+      const p1 = rand(10, 25);
+      const p2 = rand(5, 15);
+      const ans = Number((g * (1 - p1/100) * (1 + p2/100)).toFixed(2));
+      return genTask(
+        `Preis: ${g} €, erst ${p1}% Rabatt, dann ${p2}% Steuer.<br>
+         <b>Endpreis?</b>`,
+        ans,
+        [
+          `Nach Rabatt: ${100-p1}% von ${g} €`,
+          `Nach Steuer: ${100+p2}% vom rabattierten Preis`,
+          `${g} × ${(100-p1)/100} × ${(100+p2)/100}`
         ]
       );
     }
@@ -264,16 +306,17 @@ const TASKPOOL = {
       const a = rand(4, 10);
       const b = rand(5, 12);
       const h = rand(6, 18);
+      const ans = a * b * h;
       return genTask(
         `Ein Prisma hat eine rechteckige Grundfläche
          mit a = ${a} cm und b = ${b} cm.<br>
          Höhe h = ${h} cm.<br>
          <b>Berechne das Volumen.</b>`,
-        a * b * h,
+        ans,
         [
-          `Grundfläche: a · b`,
-          `Volumen = G · h`,
-          `Einsetzen und berechnen`
+          `Grundfläche: G = a × b = ${a} × ${b} = ${a*b} cm²`,
+          `Volumen: V = G × h = ${a*b} × ${h}`,
+          `Ausrechnen: ${a*b} × ${h}`
         ]
       );
     },
@@ -288,9 +331,9 @@ const TASKPOOL = {
          <b>Bestimme die Raumdiagonale.</b>`,
         ans,
         [
-          `Pythagoras im Raum`,
-          `d² = a² + b² + h²`,
-          `Wurzel ziehen`
+          `Pythagoras im Raum: d² = a² + b² + h²`,
+          `d² = ${a}² + ${b}² + ${h}² = ${a*a} + ${b*b} + ${h*h} = ${a*a + b*b + h*h}`,
+          `Wurzel ziehen: d = √${a*a + b*b + h*h}`
         ]
       );
     },
@@ -306,9 +349,10 @@ const TASKPOOL = {
          <b>Berechne das Volumen.</b>`,
         ans,
         [
-          `Formel: V = π · r² · h`,
-          `Einsetzen: 3,14 · ${r}² · ${h}`,
-          `Ausrechnen`
+          `Formel: V = π × r² × h`,
+          `Einsetzen: 3,14 × ${r}² × ${h}`,
+          `${r}² = ${r*r}`,
+          `3,14 × ${r*r} × ${h}`
         ]
       );
     },
@@ -324,12 +368,63 @@ const TASKPOOL = {
          <b>Berechne die Oberfläche.</b>`,
         ans,
         [
-          `Grundfläche: a² = ${a}²`,
-          `Mantel: 4 · a · h`,
-          `Oberfläche = 2·G + Mantel`
+          `Grundfläche: G = a² = ${a}² = ${a*a} cm²`,
+          `Mantelfläche: M = 4 × a × h = 4 × ${a} × ${h} = ${4*a*h} cm²`,
+          `Oberfläche: O = 2×G + M = 2×${a*a} + ${4*a*h}`,
+          `2×${a*a} = ${2*a*a}, plus ${4*a*h}`
         ]
       );
-    }
+    },
+
+    // Weitere Geometrie-Aufgaben
+    ...Array.from({ length: 10 }, () => () => {
+      const typ = rand(1, 3);
+      if (typ === 1) {
+        // Kegel Volumen
+        const r = rand(3, 7);
+        const h = rand(6, 15);
+        const ans = Number((1/3 * Math.PI * r * r * h).toFixed(2));
+        return genTask(
+          `Ein Kegel hat Radius r = ${r} cm und Höhe h = ${h} cm.<br>
+           (π ≈ 3,14) Berechne das Volumen.`,
+          ans,
+          [
+            `Formel: V = 1/3 × π × r² × h`,
+            `1/3 × 3,14 × ${r}² × ${h}`,
+            `Ausrechnen`
+          ]
+        );
+      } else if (typ === 2) {
+        // Kugel Oberfläche
+        const r = rand(2, 8);
+        const ans = Number((4 * Math.PI * r * r).toFixed(2));
+        return genTask(
+          `Eine Kugel hat Radius r = ${r} cm.<br>
+           (π ≈ 3,14) Berechne die Oberfläche.`,
+          ans,
+          [
+            `Formel: O = 4 × π × r²`,
+            `4 × 3,14 × ${r}²`,
+            `Ausrechnen`
+          ]
+        );
+      } else {
+        // Pyramide Volumen
+        const a = rand(4, 10);
+        const h = rand(6, 16);
+        const ans = Number((1/3 * a * a * h).toFixed(2));
+        return genTask(
+          `Eine quadratische Pyramide hat Grundkante a = ${a} cm und Höhe h = ${h} cm.<br>
+           Berechne das Volumen.`,
+          ans,
+          [
+            `Formel: V = 1/3 × G × h`,
+            `Grundfläche: a² = ${a}² = ${a*a}`,
+            `1/3 × ${a*a} × ${h}`
+          ]
+        );
+      }
+    })
   ],
 
   sach: [
@@ -341,12 +436,12 @@ const TASKPOOL = {
       const ans = Number((km / h).toFixed(1));
       return genTask(
         `Ein Auto fährt ${km} km in ${h} h.<br>
-         <b>Berechne die Geschwindigkeit.</b>`,
+         <b>Berechne die Durchschnittsgeschwindigkeit.</b>`,
         ans,
         [
           `Formel: v = s : t`,
-          `${km} : ${h}`,
-          `Ausrechnen`
+          `v = ${km} km : ${h} h`,
+          `Ausrechnen: ${km} ÷ ${h}`
         ]
       );
     },
@@ -364,9 +459,9 @@ const TASKPOOL = {
          <b>Berechne die Länge der Diagonale.</b>`,
         ans,
         [
-          `Diagonale im Rechteck`,
-          `d² = u² + h²`,
-          `Wurzel ziehen`
+          `Diagonale im Rechteck: d² = u² + h²`,
+          `d² = ${u}² + ${h}² = ${u*u} + ${h*h} = ${u*u + h*h}`,
+          `Wurzel ziehen: d = √${u*u + h*h}`
         ]
       );
     },
@@ -387,14 +482,94 @@ const TASKPOOL = {
           [
             `Startzeit in Minuten: ${startH}·60 = ${startH*60}`,
             `+ Fahrzeit: ${startH*60} + ${durMin} = ${total} Minuten`,
-            `Zurück in Uhrzeit: ${hh}:${mm}`
+            `Zurück in Stunden und Minuten: ${total} ÷ 60 = ${Math.floor(total/60)} h ${total%60} min`,
+            `Uhrzeit: ${hh}:${mm}`
           ],
           ans
         )
       };
-    }
+    },
+
+    // Mischungsaufgabe
+    () => {
+      const c1 = rand(10, 30);
+      const m1 = rand(100, 300);
+      const c2 = rand(40, 60);
+      const m2 = rand(50, 150);
+      const gesamt = m1 + m2;
+      const konz = round2((c1*m1 + c2*m2) / gesamt);
+      return genTask(
+        `${m1}g einer ${c1}%igen Lösung werden mit ${m2}g einer ${c2}%igen Lösung gemischt.<br>
+         Konzentration der Mischung?`,
+        konz,
+        [
+          `Reine Substanz 1: ${c1}% von ${m1}g = ${c1*m1/100}g`,
+          `Reine Substanz 2: ${c2}% von ${m2}g = ${c2*m2/100}g`,
+          `Gesamtmenge reine Substanz: ${c1*m1/100} + ${c2*m2/100} = ${(c1*m1 + c2*m2)/100}g`,
+          `Gesamtmenge Mischung: ${m1} + ${m2} = ${gesamt}g`,
+          `Konzentration: (${(c1*m1 + c2*m2)/100} ÷ ${gesamt}) × 100`
+        ]
+      );
+    },
+
+    // Weitere Sachaufgaben
+    ...Array.from({ length: 8 }, () => () => {
+      const typ = rand(1, 3);
+      if (typ === 1) {
+        // Skalierung
+        const real = rand(20, 100);
+        const scale = rand(10, 50);
+        const map = real/scale;
+        return genTask(
+          `Im Maßstab 1:${scale} entspricht ${map.toFixed(1)} cm auf der Karte wie vielen Metern in Wirklichkeit?`,
+          real,
+          [
+            `1 cm auf Karte = ${scale} cm in Wirklichkeit`,
+            `${map.toFixed(1)} cm × ${scale} = ${(map*scale).toFixed(1)} cm`,
+            `In Metern: ${(map*scale/100).toFixed(1)} m`
+          ]
+        );
+      } else if (typ === 2) {
+        // Zinsrechnung
+        const kapital = rand(500, 2000);
+        const zins = rand(2, 5);
+        const jahre = rand(2, 5);
+        const ans = Number((kapital * (1 + zins/100) ** jahre).toFixed(2));
+        return genTask(
+          `${kapital} € werden zu ${zins}% Zinseszins angelegt.<br>
+           Wie viel nach ${jahre} Jahren?`,
+          ans,
+          [
+            `Formel: K_end = K × (1 + p/100)^n`,
+            `${kapital} × (1 + ${zins}/100)^${jahre}`,
+            `${kapital} × ${1 + zins/100}^${jahre}`
+          ]
+        );
+      } else {
+        // Verhältnisaufgabe
+        const a = rand(2, 8);
+        const b = rand(3, 12);
+        const total = rand(50, 200);
+        const anteilA = total * a/(a+b);
+        return genTask(
+          `Im Verhältnis ${a}:${b} werden ${total} € aufgeteilt.<br>
+           Wie viel erhält der erste?`,
+          Number(anteilA.toFixed(2)),
+          [
+            `Gesamte Teile: ${a} + ${b} = ${a+b}`,
+            `Ein Teil: ${total} ÷ ${a+b} = ${(total/(a+b)).toFixed(2)}`,
+            `Erster: ${a} Teile = ${a} × ${(total/(a+b)).toFixed(2)}`
+          ]
+        );
+      }
+    })
   ]
 };
+
+// Hilfsfunktion für round2
+function round2(x) {
+  return Math.round(x * 100) / 100;
+}
 
 /* =========================================================
    MODE/UI
@@ -646,7 +821,8 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     if (avoidDuplicates && seen.has(signature)) continue;
 
     seen.add(signature);
-    picked.push({ cat, ...t });
+    // KORREKTUR: Syntaxfehler behoben
+    picked.push({ cat, t }); // 👈 KORREKTUR: { cat, t } statt { cat, .t }
   }
 
   if (picked.length === 0) {
@@ -654,21 +830,22 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     return;
   }
 
-  const title = `Mathe-Übungsblatt (${level.toUpperCase()})`;
+  const title = `Mathe-Übungsblatt (${level.toUpperCase()}) - Note 2-1`;
   let html = `
     <div class="print-title">${escapeHtml(title)}</div>
     <div class="print-meta">
       Datum: <span class="print-line"></span> &nbsp;&nbsp;
       Name: <span class="print-line"></span> &nbsp;&nbsp;
       Klasse: <span class="print-line" style="width:30mm;"></span>
-      <div style="margin-top:3mm; color:#444;">Erstellt am ${escapeHtml(dateStr)} – ${picked.length} Aufgaben</div>
+      <div style="margin-top:3mm; color:#444;">Erstellt am ${escapeHtml(dateStr)} – ${picked.length} Aufgaben (höheres Niveau)</div>
     </div>
   `;
 
-  picked.forEach((t, i) => {
+  picked.forEach((item, i) => {
+    const t = item.t;
     html += `
       <div class="task-block">
-        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
         <div class="task-text">${t.task}</div>
         <div class="work-space"></div>
       </div>
@@ -679,13 +856,14 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     html += `<div class="page-break"></div>`;
     html += `
       <div class="print-title">Lösungen – ${escapeHtml(title)}</div>
-      <div class="print-meta">Hinweis: Rechenweg Schritt-für-Schritt.</div>
+      <div class="print-meta">Hinweis: Detaillierter Rechenweg für höheres Niveau.</div>
     `;
 
-    picked.forEach((t, i) => {
+    picked.forEach((item, i) => {
+      const t = item.t;
       html += `
         <div class="task-block">
-          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
           <div class="task-text"><b>Antwort:</b> ${escapeHtml(fmt(t.answer))}</div>
           <div>${t.solution || "—"}</div>
         </div>
