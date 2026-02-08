@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathe Trainer Navigator</title>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #1976d2;
+            --primary-dark: #0d47a1;
+            --secondary-color: #4caf50;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #616161;
+            --text-color: #333;
+            --white: #ffffff;
+            --border-radius: 10px;
+            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            color: var(--dark-gray);
+            font-size: 1.2rem;
+        }
+
+        /* QR BUTTON */
+        .qr-button {
+            margin-top: 18px;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            background: var(--secondary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .qr-button:hover {
+            background: #388e3c;
+            transform: scale(1.03);
+        }
+
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .tabs-container {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .tabs-header {
+            display: flex;
+            background-color: var(--primary-color);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 18px 20px;
+            background-color: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .tab-btn:last-child {
+            border-right: none;
+        }
+
+        .tab-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+        }
+
+        .tab-btn.active {
+            background-color: var(--white);
+            color: var(--primary-color);
+        }
+
+        .tab-content {
+            padding: 30px;
+            display: none;
+            min-height: 400px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-description {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: var(--light-gray);
+            border-radius: var(--border-radius);
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .tab-description h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+
+        .grade-4 { background-color: #ff9800; color: white; }
+        .grade-2 { background-color: #4caf50; color: white; }
+        .grade-1 { background-color: #2196f3; color: white; }
+
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--medium-gray);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background-color: var(--white);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--dark-gray);
+            font-size: 0.9rem;
+        }
+
+        /* QR MODAL */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .qr-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 340px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+        }
+
+        .qr-modal-content h2 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .qr-close {
+            margin-top: 20px;
+            background: var(--primary-color);
+            border: none;
+            padding: 10px 16px;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .qr-close:hover {
+            background: var(--primary-dark);
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header>
+        <h1><i class="fas fa-calculator"></i> Mathe Trainer Navigator</h1>
+        <p class="subtitle">Vier leistungsstarke Mathe-Trainer für verschiedene Niveaus und Prüfungsvorbereitungen</p>
+
+        <!-- QR BUTTON -->
+        <button id="qrBtn" class="qr-button">
+            <i class="fas fa-qrcode"></i> QR-Code anzeigen
+        </button>
+    </header>
+
+    <div class="content-wrapper">
+
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-btn active" data-tab="tab1">
+                    <i class="fas fa-star"></i> Mathe Trainer – BOA/BBR (Note 4)
+                </button>
+                <button class="tab-btn" data-tab="tab2">
+                    <i class="fas fa-clipboard-check"></i> Mathematik – Prüfungsmodus (Note 4)
+                </button>
+                <button class="tab-btn" data-tab="tab3">
+                    <i class="fas fa-chart-line"></i> Mathe Trainer – BOA/BBR (Note 2 bis 1)
+                </button>
+                <button class="tab-btn" data-tab="tab4">
+                    <i class="fas fa-graduation-cap"></i> Mathematik – BBR Prüfungsmodus (Note 1–2)
+                </button>
+            </div>
+
+            <!-- TAB 1 -->
+            <div class="tab-content active" id="tab1">
+                <div class="tab-description">
+                    <h3>Mathe Trainer – BOA/BBR (Vollversion)</h3>
+                    <p><span class="grade-badge grade-4">Note 4 Training</span></p>
+                    <p><strong>Datei:</strong> 5.7.html</p>
+                </div>
+                <div class="iframe-container">
+                    <iframe src="5.7.html"></iframe>
+                </div>
+            </div>
+
+            <!-- TAB 2 -->
+            <div class="tab-content" id="tab2">
+                <div class="tab-description">
+                    <h3>Mathematik – Prüfungsmodus (Note 4)</h3>
+                    <p><strong>Datei:</strong> 10.1.html</p>
+                </div>
+                <div class="iframe-container">
+                    <iframe src="10.1.html"></iframe>
+                </div>
+            </div>
+
+            <!-- TAB 3 -->
+            <div class="tab-content" id="tab3">
+                <div class="tab-description">
+                    <h3>Mathe Trainer – BOA/BBR (Note 2 bis 1)</h3>
+                    <p><strong>Datei:</strong> 12.2.html</p>
+                </div>
+                <div class="iframe-container">
+                    <iframe src="12.2.html"></iframe>
+                </div>
+            </div>
+
+            <!-- TAB 4 -->
+            <div class="tab-content" id="tab4">
+                <div class="tab-description">
+                    <h3>Mathematik – BBR Prüfungsmodus (Note 1–2)</h3>
+                    <p><strong>Datei:</strong> 11.3.html</p>
+                </div>
+                <div class="iframe-container">
+                    <iframe src="11.3.html"></iframe>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Mathe Trainer Navigator © 2023 | Entwickelt für effektive Prüfungsvorbereitung</p>
+    </footer>
+</div>
+
+<!-- QR MODAL -->
+<div id="qrModal" class="qr-modal">
+    <div class="qr-modal-content">
+        <h2>QR-Code zur Website</h2>
+        <canvas id="qrCanvas"></canvas>
+        <button class="qr-close" id="closeQr">Schließen</button>
+    </div>
+</div>
+
+<!-- QR CODE LIB -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        /* TAB SWITCHING */
+        const tabBtns = document.querySelectorAll(".tab-btn");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener("click", function () {
+                tabBtns.forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+
+                tabContents.forEach(content => content.classList.remove("active"));
+                document.getElementById(this.dataset.tab).classList.add("active");
+            });
+        });
+
+        /* QR MODAL */
+        const qrBtn = document.getElementById("qrBtn");
+        const qrModal = document.getElementById("qrModal");
+        const closeQr = document.getElementById("closeQr");
+        const qrCanvas = document.getElementById("qrCanvas");
+
+        qrBtn.addEventListener("click", () => {
+            qrModal.style.display = "flex";
+
+            QRCode.toCanvas(qrCanvas, window.location.href, {
+                width: 220
+            });
+        });
+
+        closeQr.addEventListener("click", () => {
+            qrModal.style.display = "none";
+        });
+
+        qrModal.addEventListener("click", (e) => {
+            if (e.target === qrModal) {
+                qrModal.style.display = "none";
+            }
+        });
+
+    });
+</script>
+
+</body>
+</html>

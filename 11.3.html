@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Mathematik – BBR Prüfungsmodus (Note 1–2)</title>
+
+<style>
+html, body {
+  overflow: hidden;
+  touch-action: manipulation;
+}
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+body {
+  font-family: system-ui, Arial, sans-serif;
+  background: #e9e9e9;
+  margin: 0;
+  padding: 12px;
+}
+h1 {
+  text-align: center;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  margin-bottom: 10px;
+}
+#topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+select, button, label {
+  font-size: 1rem;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #999;
+}
+button {
+  background: #1976d2;
+  color: white;
+  border: none;
+}
+button:active {
+  background: #0d47a1;
+}
+#timer {
+  width: 100%;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: darkred;
+}
+#card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: auto;
+}
+#task {
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  margin-bottom: 14px;
+}
+#answerArea {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+input {
+  font-size: 1.3rem;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #aaa;
+  width: 100%;
+}
+.hidden { display: none; }
+#navButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+#navButtons button { flex: 1; }
+#result {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-top: 15px;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📝 Mathematik – BBR Prüfungsmodus (Note 1–2)</h1>
+
+<div id="topbar">
+  <button id="startBtn">Prüfung starten</button>
+  <div id="timer" class="hidden"></div>
+</div>
+
+<div id="card">
+  <div id="task">Noch keine Prüfung gestartet.</div>
+
+  <div id="answerArea" class="hidden">
+    <input id="answer" type="text" inputmode="decimal" placeholder="Antwort eingeben">
+    <div id="navButtons">
+      <button id="nextBtn">Weiter</button>
+      <button id="finishBtn">Abgeben</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+/* =====================
+   BASIS
+===================== */
+const EXAM_TIME = 90 * 60;
+const TASKS_TOTAL = 10;
+const POINTS_PER_TASK = 3;
+const TOTAL_POINTS = TASKS_TOTAL * POINTS_PER_TASK;
+const TEACHER_PIN = "1234";
+
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function round2(x) {
+  return Math.round(x * 100) / 100;
+}
+function parseNum(v) {
+  if (!v) return NaN;
+  return parseFloat(v.replace(",", "."));
+}
+
+/* =====================
+   STATE
+===================== */
+let tasks = [];
+let current = 0;
+let points = 0;
+let timeLeft = 0;
+let timerInt = null;
+let running = false;
+
+/* =====================
+   AUFGABEN (100 % BBR)
+===================== */
+/* =====================
+   AUFGABEN (100 % BBR)
+===================== */
+function hardTask(idx) {
+
+  const POOL = {
+
+    /* =====================
+       ALGEBRA
+    ===================== */
+    algebra: [
+      () => {
+        const x = rand(-5, 10);
+        return {
+          text: `Berechne den Wert des Terms für x = ${x}:<br>3·(2x − 5) − (x + 7)`,
+          sol: 3*(2*x-5)-(x+7)
+        };
+      },
+      () => {
+        const sol = rand(-6, 12);
+        return {
+          text: `Bestimme x:<br>2(x − 4) + 6 = ${2*(sol-4)+6}`,
+          sol
+        };
+      }
+    ],
+
+    /* =====================
+       PROZENT / ZINS
+    ===================== */
+    prozent: [
+      () => {
+        const g = rand(120, 500);
+        const p = rand(10, 30);
+        return {
+          text: `Berechne ${p}% von ${g}.`,
+          sol: g*p/100
+        };
+      }
+    ],
+
+    /* =====================
+       EBENE GEOMETRIE
+    ===================== */
+    geometrie: [
+      () => {
+        const a = rand(6, 15), b = rand(8, 20);
+        return {
+          text: `Bestimme die Länge der Hypotenuse eines rechtwinkligen Dreiecks mit Katheten ${a} cm und ${b} cm.`,
+          sol: round2(Math.sqrt(a*a+b*b))
+        };
+      }
+    ],
+
+    /* =====================
+       KÖRPER – PRISMEN
+    ===================== */
+    koerper: [
+
+      // Prisma mit rechteckiger Grundfläche – Volumen
+      () => {
+        const a = rand(4, 10);
+        const b = rand(5, 14);
+        const h = rand(6, 18);
+        return {
+          text: `Ein Prisma hat eine rechteckige Grundfläche mit a = ${a} cm und b = ${b} cm sowie die Höhe h = ${h} cm.<br>
+                 Berechne das Volumen des Prismas.`,
+          sol: a*b*h
+        };
+      },
+
+      // Prisma mit quadratischer Grundfläche – Oberfläche
+      () => {
+        const a = rand(4, 10);
+        const h = rand(6, 18);
+        return {
+          text: `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm und die Höhe h = ${h} cm.<br>
+                 Berechne die Oberfläche des Prismas.`,
+          sol: 2*a*a + 4*a*h
+        };
+      },
+
+      // Prisma mit dreieckiger Grundfläche – Volumen
+      () => {
+        const g = rand(6, 14);
+        const hD = rand(4, 10);
+        const hP = rand(8, 20);
+        return {
+          text: `Ein Prisma besitzt eine dreieckige Grundfläche mit Grundseite g = ${g} cm und Höhe h = ${hD} cm.<br>
+                 Die Höhe des Prismas beträgt ${hP} cm.<br>
+                 Berechne das Volumen des Prismas.`,
+          sol: (g*hD/2)*hP
+        };
+      }
+    ],
+
+    /* =====================
+       PYTHAGORAS AN KÖRPERN
+    ===================== */
+    pythagoras: [
+
+      // Raumdiagonale im Quader
+      () => {
+        const a = rand(4, 10);
+        const b = rand(5, 12);
+        const h = rand(6, 14);
+        return {
+          text: `Ein Quader hat die Kantenlängen a = ${a} cm, b = ${b} cm und h = ${h} cm.<br>
+                 Bestimme die Länge der Raumdiagonale.`,
+          sol: round2(Math.sqrt(a*a + b*b + h*h))
+        };
+      },
+
+      // Seitenhöhe im Prisma
+      () => {
+        const a = rand(4, 10);
+        const h = rand(6, 14);
+        return {
+          text: `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm und Höhe h = ${h} cm.<br>
+                 Bestimme die Länge der Seitenkante (Pythagoras).`,
+          sol: round2(Math.sqrt(a*a + h*h))
+        };
+      }
+    ],
+
+    /* =====================
+       ZYLINDER
+    ===================== */
+    zylinder: [
+
+      // Volumen
+      () => {
+        const r = rand(3, 8);
+        const h = rand(8, 20);
+        return {
+          text: `Ein Zylinder hat den Radius r = ${r} cm und die Höhe h = ${h} cm.<br>
+                 Berechne das Volumen des Zylinders. (π ≈ 3,14)`,
+          sol: round2(3.14*r*r*h)
+        };
+      },
+
+      // Mantellinie mit Pythagoras
+      () => {
+        const r = rand(3, 8);
+        const h = rand(8, 20);
+        const u = 2*3.14*r;
+        return {
+          text: `Ein Zylinder wird aufgeschnitten und der Mantel als Rechteck dargestellt.<br>
+                 Radius r = ${r} cm, Höhe h = ${h} cm.<br>
+                 Bestimme die Länge der Diagonale dieses Rechtecks (Pythagoras).`,
+          sol: round2(Math.sqrt(u*u + h*h))
+        };
+      }
+    ]
+  };
+
+  // Feste Reihenfolge der Kategorien (prüfungsnah & ausgewogen)
+  const cats = [
+    "algebra",
+    "prozent",
+    "geometrie",
+    "koerper",
+    "pythagoras",
+    "zylinder"
+  ];
+
+  const cat = cats[idx % cats.length];
+  return POOL[cat][rand(0, POOL[cat].length - 1)]();
+}
+
+/* =====================
+   PRÜFUNG
+===================== */
+function startExam() {
+  tasks = [];
+  current = 0;
+  points = 0;
+  timeLeft = EXAM_TIME;
+  running = true;
+
+  for (let i = 0; i < TASKS_TOTAL; i++) {
+    tasks.push(hardTask(i));
+  }
+
+  document.getElementById("answerArea").classList.remove("hidden");
+  document.getElementById("timer").classList.remove("hidden");
+  document.getElementById("result").innerHTML = "";
+
+  timerInt = setInterval(updateTimer, 1000);
+  showTask();
+}
+
+function showTask() {
+  document.getElementById("task").innerHTML =
+    `<b>Aufgabe ${current+1}/${TASKS_TOTAL}</b><br>${tasks[current].text}`;
+  document.getElementById("answer").value = "";
+}
+
+function saveAnswer() {
+  const v = parseNum(document.getElementById("answer").value);
+  if (isNaN(v)) return;
+  if (Math.abs(v - tasks[current].sol) <= Math.max(0.05, Math.abs(tasks[current].sol)*0.01)) {
+    points += POINTS_PER_TASK;
+  }
+}
+
+function nextTask() {
+  saveAnswer();
+  current++;
+  if (current < TASKS_TOTAL) showTask();
+  else finishExam();
+}
+
+function finishExam() {
+  const pin = prompt("Lehrer-PIN:");
+  if (pin !== TEACHER_PIN) return;
+
+  clearInterval(timerInt);
+  running = false;
+
+  const pct = Math.round(points / TOTAL_POINTS * 100);
+  let note = "3";
+  if (pct >= 92) note = "1";
+  else if (pct >= 80) note = "2";
+  else if (pct >= 67) note = "3";
+  else if (pct >= 50) note = "4";
+  else note = "5";
+
+  document.getElementById("answerArea").classList.add("hidden");
+  document.getElementById("result").innerHTML =
+    `Punkte: <b>${points}/${TOTAL_POINTS}</b> (${pct}%)<br>Trainingsergebnis: <b>Note ${note}</b>`;
+}
+
+/* =====================
+   TIMER
+===================== */
+function updateTimer() {
+  timeLeft--;
+  const m = Math.floor(timeLeft/60);
+  const s = String(timeLeft%60).padStart(2,"0");
+  document.getElementById("timer").innerText = `⏱ ${m}:${s}`;
+  if (timeLeft <= 0) finishExam();
+}
+
+/* =====================
+   EVENTS
+===================== */
+document.getElementById("startBtn").onclick = startExam;
+document.getElementById("nextBtn").onclick = nextTask;
+document.getElementById("finishBtn").onclick = finishExam;
+</script>
+
+</body>
+</html>

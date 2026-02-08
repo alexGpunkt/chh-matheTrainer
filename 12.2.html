@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mathe Trainer – BOA / BBR (Vollversion)</title>
+
+<style>
+  body { font-family: Arial, sans-serif; background:#f2f2f2; padding:20px; }
+  h1 { text-align:center; margin: 8px 0 14px; }
+
+  #topbar { text-align:center; margin-bottom:10px; }
+  button, select { padding:10px; font-size:16px; margin:4px; }
+
+  #status { text-align:center; font-size:18px; font-weight:bold; margin-bottom:6px; }
+  #progress { text-align:center; font-size:16px; margin-bottom:10px; }
+
+  #card { max-width:820px; margin:auto; background:white; padding:25px; border-radius:10px; }
+  #task { font-size:20px; margin-bottom:15px; }
+  #answerArea { margin-top: 8px; }
+  input { font-size:18px; padding:5px; width:220px; }
+  #feedback { margin-top:10px; font-size:18px; font-weight:bold; }
+
+  #solution { display:none; background:#eef6ff; padding:15px; border-radius:5px; margin-top:15px; }
+
+  /* ===== PRINT / PDF EXPORT ===== */
+  @media print {
+    body { background:#fff; padding:0; }
+    #topbar, #status, #progress, #card, h1 { display:none !important; }
+    #printArea { display:block !important; }
+  }
+
+  #printArea { font-family: Arial, sans-serif; color:#000; padding:18mm; }
+  .print-title { font-size:18pt; font-weight:bold; margin-bottom:6mm; }
+  .print-meta { font-size:11pt; margin-bottom:8mm; }
+  .print-line { border-bottom:1px solid #000; display:inline-block; width:70mm; height:6mm; vertical-align:bottom; margin-left:3mm; }
+  .task-block { margin-bottom:8mm; padding-bottom:6mm; border-bottom:1px solid #ddd; }
+  .task-head { font-weight:bold; margin-bottom:2mm; }
+  .task-text { margin-bottom:4mm; }
+  .work-space { height:22mm; border:1px solid #eee; background:#fafafa; }
+  .page-break { page-break-before: always; break-before: page; }
+</style>
+</head>
+
+<body>
+
+<h1>🎓 Mathe-Trainer – BOA / BBR (Note 2 bis 1)</h1>
+
+<div id="topbar">
+  <select id="mode" onchange="switchMode()">
+    <option value="exam">Prüfungsmodus (mit Eingabe)</option>
+    <option value="cards">Karteikartenmodus</option>
+  </select>
+
+  <select id="level" onchange="onLevelChange()">
+    <option value="boa">BOA (reduziert)</option>
+    <option value="bbr">BBR (höheres Niveau)</option>
+  </select>
+
+  <button onclick="startRound()">🎲 Zufallsrunde starten</button>
+  <button onclick="nextTaskRandom()">➡️ Nächste Aufgabe (zufällig)</button>
+  <button onclick="nextTaskSameType()">🔁 Gleicher Typ</button>
+  <button onclick="toggleSolution()" id="solutionBtn">📌 Lösung anzeigen</button>
+  <button onclick="exportWorksheetPDF()">🧾 PDF-Übungsblatt</button>
+  <button onclick="resetTrainer()">🔄 Reset</button>
+</div>
+
+<div id="status">Punkte: 0</div>
+<div id="progress">Noch keine Runde gestartet.</div>
+
+<div id="card">
+  <div id="task">Starte eine Zufallsrunde.</div>
+
+  <div id="answerArea">
+    Deine Antwort:
+    <input type="text" id="userAnswer" />
+    <button onclick="checkAnswer()">Antwort prüfen</button>
+  </div>
+
+  <div id="feedback"></div>
+
+  <div id="solution"></div>
+</div>
+
+<div id="printArea" style="display:none;"></div>
+
+<script>
+/* =========================================================
+   STATE
+========================================================= */
+let currentAnswer = null;
+let points = 0;
+
+let roundActive = false;
+let taskNumber = 0;
+let totalTasks = 10;
+
+let solvedCurrent = false;
+
+// Merkt sich den zuletzt gezogenen Aufgabentyp (für "Gleicher Typ")
+let lastCat = null;
+let lastGenIndex = null;
+
+// Für Karteikarten: Lösung ist erst „aufgedeckt“, wenn Nutzer klickt
+let revealed = false;
+
+/* =========================================================
+   UTIL
+========================================================= */
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function getLevel() { return document.getElementById("level").value; }
+function getMode() { return document.getElementById("mode").value; }
+
+function fmt(n) {
+  // „schöne“ Darstellung: Integer ohne Nachkommastellen, sonst max 2
+  if (typeof n === "number") {
+    if (Number.isInteger(n)) return String(n);
+    return (Math.round(n * 100) / 100).toString().replace(".", ",");
+  }
+  return String(n);
+}
+
+/* Einheitliches Rechenweg-Template */
+function steps(lines, result) {
+  let html = "";
+  lines.forEach((line, i) => html += `Schritt ${i + 1}: ${line}<br>`);
+  html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
+  return html;
+}
+
+/* Standard-Task-Objekt */
+function genTask(taskHtml, answer, stepLines) {
+  return { task: taskHtml, answer, solution: steps(stepLines, answer) };
+}
+
+/* =========================================================
+   PRÜFUNGS-REALISTISCHE GEWICHTUNG
+========================================================= */
+const weightedCategories = [
+  "rechnen","rechnen","rechnen","rechnen","rechnen",
+  "sach","sach","sach","sach","sach",
+  "prozent","prozent","prozent","prozent",
+  "geometrie","geometrie","geometrie","geometrie"
+];
+
+/* =========================================================
+   NEUER 11.3 TASKPOOL (höheres Niveau)
+========================================================= */
+const TASKPOOL = {
+
+  rechnen: [
+
+    // Algebra: verschachtelter Term
+    () => {
+      const x = rand(-3, 8);
+      const ans = 2 * (3 * x - 4) - (x - 5);
+      return genTask(
+        `Berechne den Wert des Terms für x = ${x}:<br>
+         <b>2·(3x − 4) − (x − 5)</b>`,
+        ans,
+        [
+          `Klammern auflösen`,
+          `Zusammenfassen`,
+          `Einsetzen von x = ${x}`
+        ]
+      );
+    },
+
+    // Gleichung
+    () => {
+      const x = rand(-5, 10);
+      return genTask(
+        `Löse nach x:<br>
+         <b>3(x − 2) + 4 = ${3 * (x - 2) + 4}</b>`,
+        x,
+        [
+          `Klammern auflösen`,
+          `Zusammenfassen`,
+          `Nach x auflösen`
+        ]
+      );
+    },
+
+    // Weitere Algebra-Varianten
+    ...Array.from({ length: 18 }, () => () => {
+      const x = rand(-4, 9);
+      const a = rand(2, 6);
+      const b = rand(1, 8);
+      const c = rand(3, 9);
+      const ans = a * (b * x + c) - (x - a);
+      return genTask(
+        `Berechne für x = ${x}:<br>
+         <b>${a}·(${b}x + ${c}) − (x − ${a})</b>`,
+        ans,
+        [
+          `Klammern auflösen`,
+          `Zusammenfassen`,
+          `Einsetzen von x = ${x}`
+        ]
+      );
+    })
+  ],
+
+  prozent: [
+
+    // Preisänderung
+    () => {
+      const g = rand(150, 600);
+      const p = rand(10, 35);
+      const ans = Number((g * (1 + p / 100)).toFixed(2));
+      return genTask(
+        `Ein Produkt kostet ${g} €.<br>
+         Der Preis wird um ${p}% erhöht.<br>
+         <b>Bestimme den neuen Preis.</b>`,
+        ans,
+        [
+          `100% + ${p}% = ${100 + p}%`,
+          `${g} · ${100 + p} / 100`,
+          `Ausrechnen`
+        ]
+      );
+    },
+
+    // Grundwert rückwärts
+    () => {
+      const g = rand(120, 400);
+      const p = rand(10, 40);
+      const w = Number((g * p / 100).toFixed(2));
+      return genTask(
+        `${w} € entsprechen ${p}%.<br>
+         <b>Bestimme den Grundwert.</b>`,
+        g,
+        [
+          `Formel: G = W · 100 / p`,
+          `${w} · 100 / ${p}`,
+          `Ausrechnen`
+        ]
+      );
+    },
+
+    // Prozentanteil verändern
+    () => {
+      const g = rand(200, 800);
+      const p1 = rand(15, 30);
+      const p2 = rand(5, 20);
+      const ans = Number((g * (1 - p1/100) * (1 + p2/100)).toFixed(2));
+      return genTask(
+        `Ein Preis von ${g} € wird um ${p1}% reduziert, dann um ${p2}% erhöht.<br>
+         <b>Neuer Preis?</b>`,
+        ans,
+        [
+          `Erster Schritt: ${g} · ${100-p1}/100`,
+          `Zweiter Schritt: Ergebnis · ${100+p2}/100`,
+          `Ausrechnen`
+        ]
+      );
+    }
+  ],
+
+  geometrie: [
+
+    // Prisma Volumen
+    () => {
+      const a = rand(4, 10);
+      const b = rand(5, 12);
+      const h = rand(6, 18);
+      return genTask(
+        `Ein Prisma hat eine rechteckige Grundfläche
+         mit a = ${a} cm und b = ${b} cm.<br>
+         Höhe h = ${h} cm.<br>
+         <b>Berechne das Volumen.</b>`,
+        a * b * h,
+        [
+          `Grundfläche: a · b`,
+          `Volumen = G · h`,
+          `Einsetzen und berechnen`
+        ]
+      );
+    },
+
+    // Raumdiagonale
+    () => {
+      const a = rand(4, 10), b = rand(5, 12), h = rand(6, 14);
+      const ans = Number(Math.sqrt(a*a + b*b + h*h).toFixed(2));
+      return genTask(
+        `Ein Quader besitzt die Kantenlängen
+         a=${a} cm, b=${b} cm, h=${h} cm.<br>
+         <b>Bestimme die Raumdiagonale.</b>`,
+        ans,
+        [
+          `Pythagoras im Raum`,
+          `d² = a² + b² + h²`,
+          `Wurzel ziehen`
+        ]
+      );
+    },
+
+    // Zylinder Volumen
+    () => {
+      const r = rand(3, 8);
+      const h = rand(8, 20);
+      const ans = Number((Math.PI * r * r * h).toFixed(2));
+      return genTask(
+        `Ein Zylinder hat Radius r = ${r} cm und Höhe h = ${h} cm.<br>
+         (π ≈ 3,14)<br>
+         <b>Berechne das Volumen.</b>`,
+        ans,
+        [
+          `Formel: V = π · r² · h`,
+          `Einsetzen: 3,14 · ${r}² · ${h}`,
+          `Ausrechnen`
+        ]
+      );
+    },
+
+    // Prisma Oberfläche (quadratische Grundfläche)
+    () => {
+      const a = rand(4, 10);
+      const h = rand(6, 16);
+      const ans = 2 * a * a + 4 * a * h;
+      return genTask(
+        `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm.<br>
+         Höhe h = ${h} cm.<br>
+         <b>Berechne die Oberfläche.</b>`,
+        ans,
+        [
+          `Grundfläche: a² = ${a}²`,
+          `Mantel: 4 · a · h`,
+          `Oberfläche = 2·G + Mantel`
+        ]
+      );
+    }
+  ],
+
+  sach: [
+
+    // Geschwindigkeit
+    () => {
+      const km = rand(80, 420);
+      const h  = rand(2, 7);
+      const ans = Number((km / h).toFixed(1));
+      return genTask(
+        `Ein Auto fährt ${km} km in ${h} h.<br>
+         <b>Berechne die Geschwindigkeit.</b>`,
+        ans,
+        [
+          `Formel: v = s : t`,
+          `${km} : ${h}`,
+          `Ausrechnen`
+        ]
+      );
+    },
+
+    // Zylinder Mantel-Diagonale
+    () => {
+      const r = rand(3, 8);
+      const h = rand(8, 18);
+      const u = Number((2 * Math.PI * r).toFixed(2));
+      const ans = Number(Math.sqrt(u*u + h*h).toFixed(2));
+      return genTask(
+        `Der Mantel eines Zylinders wird als Rechteck dargestellt.<br>
+         Umfang der Grundfläche: ${u} cm<br>
+         Höhe: ${h} cm<br>
+         <b>Berechne die Länge der Diagonale.</b>`,
+        ans,
+        [
+          `Diagonale im Rechteck`,
+          `d² = u² + h²`,
+          `Wurzel ziehen`
+        ]
+      );
+    },
+
+    // Zeitrechnung komplexer
+    () => {
+      const startH = rand(8, 14);
+      const durMin = rand(85, 240);
+      const total = startH*60 + durMin;
+      const hh = Math.floor(total/60) % 24;
+      const mm = String(total%60).padStart(2,"0");
+      const ans = `${hh}:${mm}`;
+      return {
+        task: `Ein Zug startet um <b>${startH}:00</b> Uhr und fährt <b>${durMin}</b> Minuten.<br>
+               <b>Ankunftszeit?</b>`,
+        answer: ans,
+        solution: steps(
+          [
+            `Startzeit in Minuten: ${startH}·60 = ${startH*60}`,
+            `+ Fahrzeit: ${startH*60} + ${durMin} = ${total} Minuten`,
+            `Zurück in Uhrzeit: ${hh}:${mm}`
+          ],
+          ans
+        )
+      };
+    }
+  ]
+};
+
+/* =========================================================
+   MODE/UI
+========================================================= */
+function switchMode() {
+  const mode = getMode();
+  const answerArea = document.getElementById("answerArea");
+  const status = document.getElementById("status");
+  const btn = document.getElementById("solutionBtn");
+
+  if (mode === "cards") {
+    answerArea.style.display = "none";
+    status.style.display = "none";
+    btn.textContent = "📌 Lösung aufdecken";
+  } else {
+    answerArea.style.display = "block";
+    status.style.display = "block";
+    btn.textContent = "📌 Lösung anzeigen";
+  }
+
+  // aktuelle Karte/Lösung zurücksetzen
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+}
+
+function onLevelChange() {
+  // BOA/BBR wirkt sofort – wir resetten nicht hart, aber verstecken Lösung und Feedback
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+  document.getElementById("feedback").innerHTML = "";
+  // Hinweis: nextTask... zieht automatisch Aufgaben mit neuen Bereichen.
+}
+
+/* =========================================================
+   ROUND
+========================================================= */
+function updateStatus() {
+  document.getElementById("status").innerHTML = `Punkte: ${points}`;
+}
+
+function startRound() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = true;
+  solvedCurrent = false;
+  updateStatus();
+  nextTaskRandom();
+}
+
+function finishRound() {
+  roundActive = false;
+  document.getElementById("task").innerHTML = `🏁 Runde beendet!`;
+  document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
+}
+
+/* =========================================================
+   TASK PICKING
+========================================================= */
+function pickCategoryWeighted() {
+  return weightedCategories[rand(0, weightedCategories.length - 1)];
+}
+
+function drawTask(cat, genIndex) {
+  const list = TASKPOOL[cat];
+  const gen = list[genIndex];
+  const t = gen();
+
+  lastCat = cat;
+  lastGenIndex = genIndex;
+
+  currentAnswer = t.answer;
+
+  // UI reset
+  solvedCurrent = false;
+  revealed = false;
+
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("userAnswer").value = "";
+  document.getElementById("solution").style.display = "none";
+  document.getElementById("solution").innerHTML =
+    "<b>Lösung Schritt-für-Schritt:</b><br><br>" + (t.solution || "—");
+
+  document.getElementById("task").innerHTML = `(${cat}) ${t.task}`;
+}
+
+/* Nächste Aufgabe (Kategorie & Typ zufällig) */
+function nextTaskRandom() {
+  if (!roundActive) {
+    alert("Bitte zuerst eine Zufallsrunde starten!");
+    return;
+  }
+  if (taskNumber >= totalTasks) {
+    finishRound();
+    return;
+  }
+  taskNumber++;
+
+  const cat = pickCategoryWeighted();
+  const genIndex = rand(0, TASKPOOL[cat].length - 1);
+
+  drawTask(cat, genIndex);
+
+  document.getElementById("progress").innerHTML =
+    `Aufgabe ${taskNumber} von ${totalTasks}`;
+}
+
+/* Weitere Aufgabe gleicher Typ (exakt gleiche Kategorie + gleicher Generator) */
+function nextTaskSameType() {
+  if (!roundActive) {
+    alert("Bitte zuerst eine Zufallsrunde starten!");
+    return;
+  }
+  if (taskNumber >= totalTasks) {
+    finishRound();
+    return;
+  }
+  if (lastCat === null || lastGenIndex === null) {
+    // falls noch keine Aufgabe da ist: wie random
+    nextTaskRandom();
+    return;
+  }
+
+  taskNumber++;
+
+  drawTask(lastCat, lastGenIndex);
+
+  document.getElementById("progress").innerHTML =
+    `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
+}
+
+/* =========================================================
+   CHECK ANSWER (nur im Prüfungsmodus sinnvoll)
+========================================================= */
+function normalize(val) {
+  return parseFloat(String(val).trim().replace(",", "."));
+}
+
+function checkAnswer() {
+  if (getMode() === "cards") {
+    document.getElementById("feedback").innerHTML = "ℹ️ Karteikartenmodus: Keine Eingabeprüfung.";
+    return;
+  }
+  if (solvedCurrent) return;
+
+  const input = document.getElementById("userAnswer").value.trim();
+
+  // Bei Sach-Aufgaben kann answer auch Text sein (z.B. Uhrzeit)
+  if (typeof currentAnswer === "string") {
+    const ok = input === currentAnswer;
+    document.getElementById("feedback").innerHTML = ok
+      ? "✔ Richtig! +3 Punkte"
+      : `✘ Falsch. Richtige Lösung: ${currentAnswer}`;
+    if (ok) points += 3;
+    solvedCurrent = true;
+    updateStatus();
+    return;
+  }
+
+  const userVal = normalize(input);
+  if (isNaN(userVal)) {
+    document.getElementById("feedback").innerHTML = "⚠ Bitte eine Zahl eingeben.";
+    return;
+  }
+
+  if (Math.abs(userVal - currentAnswer) < 0.05) {
+    points += 3;
+    document.getElementById("feedback").innerHTML = "✔ Richtig! +3 Punkte";
+  } else {
+    document.getElementById("feedback").innerHTML = `✘ Falsch. Richtige Lösung: ${fmt(currentAnswer)}`;
+  }
+
+  solvedCurrent = true;
+  updateStatus();
+}
+
+/* =========================================================
+   SOLUTION TOGGLE
+========================================================= */
+function toggleSolution() {
+  const sol = document.getElementById("solution");
+  const mode = getMode();
+
+  if (mode === "cards") {
+    // Karteikarten: erst aufdecken, dann wieder verstecken
+    revealed = !revealed;
+    sol.style.display = revealed ? "block" : "none";
+    return;
+  }
+
+  // Prüfungsmodus: einfach anzeigen (kein Zwang zum Toggle, aber ok)
+  sol.style.display = (sol.style.display === "block") ? "none" : "block";
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+function resetTrainer() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = false;
+  solvedCurrent = false;
+  lastCat = null;
+  lastGenIndex = null;
+  revealed = false;
+
+  updateStatus();
+  document.getElementById("task").innerHTML = "Starte eine Zufallsrunde.";
+  document.getElementById("progress").innerHTML = "Noch keine Runde gestartet.";
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("userAnswer").value = "";
+  document.getElementById("solution").style.display = "none";
+  document.getElementById("solution").innerHTML = "";
+}
+
+/* =========================================================
+   PDF EXPORT (Aufgaben + Lösungen)
+========================================================= */
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function pickTaskFromCategory(cat, genIndex = null) {
+  const list = TASKPOOL[cat];
+  if (!list || list.length === 0) return null;
+  const idx = (genIndex === null) ? rand(0, list.length - 1) : genIndex;
+  return list[idx]();
+}
+
+function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDuplicates = true) {
+  const level = getLevel();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("de-DE");
+
+  const picked = [];
+  const seen = new Set();
+
+  let safety = 0;
+  while (picked.length < tasksCount && safety < tasksCount * 80) {
+    safety++;
+
+    const cat = pickCategoryWeighted();
+    const t = pickTaskFromCategory(cat);
+    if (!t) continue;
+
+    const signature = (cat + "||" + t.task).replace(/\s+/g, " ").trim();
+    if (avoidDuplicates && seen.has(signature)) continue;
+
+    seen.add(signature);
+    picked.push({ cat, ...t });
+  }
+
+  if (picked.length === 0) {
+    alert("Keine Aufgaben gefunden – prüfe TASKPOOL.");
+    return;
+  }
+
+  const title = `Mathe-Übungsblatt (${level.toUpperCase()})`;
+  let html = `
+    <div class="print-title">${escapeHtml(title)}</div>
+    <div class="print-meta">
+      Datum: <span class="print-line"></span> &nbsp;&nbsp;
+      Name: <span class="print-line"></span> &nbsp;&nbsp;
+      Klasse: <span class="print-line" style="width:30mm;"></span>
+      <div style="margin-top:3mm; color:#444;">Erstellt am ${escapeHtml(dateStr)} – ${picked.length} Aufgaben</div>
+    </div>
+  `;
+
+  picked.forEach((t, i) => {
+    html += `
+      <div class="task-block">
+        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+        <div class="task-text">${t.task}</div>
+        <div class="work-space"></div>
+      </div>
+    `;
+  });
+
+  if (includeSolutions) {
+    html += `<div class="page-break"></div>`;
+    html += `
+      <div class="print-title">Lösungen – ${escapeHtml(title)}</div>
+      <div class="print-meta">Hinweis: Rechenweg Schritt-für-Schritt.</div>
+    `;
+
+    picked.forEach((t, i) => {
+      html += `
+        <div class="task-block">
+          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+          <div class="task-text"><b>Antwort:</b> ${escapeHtml(fmt(t.answer))}</div>
+          <div>${t.solution || "—"}</div>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById("printArea").innerHTML = html;
+  window.print();
+}
+
+/* INIT */
+switchMode();
+updateStatus();
+</script>
+
+</body>
+</html>

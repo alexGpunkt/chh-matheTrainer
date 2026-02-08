@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+
+<!-- 📱 Mobile Optimierung -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Mathe Prüfung – BOA / BBR ⭐</title>
+
+<style>
+html, body {
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  background: #e9e9e9;
+  margin: 0;
+  padding: 12px;
+}
+
+h1 {
+  text-align: center;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  margin-bottom: 10px;
+}
+
+#topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+select, button, label {
+  font-size: 1rem;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #999;
+}
+
+button {
+  background: #1976d2;
+  color: white;
+  border: none;
+}
+
+button:active {
+  background: #0d47a1;
+}
+
+#timer {
+  width: 100%;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: darkred;
+}
+
+#card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: auto;
+}
+
+#task {
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  margin-bottom: 14px;
+}
+
+#answerArea {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input {
+  font-size: 1.3rem;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #aaa;
+  width: 100%;
+}
+
+.hidden { display: none; }
+
+#navButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#navButtons button {
+  flex: 1;
+}
+
+#result {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin-top: 15px;
+  text-align: center;
+}
+
+/* 📱 Extra Optimierung für sehr kleine Displays */
+@media (max-width: 480px) {
+  h1 { font-size: 1.3rem; }
+  #task { font-size: 1.15rem; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>📝 Mathematik – Prüfungsmodus (Note 4)</h1>
+
+<div id="topbar">
+  <select id="level" onchange="toggleStarOption()">
+    <option value="boa">BOA</option>
+    <option value="bbr">BBR</option>
+  </select>
+
+  <label id="starBox" class="hidden">
+    <input type="checkbox" id="stars"> ⭐ Stern-Aufgaben
+  </label>
+
+  <button id="startBtn">Prüfung starten</button>
+  <div id="timer" class="hidden"></div>
+</div>
+
+<div id="card">
+  <div id="task">Noch keine Prüfung gestartet.</div>
+
+  <div id="answerArea" class="hidden">
+    <input type="text" id="answer"
+           inputmode="decimal"
+           placeholder="Antwort eingeben">
+    <div id="navButtons">
+      <button id="nextBtn">Weiter</button>
+      <button id="finishBtn">Abgeben</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+/* =======================
+   KONFIG
+======================= */
+const EXAM_TIME = 90 * 60;        // 90 Minuten
+const TASKS_TOTAL = 10;
+const POINTS_PER_TASK = 3;
+const PASS_POINTS = 15;           // Note-4-Training (50%)
+const TEACHER_PIN = "1234";       // <— hier ändern
+
+/* =======================
+   DOM (robust für iPad/Safari)
+======================= */
+const levelEl = document.getElementById("level");
+const starBoxEl = document.getElementById("starBox");
+const starsEl = document.getElementById("stars");
+const startBtnEl = document.getElementById("startBtn");
+const timerEl = document.getElementById("timer");
+const taskEl = document.getElementById("task");
+const answerAreaEl = document.getElementById("answerArea");
+const answerEl = document.getElementById("answer");
+const nextBtnEl = document.getElementById("nextBtn");
+const finishBtnEl = document.getElementById("finishBtn");
+const resultEl = document.getElementById("result");
+
+/* =======================
+   STATE
+======================= */
+let timeLeft = 0;
+let timerInt = null;
+let tasks = [];
+let current = 0;
+let points = 0;
+let examRunning = false;
+
+/* =======================
+   HELPERS
+======================= */
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function toggleStarOption() {
+  // Stern-Option nur bei BBR sichtbar; bei BOA zusätzlich deaktivieren
+  const isBBR = levelEl.value === "bbr";
+  starBoxEl.classList.toggle("hidden", !isBBR);
+  if (!isBBR) starsEl.checked = false;
+}
+
+/* =======================
+   AUFGABEN
+======================= */
+function baseTask(level, idx) {
+
+  /* ======================================================
+     100+ Aufgaben durch Generator-Pool
+     BOA = kleinere Zahlen
+     BBR = größere Zahlen + mehr Varianten
+  ====================================================== */
+
+  const POOL = {
+
+    rechnen: [
+
+      // Punkt-vor-Strich
+      () => {
+        let a = level === "boa" ? rand(20, 80) : rand(60, 180);
+        let b = level === "boa" ? rand(2, 7) : rand(3, 12);
+        let c = level === "boa" ? rand(2, 6) : rand(3, 10);
+        return {
+          text: `Berechne: ${a} − ${b} · ${c}`,
+          sol: a - b * c
+        };
+      },
+
+      // Klammern
+      () => {
+        let a = level === "boa" ? rand(5, 20) : rand(10, 40);
+        let b = level === "boa" ? rand(5, 20) : rand(10, 40);
+        let c = level === "boa" ? rand(2, 6) : rand(3, 10);
+        return {
+          text: `Berechne: (${a} + ${b}) · ${c}`,
+          sol: (a + b) * c
+        };
+      },
+
+      // Division glatt
+      () => {
+        let b = level === "boa" ? rand(2, 10) : rand(3, 12);
+        let ans = level === "boa" ? rand(5, 40) : rand(10, 100);
+        let a = ans * b;
+        return {
+          text: `Berechne: ${a} : ${b}`,
+          sol: ans
+        };
+      },
+
+      // Viele Multiplikationen
+      ...Array.from({ length: 20 }, () => () => {
+        let a = level === "boa" ? rand(10, 70) : rand(20, 200);
+        let b = level === "boa" ? rand(2, 12) : rand(3, 25);
+        return {
+          text: `Berechne: ${a} · ${b}`,
+          sol: a * b
+        };
+      }),
+
+      // Add/Sub Variationen
+      ...Array.from({ length: 10 }, () => () => {
+        let a = level === "boa" ? rand(50, 300) : rand(200, 1200);
+        let b = level === "boa" ? rand(10, 180) : rand(50, 900);
+        let op = Math.random() < 0.5 ? "+" : "−";
+        return {
+          text: `Berechne: ${a} ${op} ${b}`,
+          sol: op === "+" ? a + b : a - b
+        };
+      })
+    ],
+
+
+    einheiten: [
+
+      // m → cm
+      () => {
+        let m = level === "boa" ? rand(1, 12) : rand(2, 35);
+        return {
+          text: `Rechne um: ${m} m = ? cm`,
+          sol: m * 100
+        };
+      },
+
+      // cm → m
+      () => {
+        let cm = level === "boa" ? rand(100, 1200) : rand(250, 5000);
+        return {
+          text: `Rechne um: ${cm} cm = ? m`,
+          sol: cm / 100
+        };
+      },
+
+      // kg → g
+      () => {
+        let kg = level === "boa" ? rand(1, 8) : rand(2, 20);
+        return {
+          text: `Rechne um: ${kg} kg = ? g`,
+          sol: kg * 1000
+        };
+      },
+
+      // Minuten → Stunden
+      () => {
+        let mins = level === "boa"
+          ? [60, 90, 120, 150, 180][rand(0, 4)]
+          : [75, 105, 135, 165, 195, 225, 255, 285][rand(0, 7)];
+        return {
+          text: `Rechne um: ${mins} min = ? h`,
+          sol: mins / 60
+        };
+      },
+
+      ...Array.from({ length: 15 }, () => () => {
+        let cm = level === "boa" ? rand(200, 2000) : rand(500, 9000);
+        return {
+          text: `Rechne um: ${cm} cm = ? m`,
+          sol: cm / 100
+        };
+      })
+    ],
+
+
+    geometrie: [
+
+      // Quadrat Umfang
+      () => {
+        let a = level === "boa" ? rand(2, 12) : rand(4, 25);
+        return {
+          text: `Quadrat: Seite ${a} cm → Umfang?`,
+          sol: 4 * a
+        };
+      },
+
+      // Rechteck Fläche
+      () => {
+        let l = level === "boa" ? rand(3, 18) : rand(6, 35);
+        let b = level === "boa" ? rand(2, 14) : rand(4, 28);
+        return {
+          text: `Rechteck: ${l} cm × ${b} cm → Fläche?`,
+          sol: l * b
+        };
+      },
+
+      // Dreieck Fläche
+      () => {
+        let g = level === "boa" ? rand(4, 20) : rand(8, 40);
+        let h = level === "boa" ? rand(3, 15) : rand(6, 30);
+        return {
+          text: `Dreieck: g=${g} cm, h=${h} cm → Fläche?`,
+          sol: g * h / 2
+        };
+      },
+
+      // Kreis Durchmesser
+      () => {
+        let r = level === "boa" ? rand(2, 10) : rand(3, 20);
+        return {
+          text: `Kreis: Radius ${r} cm → Durchmesser?`,
+          sol: 2 * r
+        };
+      },
+
+      ...Array.from({ length: 15 }, () => () => {
+        let a = level === "boa" ? rand(2, 15) : rand(5, 30);
+        return {
+          text: `Quadrat: Seite ${a} cm → Umfang?`,
+          sol: 4 * a
+        };
+      })
+    ],
+
+
+    sach: [
+
+      // Einkauf
+      () => {
+        let price = level === "boa" ? rand(1, 5) : rand(2, 9);
+        let amount = level === "boa" ? rand(2, 10) : rand(4, 18);
+        return {
+          text: `${amount} Artikel kosten je ${price} €. Gesamtpreis?`,
+          sol: price * amount
+        };
+      },
+
+      // Geschwindigkeit
+      () => {
+        let km = level === "boa" ? rand(30, 200) : rand(80, 420);
+        let h = level === "boa" ? rand(1, 5) : rand(2, 7);
+        return {
+          text: `Auto fährt ${km} km in ${h} h. Geschwindigkeit?`,
+          sol: km / h
+        };
+      },
+
+      ...Array.from({ length: 15 }, () => () => {
+        let pages = level === "boa" ? rand(30, 120) : rand(80, 300);
+        let days = level === "boa" ? rand(2, 8) : rand(3, 14);
+        return {
+          text: `${pages} Seiten in ${days} Tagen. Pro Tag?`,
+          sol: pages / days
+        };
+      })
+    ],
+
+
+    prozent: [
+
+      // Prozentwert
+      () => {
+        let g = level === "boa" ? rand(80, 250) : rand(120, 600);
+        let p = level === "boa"
+          ? [10, 20, 25][rand(0, 2)]
+          : [10, 15, 20, 25, 30, 50][rand(0, 5)];
+        return {
+          text: `Berechne ${p}% von ${g}.`,
+          sol: g * p / 100
+        };
+      },
+
+      // Rabatt
+      () => {
+        let price = level === "boa" ? rand(20, 180) : rand(50, 450);
+        let p = level === "boa" ? 20 : [10, 15, 20, 25, 30][rand(0, 4)];
+        return {
+          text: `${p}% Rabatt auf ${price} €. Neuer Preis?`,
+          sol: price * (1 - p / 100)
+        };
+      },
+
+      // Grundwert
+      () => {
+        let w = level === "boa" ? rand(20, 120) : rand(40, 250);
+        let p = level === "boa" ? [10, 20, 25, 50][rand(0, 3)] : rand(5, 60);
+        return {
+          text: `${w} ist ${p}%. Grundwert?`,
+          sol: w * 100 / p
+        };
+      },
+
+      ...Array.from({ length: 15 }, () => () => {
+        let g = level === "boa" ? rand(100, 300) : rand(150, 700);
+        let diff = level === "boa" ? rand(10, 80) : rand(20, 200);
+        let newVal = g + diff;
+        return {
+          text: `Preis steigt von ${g} auf ${newVal}. Prozent?`,
+          sol: (diff / g) * 100
+        };
+      })
+    ]
+  };
+
+  /* ======================================================
+     Kategorie auswählen wie bisher (gleichmäßige Rotation)
+  ====================================================== */
+  const cats = ["rechnen", "einheiten", "geometrie", "sach", "prozent"];
+  const cat = cats[idx % 5];
+
+  /* ======================================================
+     Zufällige Aufgabe aus dem Pool ziehen
+  ====================================================== */
+  const genList = POOL[cat];
+  const chosen = genList[rand(0, genList.length - 1)]();
+
+  return { text: chosen.text, sol: chosen.sol, star: false };
+}
+
+function starTask() {
+  // Abwechslungsreichere Stern-Aufgaben (BBR)
+  const type = rand(1, 3);
+
+  if (type === 1) {
+    const g = rand(200, 400);
+    return {
+      text: `⭐ Ein Artikel kostet ${g} €.<br>20 % Rabatt, danach 10 % Rabatt.<br>Endpreis?`,
+      sol: g * 0.8 * 0.9,
+      star: true
+    };
+  }
+
+  if (type === 2) {
+    const g = rand(6, 12);
+    const h = rand(4, 8);
+    return {
+      text: `⭐ Dreieck mit Grundseite ${g} cm und Höhe ${h} cm.<br>Flächeninhalt?`,
+      sol: g * h / 2,
+      star: true
+    };
+  }
+
+  const km = rand(30, 50);
+  const min = rand(20, 40);
+  return {
+    text: `⭐ Ein Auto fährt ${km} km in ${min} Minuten.<br>Wie viele Minuten pro km?`,
+    sol: min / km,
+    star: true
+  };
+}
+
+/* =======================
+   PRÜFUNG
+======================= */
+function startExam() {
+  // Unterricht-sicher: Vollbild versuchen (muss durch Klick ausgelöst werden)
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+
+  tasks = [];
+  current = 0;
+  points = 0;
+  timeLeft = EXAM_TIME;
+  examRunning = true;
+
+  const lvl = levelEl.value;
+
+  // 🔐 OPTIONALER SICHERHEITS-CHECK:
+  // Falls jemand vor Start BBR → BOA umgestellt hat,
+  // erzwingen wir: BOA bekommt NIE Stern-Aufgaben
+  if (lvl !== "bbr") {
+    starsEl.checked = false;
+  }
+
+  const useStars = (lvl === "bbr") && starsEl.checked; // BOA niemals Stern-Aufgaben
+
+  for (let i = 0; i < TASKS_TOTAL; i++) {
+    if (useStars && i >= 6) tasks.push(starTask());
+    else tasks.push(baseTask(lvl, i));
+  }
+  
+    // ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
+  toggleStarOption();
+
+  // Steuerelemente sperren
+  levelEl.disabled = true;
+  starsEl.disabled = true;
+
+  timerEl.classList.remove("hidden");
+  answerAreaEl.classList.remove("hidden");
+  resultEl.innerHTML = "";
+
+  clearInterval(timerInt);
+  timerInt = setInterval(updateTimer, 1000);
+
+  // Jetzt erst Aufgabe anzeigen
+  showTask();
+}
+
+function showTask() {
+  const starMark = tasks[current].star ? " ⭐" : "";
+  taskEl.innerHTML = `<b>Aufgabe ${current + 1}/10${starMark}</b><br>${tasks[current].text}`;
+  answerEl.value = "";
+
+  // Fokus-Zwang (Touch)
+  setTimeout(() => answerEl.focus(), 200);
+}
+
+function saveCurrentAnswer() {
+  // Keine Eingabe -> einfach keine Punkte (kein Alert im Unterricht, damit ruhig bleibt)
+  const v = parseFloat(answerEl.value.replace(",", "."));
+  if (!isNaN(v) && Math.abs(v - tasks[current].sol) < 0.05) {
+    points += POINTS_PER_TASK;
+  }
+}
+
+function saveAndNext() {
+  if (!examRunning) return;
+
+  saveCurrentAnswer();
+  current++;
+
+  if (current < TASKS_TOTAL) {
+    showTask();
+  } else {
+    finishExam(); // PIN-Abgabe
+  }
+}
+
+function finishExam() {
+  if (!examRunning) return;
+
+  const pin = prompt("Lehrer-PIN eingeben:");
+  if (pin !== TEACHER_PIN) {
+    alert("Falsche PIN");
+    return;
+  }
+
+  // 🔴 WICHTIG: letzte Aufgabe sicher auswerten
+  if (current < TASKS_TOTAL) {
+    saveCurrentAnswer();
+  }
+
+  clearInterval(timerInt);
+  timerInt = null;
+
+  examRunning = false;
+  timeLeft = 0;
+
+  answerAreaEl.classList.add("hidden");
+
+  const res = points >= PASS_POINTS
+    ? "✅ BESTANDEN"
+    : "❌ NICHT BESTANDEN";
+
+  resultEl.innerHTML =
+    `Punkte: <b>${points} / ${TASKS_TOTAL * POINTS_PER_TASK}</b><br>${res}`;
+
+  levelEl.disabled = false;
+  starsEl.disabled = false;
+
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  }
+  toggleStarOption();
+}
+
+
+/* =======================
+   TIMER
+======================= */
+function updateTimer() {
+  if (!examRunning) return;
+
+  timeLeft--;
+  const m = Math.floor(timeLeft / 60);
+  const s = (timeLeft % 60).toString().padStart(2, "0");
+  timerEl.innerText = `⏱ ${m}:${s}`;
+
+  if (timeLeft <= 0) {
+    // Zeit ist um: Unterricht-sicher -> Lehrer-PIN zum Beenden
+    finishExam();
+  }
+}
+
+/* =======================
+   VERLASSEN-WARNUNG (nur wenn Prüfung läuft)
+======================= */
+window.addEventListener("beforeunload", function (e) {
+  if (examRunning) {
+    e.preventDefault();
+    e.returnValue = "Der Test läuft noch. Bitte zuerst abgeben.";
+  }
+});
+
+/* =======================
+   EVENTS (statt inline onclick -> robust)
+======================= */
+startBtnEl.addEventListener("click", startExam);
+nextBtnEl.addEventListener("click", saveAndNext);
+finishBtnEl.addEventListener("click", finishExam);
+
+// Init
+toggleStarOption();
+</script>
+
+</body>
+</html>
