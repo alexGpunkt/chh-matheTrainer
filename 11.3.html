@@ -45,9 +45,14 @@ button {
   background: #1976d2;
   color: white;
   border: none;
+  cursor: pointer;
 }
 button:active {
   background: #0d47a1;
+}
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
 }
 #timer {
   width: 100%;
@@ -205,7 +210,7 @@ function hardTask(idx) {
         const p = rand(10, 30);
         return {
           text: `Berechne ${p}% von ${g}.`,
-          sol: g*p/100
+          sol: round2(g*p/100)
         };
       },
       () => {
@@ -308,23 +313,21 @@ function hardTask(idx) {
           text: `Ein Prisma besitzt eine dreieckige Grundfläche mit Grundseite g = ${g} cm und Höhe h = ${hD} cm.<br>
                  Die Höhe des Prismas beträgt ${hP} cm.<br>
                  Berechne das Volumen des Prismas.`,
-          sol: (g*hD/2)*hP
+          sol: round2((g*hD/2)*hP)
         };
       },
-      // Prisma – komplexere Berechnung
+      // Prisma – komplexere Berechnung (KORREKTUR: Direkter Wert statt Funktion)
       () => {
         const a = rand(3, 8);
         const b = rand(4, 10);
         const c = rand(5, 12);
+        const h = rand(7, 15);
+        const s = (a+b+c)/2;
+        const G = Math.sqrt(s*(s-a)*(s-b)*(s-c));
         return {
           text: `Ein Prisma hat eine dreiseitige Grundfläche mit Seiten: a=${a} cm, b=${b} cm, c=${c} cm.<br>
-                 Höhe h = ${rand(7, 15)} cm. Berechne das Volumen (Grundfläche mit Heron).`,
-          sol: () => {
-            const h = rand(7, 15);
-            const s = (a+b+c)/2;
-            const G = Math.sqrt(s*(s-a)*(s-b)*(s-c));
-            return round2(G*h);
-          }()
+                 Höhe h = ${h} cm. Berechne das Volumen.`,
+          sol: round2(G*h)
         };
       }
     ],
@@ -364,7 +367,7 @@ function hardTask(idx) {
           sol: round2(Math.sqrt(l*l + w*w + h*h))
         };
       },
-      // Pyramide Höhe berechnen
+      // Pyramide Höhe berechnen (KORREKTUR: Direkter Wert statt Funktion)
       () => {
         const s = rand(6, 12); // Seitenlänge Grundfläche
         const d = rand(8, 16); // Seitenkante
@@ -395,12 +398,13 @@ function hardTask(idx) {
       () => {
         const r = rand(3, 8);
         const h = rand(8, 20);
-        const u = 2*3.14*r;
+        const u = round2(2*3.14*r);
+        const diag = round2(Math.sqrt(u*u + h*h));
         return {
           text: `Ein Zylinder wird aufgeschnitten und der Mantel als Rechteck dargestellt.<br>
                  Radius r = ${r} cm, Höhe h = ${h} cm.<br>
                  Bestimme die Länge der Diagonale dieses Rechtecks (Pythagoras).`,
-          sol: round2(Math.sqrt(u*u + h*h))
+          sol: diag
         };
       },
       // Oberfläche
@@ -413,15 +417,16 @@ function hardTask(idx) {
           sol: round2(2*3.14*r*r + 2*3.14*r*h)
         };
       },
-      // Volumen aus Umfang
+      // Volumen aus Umfang (KORREKTUR: Direkter Wert statt Funktion)
       () => {
         const u = rand(25, 60);
         const h = rand(10, 25);
         const r = u/(2*3.14);
+        const vol = round2(3.14*r*r*h);
         return {
           text: `Ein Zylinder hat einen Umfang von ${u} cm und Höhe ${h} cm.<br>
                  Berechne das Volumen. (π ≈ 3,14)`,
-          sol: round2(3.14*r*r*h)
+          sol: vol
         };
       }
     ],
@@ -434,7 +439,7 @@ function hardTask(idx) {
       () => {
         const km = rand(80, 420);
         const h  = rand(2, 7);
-        const ans = Number((km / h).toFixed(1));
+        const ans = round2(km / h);
         return {
           text: `Ein Auto fährt ${km} km in ${h} h.<br>
                  Berechne die Durchschnittsgeschwindigkeit in km/h.`,
@@ -473,7 +478,7 @@ function hardTask(idx) {
       () => {
         const real = rand(20, 100);
         const scale = rand(10, 50);
-        const map = real/scale;
+        const map = round2(real/scale);
         return {
           text: `Im Maßstab 1:${scale} entspricht ${map} cm auf der Karte wie vielen Metern in Wirklichkeit?`,
           sol: real
@@ -497,47 +502,93 @@ function hardTask(idx) {
   ];
 
   const cat = cats[idx % cats.length];
+  
   // Sicherstellen, dass die Kategorie existiert
   if (!POOL[cat] || POOL[cat].length === 0) {
     // Fallback auf algebra
-    return POOL.algebra[rand(0, POOL.algebra.length - 1)]();
+    const algebraList = POOL.algebra;
+    return algebraList[rand(0, algebraList.length - 1)]();
   }
   
-  return POOL[cat][rand(0, POOL[cat].length - 1)]();
+  const catList = POOL[cat];
+  const taskGenerator = catList[rand(0, catList.length - 1)];
+  
+  // Generator aufrufen und Ergebnis zurückgeben
+  return taskGenerator();
 }
 
 /* =====================
    PRÜFUNG
 ===================== */
 function startExam() {
+  console.log("Prüfung wird gestartet...");
+  
+  // DOM-Reset
   tasks = [];
   current = 0;
   points = 0;
   timeLeft = EXAM_TIME;
   running = true;
 
+  // Aufgaben generieren
   for (let i = 0; i < TASKS_TOTAL; i++) {
-    tasks.push(hardTask(i));
+    try {
+      const task = hardTask(i);
+      tasks.push(task);
+    } catch (error) {
+      console.error("Fehler beim Generieren der Aufgabe", i, error);
+      // Fallback-Aufgabe
+      tasks.push({
+        text: `Berechne: ${rand(10, 100)} + ${rand(10, 100)}`,
+        sol: rand(20, 200)
+      });
+    }
   }
 
+  console.log(`${tasks.length} Aufgaben generiert`);
+
+  // UI aktualisieren
   document.getElementById("answerArea").classList.remove("hidden");
   document.getElementById("timer").classList.remove("hidden");
   document.getElementById("result").innerHTML = "";
+  document.getElementById("startBtn").disabled = true;
 
+  // Timer starten
+  clearInterval(timerInt);
   timerInt = setInterval(updateTimer, 1000);
+  
+  // Erste Aufgabe anzeigen
   showTask();
 }
 
 function showTask() {
+  if (current >= tasks.length) {
+    finishExam();
+    return;
+  }
+  
+  const task = tasks[current];
   document.getElementById("task").innerHTML =
-    `<b>Aufgabe ${current+1}/${TASKS_TOTAL}</b><br>${tasks[current].text}`;
+    `<b>Aufgabe ${current+1}/${TASKS_TOTAL}</b><br>${task.text}`;
   document.getElementById("answer").value = "";
+  
+  // Fokus setzen
+  setTimeout(() => document.getElementById("answer").focus(), 100);
 }
 
 function saveAnswer() {
-  const v = parseNum(document.getElementById("answer").value);
+  const answerInput = document.getElementById("answer");
+  const v = parseNum(answerInput.value);
+  
   if (isNaN(v)) return;
-  if (Math.abs(v - tasks[current].sol) <= Math.max(0.05, Math.abs(tasks[current].sol)*0.01)) {
+  
+  const task = tasks[current];
+  if (!task || typeof task.sol === 'undefined') return;
+  
+  // Toleranz für Gleitkommazahlen
+  const tolerance = Math.max(0.05, Math.abs(task.sol) * 0.01);
+  
+  if (Math.abs(v - task.sol) <= tolerance) {
     points += POINTS_PER_TASK;
   }
 }
@@ -545,20 +596,39 @@ function saveAnswer() {
 function nextTask() {
   saveAnswer();
   current++;
-  if (current < TASKS_TOTAL) showTask();
-  else finishExam();
+  
+  if (current < TASKS_TOTAL) {
+    showTask();
+  } else {
+    finishExam();
+  }
 }
 
 function finishExam() {
-  const pin = prompt("Lehrer-PIN eingeben:");
+  const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
   if (pin !== TEACHER_PIN) {
     alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
+    
+    // Reset-UI
+    document.getElementById("answerArea").classList.add("hidden");
+    document.getElementById("timer").classList.add("hidden");
+    document.getElementById("startBtn").disabled = false;
+    running = false;
+    clearInterval(timerInt);
+    
     return;
   }
 
+  // Letzte Aufgabe auswerten
+  if (current < TASKS_TOTAL) {
+    saveAnswer();
+  }
+
+  // Timer stoppen
   clearInterval(timerInt);
   running = false;
 
+  // Note berechnen
   const pct = Math.round(points / TOTAL_POINTS * 100);
   let note = "3";
   if (pct >= 92) note = "1";
@@ -567,28 +637,61 @@ function finishExam() {
   else if (pct >= 50) note = "4";
   else note = "5";
 
+  // UI aktualisieren
   document.getElementById("answerArea").classList.add("hidden");
   document.getElementById("result").innerHTML =
     `Punkte: <b>${points}/${TOTAL_POINTS}</b> (${pct}%)<br>Trainingsergebnis: <b>Note ${note}</b>`;
+  
+  // Button wieder aktivieren
+  document.getElementById("startBtn").disabled = false;
 }
 
 /* =====================
    TIMER
 ===================== */
 function updateTimer() {
+  if (!running) return;
+  
   timeLeft--;
   const m = Math.floor(timeLeft/60);
   const s = String(timeLeft%60).padStart(2,"0");
   document.getElementById("timer").innerText = `⏱ ${m}:${s}`;
-  if (timeLeft <= 0) finishExam();
+  
+  if (timeLeft <= 0) {
+    finishExam();
+  }
 }
 
 /* =====================
    EVENTS
 ===================== */
-document.getElementById("startBtn").onclick = startExam;
-document.getElementById("nextBtn").onclick = nextTask;
-document.getElementById("finishBtn").onclick = finishExam;
+document.addEventListener("DOMContentLoaded", function() {
+  const startBtn = document.getElementById("startBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const finishBtn = document.getElementById("finishBtn");
+  
+  if (startBtn) {
+    startBtn.addEventListener("click", startExam);
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener("click", nextTask);
+  }
+  
+  if (finishBtn) {
+    finishBtn.addEventListener("click", finishExam);
+  }
+  
+  // Enter-Taste für Antwort
+  const answerInput = document.getElementById("answer");
+  if (answerInput) {
+    answerInput.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        nextTask();
+      }
+    });
+  }
+});
 </script>
 
 </body>
