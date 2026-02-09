@@ -858,7 +858,8 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     if (avoidDuplicates && seen.has(signature)) continue;
 
     seen.add(signature);
-    picked.push({ cat, ...t });
+    // KORREKTUR: Syntaxfehler behoben
+    picked.push({ cat, t }); // 👈 KORREKTUR: { cat, t } statt { cat, .t }
   }
 
   if (picked.length === 0) {
@@ -877,10 +878,11 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     </div>
   `;
 
-  picked.forEach((t, i) => {
+  picked.forEach((item, i) => {
+    const t = item.t;
     html += `
       <div class="task-block">
-        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
         <div class="task-text">${t.task}</div>
         <div class="work-space"></div>
       </div>
@@ -894,10 +896,11 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
       <div class="print-meta">Hinweis: Rechenweg Schritt-für-Schritt.</div>
     `;
 
-    picked.forEach((t, i) => {
+    picked.forEach((item, i) => {
+      const t = item.t;
       html += `
         <div class="task-block">
-          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(t.cat)})</div>
+          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
           <div class="task-text"><b>Antwort:</b> ${escapeHtml(fmt(t.answer))}</div>
           <div>${t.solution || "—"}</div>
         </div>
