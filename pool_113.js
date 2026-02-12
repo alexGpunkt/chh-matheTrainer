@@ -1,12 +1,20 @@
 /* =========================================================
    pool_113.js  — BBR Niveau 11.3 (Note 2–1)
-   ERWEITERTER POOL (ca. 50 Aufgaben)
-   inkl. AUTOMATISCHE OPERATOR-STEUERUNG
-   ---------------------------------------------------------
+   BEREINIGT auf VA9 2014–2019
+   Nur prüfungsrelevante Formate:
+   - Prozent / Rabatt / Zins
+   - Körperberechnung (Volumen/Oberfläche)
+   - Pythagoras (Sachkontext)
+   - Zuordnungen (proportional/antiproportional)
+   - Statistik (Mittelwert, gewichteter Durchschnitt)
+   - Wahrscheinlichkeit (einfach/mehrstufig)
+   - Lineare Gleichungen (Altersrätsel, Tarife)
+   - Flächenberechnung (Rechteck, Quadrat, Dreieck)
+   - Zinseszins vs. linear (Vergleich)
 ========================================================= */
 
 /* =========================================================
-   1) Operator-Steuerung (automatisch)
+   1) Operator-Steuerung (BBR-Stil)
 ========================================================= */
 
 const OPERATOR_GROUPS = {
@@ -17,8 +25,7 @@ const OPERATOR_GROUPS = {
   UEBERPRUEFE: ["überprüfe", "prüfe"],
   BEGRUENDE: ["begründe", "erläutere"],
   ENTSCHEIDE_BEGRUENDE: ["entscheide und begründe"],
-  STELLE_GLEICHUNG: ["stelle eine Gleichung auf und berechne", "stelle eine Gleichung auf und löse"],
-  FEHLERANALYSE: ["finde den Fehler und korrigiere", "analysiere den Fehler und korrigiere"]
+  STELLE_GLEICHUNG: ["stelle eine Gleichung auf und berechne"]
 };
 
 function pickFrom(arr, rng = Math.random) {
@@ -51,16 +58,17 @@ function formatTaskText(task, rng = Math.random) {
 }
 
 /* =========================================================
-   3) Pool-Daten (Erweitert auf Niveau 11.3)
+   3) Pool-Daten (NUR prüfungsrelevante Aufgaben)
 ========================================================= */
 
 const pool113 = {
   meta: {
     niveau: "11.3",
-    ziel: "BBR Note 2–1 (anspruchsvoll, mehrschrittig, modellieren)",
+    ziel: "BBR Note 2–1 (prüfungsorientiert, VA9 2014–2019)",
     version: "2026-02-12"
   },
 
+  // ---------- PROZENT / RABATT / ZINS ----------
   prozent_modellierung: [
     {
       id: "P113_PRO_01",
@@ -75,7 +83,31 @@ const pool113 = {
       steps: `1) 800 · 0,80 = 640 €; 2) 640 · 0,90 = 576 €; 3) 800 - 576 = 224 € Ersparnis; 4) 224/800 = 28 %.`
     },
     {
-      id: "P113_PRO_06",
+      id: "P113_PRO_02",
+      thema: "Zinsrechnung",
+      kategorie: "prozent_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Motorroller kostet 2.400 €. Du zahlst 20 % Anzahlung.`,
+      question: `Berechne den Anzahlungsbetrag.`,
+      solution: `480 €.`,
+      steps: `2.400 € · 0,20 = 480 €.`
+    },
+    {
+      id: "P113_PRO_03",
+      thema: "Mehrwertsteuer",
+      kategorie: "prozent_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Fernseher kostet netto 650 €. Die Mehrwertsteuer beträgt 19 %.`,
+      question: `Berechne den Bruttopreis.`,
+      solution: `773,50 €.`,
+      steps: `650 € · 1,19 = 773,50 €.`
+    },
+    {
+      id: "P113_PRO_04",
       thema: "Prozent – Wertverlust",
       kategorie: "prozent_modellierung",
       typ: "transfer",
@@ -85,10 +117,22 @@ const pool113 = {
       question: `Berechne den Restwert nach zwei Jahren und gib an, wie viel Prozent des ursprünglichen Preises noch vorhanden sind.`,
       solution: `Restwert 20.400 €. Anteil 63,75 %.`,
       steps: `1) Nach Jahr 1: 32.000 · 0,75 = 24.000 €; 2) Nach Jahr 2: 24.000 · 0,85 = 20.400 €; 3) 20.400 / 32.000 = 0,6375 = 63,75 %.`
+    },
+    {
+      id: "P113_PRO_05",
+      thema: "Skonto",
+      kategorie: "prozent_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Eine Rechnung über 1.200 € wird unter Abzug von 3 % Skonto bezahlt.`,
+      question: `Berechne den Zahlungsbetrag.`,
+      solution: `1.164 €.`,
+      steps: `1.200 € · 0,97 = 1.164 €.`
     }
-    // ... (hier wurden P113_PRO_02 bis 05 beibehalten)
   ],
 
+  // ---------- ZUORDNUNGEN (PROPORTIONAL/ANTIPROPORTIONAL) ----------
   zuordnung_transfer: [
     {
       id: "P113_ZUO_01",
@@ -103,7 +147,19 @@ const pool113 = {
       steps: `1) 45 / 6 = 7,5; 2) 7,5 · 100 = 750 km.`
     },
     {
-      id: "P113_ZUO_05",
+      id: "P113_ZUO_02",
+      thema: "Proportionale Zuordnung",
+      kategorie: "zuordnung_transfer",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Im Kletterpark kostet der Eintritt 4 € pro Stunde.`,
+      question: `Berechne den Preis für 3,5 Stunden.`,
+      solution: `14 €.`,
+      steps: `4 € · 3,5 = 14 €.`
+    },
+    {
+      id: "P113_ZUO_03",
       thema: "Antiproportionale Zuordnung",
       kategorie: "zuordnung_transfer",
       typ: "transfer",
@@ -116,6 +172,7 @@ const pool113 = {
     }
   ],
 
+  // ---------- PYTHAGORAS (SACHKONTEXT) ----------
   pythagoras_sachkontext: [
     {
       id: "P113_PYT_01",
@@ -130,7 +187,19 @@ const pool113 = {
       steps: `1) d² = 60² + 40² = 5200; 2) d = √5200 ≈ 72,1 cm.`
     },
     {
-      id: "P113_PYT_05",
+      id: "P113_PYT_02",
+      thema: "Pythagoras – rechtwinklig prüfen",
+      kategorie: "pythagoras_sachkontext",
+      typ: "überprüfen",
+      operatorGroup: "UEBERPRUEFE",
+      punkte: 3,
+      prompt: `Ein Dreieck hat die Seitenlängen 12 cm, 16 cm und 20 cm.`,
+      question: `Überprüfe, ob das Dreieck rechtwinklig ist.`,
+      solution: `Ja. 20² = 400; 12² + 16² = 144 + 256 = 400.`,
+      steps: `1) 20² = 400; 2) 12² + 16² = 144 + 256 = 400; 3) 400 = 400 → rechtwinklig.`
+    },
+    {
+      id: "P113_PYT_03",
       thema: "Pythagoras – Seilspannung",
       kategorie: "pythagoras_sachkontext",
       typ: "transfer",
@@ -143,6 +212,7 @@ const pool113 = {
     }
   ],
 
+  // ---------- KÖRPERBERECHNUNG (VOLUMEN/OBERFLÄCHE) ----------
   koerper_mehrschritt: [
     {
       id: "P113_KOE_01",
@@ -157,22 +227,71 @@ const pool113 = {
       steps: `1) V = 3,14 · 5² · 20 = 1570 cm³; 2) 1,57 L · 8 € = 12,56 €.`
     },
     {
-      id: "P113_KOE_06",
-      thema: "Dichte und Masse (Zylinder)",
+      id: "P113_KOE_02",
+      thema: "Quader – Volumen und Masse",
       kategorie: "koerper_mehrschritt",
       typ: "modellieren",
-      operatorGroup: "ERMITTLE",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Aquarium ist 80 cm lang, 40 cm breit und 50 cm hoch.`,
+      question: `Berechne das Volumen in Litern.`,
+      solution: `160 Liter.`,
+      steps: `1) V = 80 · 40 · 50 = 160.000 cm³; 2) 160.000 cm³ = 160 Liter.`
+    },
+    {
+      id: "P113_KOE_03",
+      thema: "Prisma – Zelt",
+      kategorie: "koerper_mehrschritt",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
       punkte: 4,
-      prompt: `Eine Metallstange (Zylinder) ist 2 m lang und hat einen Durchmesser von 4 cm. Die Dichte des Metalls beträgt 7,8 g/cm³.`,
-      question: `Ermittle das Gewicht der Stange in Kilogramm (kg).`,
-      solution: `≈ 19,6 kg.`,
-      steps: `1) r = 2 cm, h = 200 cm; 2) V = 3,14 · 2² · 200 = 2512 cm³; 3) m = 2512 · 7,8 = 19593,6 g ≈ 19,6 kg.`
+      prompt: `Ein Zelt hat die Form eines Dreiecksprismas. Die Grundfläche ist ein Dreieck mit g = 3 m und h = 2 m. Das Zelt ist 4 m lang.`,
+      question: `Berechne das Volumen des Zeltes.`,
+      solution: `12 m³.`,
+      steps: `1) A_Dreieck = (3 · 2) : 2 = 3 m²; 2) V = 3 · 4 = 12 m³.`
+    },
+    {
+      id: "P113_KOE_04",
+      thema: "Zusammengesetzter Körper",
+      kategorie: "koerper_mehrschritt",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein Werkstück besteht aus einem Quader (5 cm × 4 cm × 3 cm) und einem aufgesetzten Würfel (Seite 2 cm).`,
+      question: `Berechne das Gesamtvolumen.`,
+      solution: `68 cm³.`,
+      steps: `1) V_Quader = 5 · 4 · 3 = 60 cm³; 2) V_Würfel = 2 · 2 · 2 = 8 cm³; 3) 60 + 8 = 68 cm³.`
     }
   ],
 
+  // ---------- STATISTIK (MITTELWERT, DIAGRAMM, GEWICHTUNG) ----------
   statistik_begruendung: [
     {
-      id: "P113_STA_05",
+      id: "P113_STA_01",
+      thema: "Mittelwert",
+      kategorie: "statistik_begruendung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 2,
+      prompt: `Ein Schüler hat in vier Arbeiten die Noten: 2, 3, 4 und 3.`,
+      question: `Berechne den Durchschnitt.`,
+      solution: `3,0.`,
+      steps: `1) Summe: 2 + 3 + 4 + 3 = 12; 2) 12 : 4 = 3,0.`
+    },
+    {
+      id: "P113_STA_02",
+      thema: "Diagramm lesen",
+      kategorie: "statistik_begruendung",
+      typ: "modellieren",
+      operatorGroup: "ERMITTLE",
+      punkte: 3,
+      prompt: `In einer Tabelle sind die Verkaufszahlen von Montag bis Freitag: 120, 150, 110, 130, 140.`,
+      question: `Ermittle den durchschnittlichen Verkauf pro Tag.`,
+      solution: `130.`,
+      steps: `1) Summe: 120 + 150 + 110 + 130 + 140 = 650; 2) 650 : 5 = 130.`
+    },
+    {
+      id: "P113_STA_03",
       thema: "Gewichteter Durchschnitt",
       kategorie: "statistik_begruendung",
       typ: "transfer",
@@ -185,9 +304,10 @@ const pool113 = {
     }
   ],
 
+  // ---------- LINEARE GLEICHUNGEN ----------
   gleichungen_modellierung: [
     {
-      id: "P113_GLG_05",
+      id: "P113_GLG_01",
       thema: "Altersrätsel",
       kategorie: "gleichungen_modellierung",
       typ: "modellieren",
@@ -197,25 +317,63 @@ const pool113 = {
       question: `In wie vielen Jahren ist der Vater genau dreimal so alt wie sein Sohn? Stelle eine Gleichung auf.`,
       solution: `In 9 Jahren.`,
       steps: `1) Gleichung: 36 + x = 3 · (6 + x); 2) 36 + x = 18 + 3x; 3) 18 = 2x; 4) x = 9.`
+    },
+    {
+      id: "P113_GLG_02",
+      thema: "Telefontarif",
+      kategorie: "gleichungen_modellierung",
+      typ: "modellieren",
+      operatorGroup: "STELLE_GLEICHUNG",
+      punkte: 4,
+      prompt: `Tarif A: 5 € Grundgebühr + 0,10 € pro Minute. Tarif B: 10 € Grundgebühr + 0,05 € pro Minute.`,
+      question: `Ab wie vielen Minuten ist Tarif B günstiger? Stelle eine Gleichung auf.`,
+      solution: `Ab 101 Minuten.`,
+      steps: `1) 5 + 0,1x = 10 + 0,05x; 2) 0,05x = 5; 3) x = 100; 4) Ab 101 Minuten günstiger.`
     }
   ],
 
+  // ---------- FLÄCHENBERECHNUNG (2D) ----------
   flaeche2d_modellierung: [
     {
-      id: "P113_FL_03",
-      thema: "Kreisring",
+      id: "P113_FL_01",
+      thema: "Rechteckfläche",
       kategorie: "flaeche2d_modellierung",
       typ: "modellieren",
       operatorGroup: "BERECHNE",
-      punkte: 4,
-      prompt: `Ein kreisrundes Blumenbeet hat einen Durchmesser von 6 m. Darum führt ein 1 m breiter Weg.`,
-      question: `Berechne die Fläche des Weges (π = 3,14).`,
-      solution: `21,98 m².`,
-      steps: `1) r_innen = 3 m, r_außen = 4 m; 2) A_weg = π · (4² - 3²) = 3,14 · 7 = 21,98 m².`
+      punkte: 2,
+      prompt: `Ein rechteckiges Grundstück ist 25 m lang und 18 m breit.`,
+      question: `Berechne die Fläche.`,
+      solution: `450 m².`,
+      steps: `A = 25 · 18 = 450 m².`
+    },
+    {
+      id: "P113_FL_02",
+      thema: "Dreieckfläche",
+      kategorie: "flaeche2d_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 2,
+      prompt: `Ein Dreieck hat eine Grundseite von 12 cm und eine Höhe von 8 cm.`,
+      question: `Berechne die Fläche.`,
+      solution: `48 cm².`,
+      steps: `A = (12 · 8) : 2 = 48 cm².`
     }
   ],
 
+  // ---------- WAHRSCHEINLICHKEIT ----------
   wahrscheinlichkeit_mehrstufig: [
+    {
+      id: "P113_WSK_01",
+      thema: "Einfache Wahrscheinlichkeit",
+      kategorie: "wahrscheinlichkeit_mehrstufig",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 2,
+      prompt: `In einer Lostrommel sind 5 rote, 3 blaue und 2 grüne Kugeln.`,
+      question: `Berechne die Wahrscheinlichkeit, eine rote Kugel zu ziehen (in %).`,
+      solution: `50 %.`,
+      steps: `1) Insgesamt 10 Kugeln; 2) 5/10 = 0,5 = 50 %.`
+    },
     {
       id: "P113_WSK_02",
       thema: "Kombinierte Wahrscheinlichkeit",
@@ -230,9 +388,10 @@ const pool113 = {
     }
   ],
 
+  // ---------- ZINSESZINS VS. LINEAR (VERGLEICH) ----------
   wachstum_vergleich: [
     {
-      id: "P113_WACH_02",
+      id: "P113_WACH_01",
       thema: "Zinseszins vs. Linear",
       kategorie: "wachstum_vergleich",
       typ: "modellieren",
@@ -241,7 +400,7 @@ const pool113 = {
       prompt: `Zwei Sparpläne für 10.000 €: A) 400 € feste Zinsen pro Jahr. B) 3,5 % Zinseszins.`,
       question: `Begründe rechnerisch, ab welchem Jahr Sparplan B lukrativer ist.`,
       solution: `Ab dem 11. Jahr.`,
-      steps: `1) A(10) = 14.000, B(10) = 14.106. Vergleich der Werte zeigt den Vorteil von B nach ca. 10 Jahren.`
+      steps: `1) A(10) = 14.000, B(10) = 14.106; 2) Vergleich der Werte zeigt den Vorteil von B ab dem 11. Jahr.`
     }
   ]
 };
