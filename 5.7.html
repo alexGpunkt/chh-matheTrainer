@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mathe Trainer – BOA / BBR (Vollversion)</title>
 
+<!-- ZENTRALER AUFGABENPOOL -->
+<script src="pool.js"></script>
+
 <style>
   body { font-family: Arial, sans-serif; background:#f2f2f2; padding:20px; }
   h1 { text-align:center; margin: 8px 0 14px; }
@@ -99,7 +102,6 @@ let solvedCurrent = false;
 
 // Merkt sich den zuletzt gezogenen Aufgabentyp (für "Gleicher Typ")
 let lastCat = null;
-let lastGenIndex = null;
 
 // Für Karteikarten: Lösung ist erst „aufgedeckt“, wenn Nutzer klickt
 let revealed = false;
@@ -107,7 +109,6 @@ let revealed = false;
 /* =========================================================
    UTIL
 ========================================================= */
-function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function getLevel() { return document.getElementById("level").value; }
 function getMode() { return document.getElementById("mode").value; }
 
@@ -120,787 +121,29 @@ function fmt(n) {
   return String(n);
 }
 
-/* Einheitliches Rechenweg-Template */
-function steps(lines, result) {
+/* Formatiert Lösungsschritte aus pool.js */
+function formatSteps(stepArray, solution) {
   let html = "";
-  lines.forEach((line, i) => html += `Schritt ${i + 1}: ${line}<br>`);
-  html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
+  stepArray.forEach((line, i) => {
+    html += `Schritt ${i + 1}: ${line}<br>`;
+  });
+  html += `<br><b>Ergebnis: ${fmt(solution)}</b>`;
   return html;
 }
 
-/* Standard-Task-Objekt */
-function genTask(taskHtml, answer, stepLines) {
-  return { task: taskHtml, answer, solution: steps(stepLines, answer) };
-}
-
 /* =========================================================
-   ERWEITERTE GEWICHTUNG MIT NEUEN KATEGORIEN
-========================================================= */
-const weightedCategories = [
-  "basis","basis","basis",
-  "rechnen","rechnen",
-  "prozent","prozent",
-  "zuordnung","zuordnung",
-  "wahrscheinlichkeit","wahrscheinlichkeit",
-  "statistik",
-  "flaeche2d","flaeche2d",
-  "geometrie","geometrie",
-  "einheiten","einheiten",
-  "sach",
-  "koordinaten"
-];
-
-/* =========================================================
-   POOL: Generatoren (BOA/BBR wirkt über getLevel())
-========================================================= */
-const TASKPOOL = {
-
-  rechnen: [
-    // Punkt-vor-Strich
-    () => {
-      const L = getLevel();
-      let a = (L === "boa") ? rand(20, 80) : rand(60, 180);
-      let b = (L === "boa") ? rand(2, 7) : rand(3, 12);
-      let c = (L === "boa") ? rand(2, 6) : rand(3, 10);
-      let ans = a - b * c;
-      return genTask(
-        `Berechne: <b>${a} − ${b}·${c}</b>`,
-        ans,
-        [
-          `Punkt vor Strich: ${b}·${c} = ${b*c}`,
-          `Dann: ${a} − ${b*c}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Klammern
-    () => {
-      const L = getLevel();
-      let a = (L === "boa") ? rand(5, 20) : rand(10, 40);
-      let b = (L === "boa") ? rand(5, 20) : rand(10, 40);
-      let c = (L === "boa") ? rand(2, 6) : rand(3, 10);
-      let ans = (a + b) * c;
-      return genTask(
-        `Berechne: <b>(${a}+${b})·${c}</b>`,
-        ans,
-        [
-          `Klammer zuerst: ${a}+${b} = ${a+b}`,
-          `Dann multiplizieren: ${a+b}·${c}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Division (glatt)
-    () => {
-      const L = getLevel();
-      let b = (L === "boa") ? rand(2, 10) : rand(3, 12);
-      let ans = (L === "boa") ? rand(8, 60) : rand(20, 120);
-      let a = ans * b;
-      return genTask(
-        `Berechne: <b>${a} : ${b}</b>`,
-        ans,
-        [
-          `Division: ${a} : ${b}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Viele Multiplikationen (Zufallsvarianten)
-    ...Array.from({ length: 22 }, () => () => {
-      const L = getLevel();
-      let a = (L === "boa") ? rand(10, 70) : rand(20, 200);
-      let b = (L === "boa") ? rand(2, 12) : rand(3, 25);
-      let ans = a * b;
-      return genTask(
-        `Berechne: <b>${a}·${b}</b>`,
-        ans,
-        [
-          `Multiplikation: ${a}·${b}`,
-          `Ausrechnen`
-        ]
-      );
-    }),
-
-    // Add/Sub Variationen
-    ...Array.from({ length: 10 }, () => () => {
-      const L = getLevel();
-      let a = (L === "boa") ? rand(50, 300) : rand(200, 1200);
-      let b = (L === "boa") ? rand(10, 180) : rand(50, 900);
-      let op = (Math.random() < 0.5) ? "+" : "−";
-      let ans = (op === "+") ? (a + b) : (a - b);
-      return genTask(
-        `Berechne: <b>${a} ${op} ${b}</b>`,
-        ans,
-        [
-          `Rechenart: ${op === "+" ? "Addition" : "Subtraktion"}`,
-          `${a} ${op} ${b}`,
-          `Ausrechnen`
-        ]
-      );
-    }),
-  ],
-
-  einheiten: [
-    // m -> cm
-    () => {
-      const L = getLevel();
-      let m = (L === "boa") ? rand(1, 12) : rand(2, 35);
-      let ans = m * 100;
-      return genTask(
-        `Rechne um: <b>${m} m = ? cm</b>`,
-        ans,
-        [
-          `Merke: 1 m = 100 cm`,
-          `${m}·100`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // cm -> m
-    () => {
-      const L = getLevel();
-      let cm = (L === "boa") ? rand(100, 1200) : rand(250, 5000);
-      let ans = cm / 100;
-      return genTask(
-        `Rechne um: <b>${cm} cm = ? m</b>`,
-        ans,
-        [
-          `Merke: 100 cm = 1 m`,
-          `${cm} : 100`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // kg -> g
-    () => {
-      const L = getLevel();
-      let kg = (L === "boa") ? rand(1, 8) : rand(2, 20);
-      let ans = kg * 1000;
-      return genTask(
-        `Rechne um: <b>${kg} kg = ? g</b>`,
-        ans,
-        [
-          `Merke: 1 kg = 1000 g`,
-          `${kg}·1000`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Minuten -> Stunden
-    () => {
-      const L = getLevel();
-      let mins = (L === "boa") ? [60, 90, 120, 150, 180][rand(0,4)]
-                              : [75, 105, 135, 165, 195, 225, 255, 285][rand(0,7)];
-      let ans = mins / 60;
-      return genTask(
-        `Rechne um: <b>${mins} min = ? h</b>`,
-        ans,
-        [
-          `Merke: 60 min = 1 h`,
-          `${mins} : 60`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Weitere Einheiten-Varianten
-    ...Array.from({ length: 16 }, () => () => {
-      const L = getLevel();
-      const variant = rand(1, 3);
-      if (variant === 1) {
-        let m = (L === "boa") ? rand(1, 15) : rand(5, 60);
-        return genTask(
-          `Rechne um: <b>${m} m = ? cm</b>`,
-          m*100,
-          [`1 m = 100 cm`, `${m}·100`, `Ausrechnen`]
-        );
-      }
-      if (variant === 2) {
-        let cm = (L === "boa") ? rand(100, 2000) : rand(500, 9000);
-        return genTask(
-          `Rechne um: <b>${cm} cm = ? m</b>`,
-          cm/100,
-          [`100 cm = 1 m`, `${cm} : 100`, `Ausrechnen`]
-        );
-      }
-      let kg = (L === "boa") ? rand(1, 9) : rand(5, 35);
-      return genTask(
-        `Rechne um: <b>${kg} kg = ? g</b>`,
-        kg*1000,
-        [`1 kg = 1000 g`, `${kg}·1000`, `Ausrechnen`]
-      );
-    }),
-  ],
-
-  geometrie: [
-    // Quadrat Umfang
-    () => {
-      const L = getLevel();
-      let a = (L === "boa") ? rand(2, 12) : rand(4, 25);
-      let ans = 4 * a;
-      return genTask(
-        `Quadrat: Seite ${a} cm → <b>Umfang</b>?`,
-        ans,
-        [
-          `Formel: U = 4·a`,
-          `Einsetzen: U = 4·${a}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Rechteck Fläche
-    () => {
-      const L = getLevel();
-      let l = (L === "boa") ? rand(3, 18) : rand(6, 35);
-      let b = (L === "boa") ? rand(2, 14) : rand(4, 28);
-      let ans = l * b;
-      return genTask(
-        `Rechteck: Länge ${l} cm, Breite ${b} cm → <b>Fläche</b>?`,
-        ans,
-        [
-          `Formel: A = l·b`,
-          `Einsetzen: A = ${l}·${b}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Dreieck Fläche
-    () => {
-      const L = getLevel();
-      let g = (L === "boa") ? rand(4, 20) : rand(8, 40);
-      let h = (L === "boa") ? rand(3, 15) : rand(6, 30);
-      let ans = (g*h)/2;
-      return genTask(
-        `Dreieck: Grundseite ${g} cm, Höhe ${h} cm → <b>Fläche</b>?`,
-        ans,
-        [
-          `Formel: A = (g·h)/2`,
-          `Einsetzen: A = (${g}·${h})/2`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Kreis Durchmesser
-    () => {
-      const L = getLevel();
-      let r = (L === "boa") ? rand(2, 10) : rand(3, 20);
-      let ans = 2 * r;
-      return genTask(
-        `Kreis: Radius ${r} cm → <b>Durchmesser</b>?`,
-        ans,
-        [
-          `Formel: d = 2·r`,
-          `Einsetzen: d = 2·${r}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Weitere Geometrie-Varianten
-    ...Array.from({ length: 18 }, () => () => {
-      const L = getLevel();
-      const v = rand(1, 3);
-      if (v === 1) {
-        let a = (L === "boa") ? rand(2, 15) : rand(5, 30);
-        return genTask(
-          `Quadrat: Seite ${a} cm → <b>Umfang</b>?`,
-          4*a,
-          [`Formel: U = 4·a`, `Einsetzen: 4·${a}`, `Ausrechnen`]
-        );
-      }
-      if (v === 2) {
-        let l = (L === "boa") ? rand(3, 20) : rand(8, 45);
-        let b = (L === "boa") ? rand(2, 18) : rand(6, 40);
-        return genTask(
-          `Rechteck: ${l} cm × ${b} cm → <b>Umfang</b>?`,
-          2*(l+b),
-          [`Formel: U = 2·(l+b)`, `Einsetzen: 2·(${l}+${b})`, `Ausrechnen`]
-        );
-      }
-      let r = (L === "boa") ? rand(2, 12) : rand(4, 25);
-      return genTask(
-        `Kreis: Radius ${r} cm → <b>Durchmesser</b>?`,
-        2*r,
-        [`Formel: d = 2·r`, `Einsetzen: 2·${r}`, `Ausrechnen`]
-      );
-    }),
-  ],
-
-  sach: [
-    // Einkauf
-    () => {
-      const L = getLevel();
-      let price = (L === "boa") ? rand(1, 5) : rand(2, 9);
-      let amount = (L === "boa") ? rand(2, 10) : rand(4, 18);
-      let ans = price * amount;
-      return genTask(
-        `${amount} Artikel kosten je ${price} €.<br><b>Gesamtpreis</b>?`,
-        ans,
-        [
-          `Preis pro Stück: ${price} €`,
-          `Anzahl: ${amount}`,
-          `${amount}·${price}`,
-        ]
-      );
-    },
-
-    // Geschwindigkeit
-    () => {
-      const L = getLevel();
-      let km = (L === "boa") ? rand(30, 200) : rand(80, 420);
-      let h  = (L === "boa") ? rand(1, 5)   : rand(2, 7);
-      let ans = km / h;
-      return genTask(
-        `Ein Auto fährt ${km} km in ${h} h.<br><b>Geschwindigkeit (km/h)</b>?`,
-        Number(ans.toFixed(1)),
-        [
-          `Formel: v = s : t`,
-          `Einsetzen: v = ${km} : ${h}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Zeitaufgabe: Ankunft
-    () => {
-      const L = getLevel();
-      let startH = (L === "boa") ? rand(6, 10) : rand(5, 12);
-      let dur = (L === "boa") ? rand(15, 90) : rand(25, 150);
-      let total = startH*60 + dur;
-      let hh = Math.floor(total/60);
-      let mm = String(total%60).padStart(2,"0");
-      let ans = `${hh}:${mm}`;
-      return {
-        task: `Ein Bus startet um <b>${startH}:00</b> Uhr und fährt <b>${dur}</b> Minuten.<br><b>Ankunft</b>?`,
-        answer: ans,
-        solution: steps(
-          [
-            `Startzeit in Minuten: ${startH}·60 = ${startH*60}`,
-            `+ Fahrzeit: ${startH*60} + ${dur} = ${total} Minuten`,
-            `Zurück in Uhrzeit: ${hh}:${mm}`
-          ],
-          ans
-        )
-      };
-    },
-
-    // Weitere Sach-Varianten
-    ...Array.from({ length: 16 }, () => () => {
-      const L = getLevel();
-      const v = rand(1, 3);
-      if (v === 1) {
-        let pages = (L === "boa") ? rand(30, 120) : rand(80, 300);
-        let days  = (L === "boa") ? rand(2, 8)    : rand(3, 14);
-        let ans = pages / days;
-        return genTask(
-          `Du liest ${pages} Seiten in ${days} Tagen.<br><b>Wie viele Seiten pro Tag</b>?`,
-          Number(ans.toFixed(1)),
-          [
-            `Formel: pro Tag = Gesamt : Tage`,
-            `Einsetzen: ${pages} : ${days}`,
-            `Ausrechnen`
-          ]
-        );
-      }
-      if (v === 2) {
-        let km = (L === "boa") ? rand(20, 120) : rand(60, 300);
-        let min = (L === "boa") ? rand(10, 40) : rand(15, 60);
-        let factor = (L === "boa") ? 2 : rand(2, 4);
-        let ans = min * factor;
-        return genTask(
-          `Ein Bus fährt ${km} km in ${min} Minuten.<br>Wie lange für ${km*factor} km?`,
-          ans,
-          [
-            `${km*factor} km = ${factor}·${km} km`,
-            `Zeit wächst proportional: ${factor}·${min}`,
-            `Ausrechnen`
-          ]
-        );
-      }
-      let price = (L === "boa") ? rand(2, 6) : rand(5, 15);
-      let paid  = (L === "boa") ? rand(10, 50) : rand(20, 120);
-      let ans = paid / price;
-      return genTask(
-        `Ein Ticket kostet ${price} €. Du bezahlst ${paid} €.<br><b>Wie viele Tickets</b>?`,
-        Number((paid/price).toFixed(2)),
-        [
-          `Formel: Anzahl = bezahlt : Preis`,
-          `Einsetzen: ${paid} : ${price}`,
-          `Ausrechnen`
-        ]
-      );
-    }),
-  ],
-
-  prozent: [
-    // Prozentwert
-    () => {
-      const L = getLevel();
-      let g = (L === "boa") ? rand(80, 250) : rand(120, 600);
-      let p = (L === "boa") ? [10,20,25][rand(0,2)] : [10,15,20,25,30,50][rand(0,5)];
-      let ans = g * p / 100;
-      return genTask(
-        `Berechne <b>${p}%</b> von <b>${g}</b>.`,
-        Number((Math.round(ans*100)/100).toFixed(2)),
-        [
-          `Formel: W = G·p/100`,
-          `Einsetzen: W = ${g}·${p}/100`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Rabatt
-    () => {
-      const L = getLevel();
-      let price = (L === "boa") ? rand(20, 180) : rand(50, 450);
-      let p = (L === "boa") ? 20 : [10,15,20,25,30][rand(0,4)];
-      let ans = price * (1 - p/100);
-      return genTask(
-        `Ein Produkt kostet ${price} €.<br>${p}% Rabatt → <b>neuer Preis</b>?`,
-        Number(ans.toFixed(2)),
-        [
-          `Du zahlst: 100% − ${p}% = ${100-p}%`,
-          `Rechnung: ${price}·${100-p}/100`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    // Grundwert
-    () => {
-      const L = getLevel();
-      let w = (L === "boa") ? rand(20, 120) : rand(40, 250);
-      let p = (L === "boa") ? [10,20,25,50][rand(0,3)] : rand(5, 60);
-      let ans = w * 100 / p;
-      return genTask(
-        `${w} ist ${p}%.<br><b>Wie groß ist der Grundwert</b>?`,
-        Number(ans.toFixed(1)),
-        [
-          `Formel: G = W·100/p`,
-          `Einsetzen: G = ${w}·100/${p}`,
-          `Ausrechnen`
-        ]
-      );
-    },
-
-    ...Array.from({ length: 14 }, () => () => {
-      const L = getLevel();
-      let g = (L === "boa") ? rand(100, 300) : rand(150, 700);
-      let diff = (L === "boa") ? rand(10, 80) : rand(20, 200);
-      let newVal = g + diff;
-      let ans = (diff / g) * 100;
-      return genTask(
-        `Der Preis steigt von ${g} € auf ${newVal} €.<br><b>Wie viel Prozent</b>?`,
-        Number(ans.toFixed(1)),
-        [
-          `Zunahme: ${newVal} − ${g} = ${diff}`,
-          `Formel: p = (Zunahme/Grundwert)·100`,
-          `Einsetzen: (${diff}/${g})·100`,
-          `Ausrechnen`
-        ]
-      );
-    }),
-  ]
-
-,
-  /* =========================================================
-     NEUE KATEGORIEN (Note 4) – Basis / WKT / Statistik / Zuordnung / Fläche / Koordinaten
-  ========================================================= */
-
-  basis: [
-    // Einheiten: kg → g
-    () => {
-      const kg = rand(1, 9);
-      return genTask(
-        `Rechne um: <b>${kg} kg = ? g</b>`,
-        kg * 1000,
-        [
-          `1 kg = 1000 g`,
-          `${kg} × 1000 = ${kg * 1000}`
-        ]
-      );
-    },
-
-    // Potenzen: Quadratzahlen
-    () => {
-      const n = rand(2, 12);
-      return genTask(
-        `Berechne: <b>${n}²</b>`,
-        n * n,
-        [
-          `${n}² = ${n} × ${n}`,
-          `= ${n * n}`
-        ]
-      );
-    },
-
-    // Einfache Gleichungen
-    () => {
-      const x = rand(10, 50);
-      return genTask(
-        `Löse: <b>x − 7 = ${x - 7}</b>`,
-        x,
-        [
-          `+7 auf beiden Seiten`,
-          `x = ${x}`
-        ]
-      );
-    },
-
-    // Zahlen ordnen
-    () => {
-      const zahlen = [rand(1, 20), rand(1, 20), rand(1, 20), rand(1, 20)];
-      const sortiert = [...zahlen].sort((a, b) => a - b);
-      return genTask(
-        `Ordne (kleinste zuerst): <b>${zahlen.join(", ")}</b>`,
-        sortiert.join(", "),
-        [
-          `Zahlen vergleichen`,
-          `Sortiert: ${sortiert.join(", ")}`
-        ]
-      );
-    },
-  ],
-
-  wahrscheinlichkeit: [
-    // Würfel
-    () => genTask(
-      `Wie groß ist die Wahrscheinlichkeit, mit einem fairen Würfel eine 6 zu würfeln? (als Bruch)`,
-      "1/6",
-      [
-        `6 gleich wahrscheinliche Ergebnisse`,
-        `1 günstiger Fall`,
-        `W = 1/6`
-      ]
-    ),
-
-    // Gerade Zahl beim Würfeln
-    () => genTask(
-      `Wie groß ist die Wahrscheinlichkeit, mit einem fairen Würfel eine gerade Zahl zu würfeln? (als Bruch)`,
-      "1/2",
-      [
-        `Gerade Zahlen: 2, 4, 6 → 3 günstige`,
-        `W = 3/6 = 1/2`
-      ]
-    ),
-
-    // Münze
-    () => genTask(
-      `Eine faire Münze wird geworfen. Wahrscheinlichkeit für <b>Kopf</b>? (als Bruch)`,
-      "1/2",
-      [
-        `2 gleich wahrscheinliche Seiten`,
-        `1 günstiger Fall`,
-        `W = 1/2`
-      ]
-    ),
-
-    // Urne (einfach)
-    () => genTask(
-      `In einer Urne liegen 3 rote und 2 blaue Kugeln. Wahrscheinlichkeit für <b>rot</b>? (als Bruch)`,
-      "3/5",
-      [
-        `Insgesamt: 3 + 2 = 5 Kugeln`,
-        `Günstig: 3 rot`,
-        `W = 3/5`
-      ]
-    ),
-  ],
-
-  statistik: [
-    // Mittelwert
-    () => {
-      const arr = [12, 16, 8, 14];
-      const sum = arr.reduce((a, b) => a + b, 0);
-      const mean = sum / arr.length;
-      return genTask(
-        `Berechne den Durchschnitt von: <b>${arr.join(", ")}</b>`,
-        mean,
-        [
-          `Summe: ${sum}`,
-          `Anzahl: ${arr.length}`,
-          `Durchschnitt: ${sum} ÷ ${arr.length} = ${mean}`
-        ]
-      );
-    },
-
-    // Prozentuale Steigerung
-    () => genTask(
-      `Die Verkaufszahlen steigen von 200 auf 250. Bestimme die prozentuale Steigerung.`,
-      25,
-      [
-        `Zunahme: 250 − 200 = 50`,
-        `p = 50 ÷ 200 × 100 = 25`
-      ]
-    ),
-  ],
-
-  zuordnung: [
-    // Proportional (Preis/kg)
-    () => genTask(
-      `4 kg Äpfel kosten 8 €. Was kosten 6 kg?`,
-      12,
-      [
-        `Preis pro kg: 8 ÷ 4 = 2`,
-        `6 × 2 = 12`
-      ]
-    ),
-
-    // Antiproportional (Arbeiter/Zeit)
-    () => genTask(
-      `2 Arbeiter brauchen 6 Stunden. Wie lange brauchen 4 Arbeiter?`,
-      3,
-      [
-        `Arbeit bleibt gleich: 2 × 6 = 12 Arbeiterstunden`,
-        `12 ÷ 4 = 3`
-      ]
-    ),
-
-    // Maßstab
-    () => genTask(
-      `Maßstab 1:100. 5 cm entsprechen wie vielen Metern?`,
-      5,
-      [
-        `5 cm × 100 = 500 cm`,
-        `500 cm = 5 m`
-      ]
-    ),
-  ],
-
-  flaeche2d: [
-    // Dreieck
-    () => genTask(
-      `Dreieck: g = 8 cm, h = 5 cm. Fläche?`,
-      20,
-      [
-        `A = g·h/2`,
-        `8 × 5 ÷ 2 = 20`
-      ]
-    ),
-
-    // Rechteck
-    () => genTask(
-      `Rechteck: 10 m × 8 m. Fläche?`,
-      80,
-      [
-        `A = l·b`,
-        `10 × 8 = 80`
-      ]
-    ),
-
-    // Trapez
-    () => genTask(
-      `Trapez: a = 10 cm, c = 6 cm, h = 4 cm. Fläche?`,
-      32,
-      [
-        `A = (a+c)·h/2`,
-        `(10+6) × 4 ÷ 2 = 32`
-      ]
-    ),
-  ],
-
-  koordinaten: [
-    // Punkt angeben
-    () => genTask(
-      `Gib die Koordinaten von A an: x = 2, y = −3`,
-      "(2|-3)",
-      [
-        `Schreibweise: (x|y)`,
-        `(2|-3)`
-      ]
-    ),
-
-    // Quadrant
-    () => genTask(
-      `In welchem Quadranten liegt P(-2|3)?`,
-      "II",
-      [
-        `x negativ, y positiv`,
-        `→ Quadrant II`
-      ]
-    ),
-  ]
-};
-
-/* =========================================================
-   MODE/UI
-========================================================= */
-function switchMode() {
-  const mode = getMode();
-  const answerArea = document.getElementById("answerArea");
-  const status = document.getElementById("status");
-  const btn = document.getElementById("solutionBtn");
-
-  if (mode === "cards") {
-    answerArea.style.display = "none";
-    status.style.display = "none";
-    btn.textContent = "📌 Lösung aufdecken";
-  } else {
-    answerArea.style.display = "block";
-    status.style.display = "block";
-    btn.textContent = "📌 Lösung anzeigen";
-  }
-
-  // aktuelle Karte/Lösung zurücksetzen
-  revealed = false;
-  document.getElementById("solution").style.display = "none";
-}
-
-function onLevelChange() {
-  // BOA/BBR wirkt sofort – wir resetten nicht hart, aber verstecken Lösung und Feedback
-  revealed = false;
-  document.getElementById("solution").style.display = "none";
-  document.getElementById("feedback").innerHTML = "";
-}
-
-/* =========================================================
-   ROUND
-========================================================= */
-function updateStatus() {
-  document.getElementById("status").innerHTML = `Punkte: ${points}`;
-}
-
-function startRound() {
-  points = 0;
-  taskNumber = 0;
-  roundActive = true;
-  solvedCurrent = false;
-  updateStatus();
-  nextTaskRandom();
-}
-
-function finishRound() {
-  roundActive = false;
-  document.getElementById("task").innerHTML = `🏁 Runde beendet!`;
-  document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
-}
-
-/* =========================================================
-   TASK PICKING
+   TASK PICKING – NUTZT ZENTRALE pool.js
 ========================================================= */
 function pickCategoryWeighted() {
   return weightedCategories[rand(0, weightedCategories.length - 1)];
 }
 
-function drawTask(cat, genIndex) {
-  const list = TASKPOOL[cat];
-  const gen = list[genIndex];
-  const t = gen();
-
-  lastCat = cat;
-  lastGenIndex = genIndex;
-
-  currentAnswer = t.answer;
+function drawTask(task) {
+  // Kategorie für "Gleicher Typ" merken
+  lastCat = task.category || null;
+  
+  // Aktuelle Antwort speichern
+  currentAnswer = task.sol;
 
   // UI reset
   solvedCurrent = false;
@@ -909,10 +152,11 @@ function drawTask(cat, genIndex) {
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("userAnswer").value = "";
   document.getElementById("solution").style.display = "none";
-  document.getElementById("solution").innerHTML =
-    "<b>Lösung Schritt-für-Schritt:</b><br><br>" + (t.solution || "—");
-
-  document.getElementById("task").innerHTML = `(${cat}) ${t.task}`;
+  
+  // Lösungsschritte aus der Aufgabe verwenden!
+  const solutionHtml = formatSteps(task.steps, task.sol);
+  document.getElementById("solution").innerHTML = "<b>Lösung Schritt-für-Schritt:</b><br><br>" + solutionHtml;
+  document.getElementById("task").innerHTML = task.text;
 }
 
 /* Nächste Aufgabe (Kategorie & Typ zufällig) */
@@ -927,16 +171,20 @@ function nextTaskRandom() {
   }
   taskNumber++;
 
-  const cat = pickCategoryWeighted();
-  const genIndex = rand(0, TASKPOOL[cat].length - 1);
+  const task = getTask({
+    mode: "trainer",
+    level: getLevel(),
+    stars: false,
+    index: 0
+  });
 
-  drawTask(cat, genIndex);
+  drawTask(task);
 
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks}`;
 }
 
-/* Weitere Aufgabe gleicher Typ (exakt gleiche Kategorie + gleicher Generator) */
+/* Weitere Aufgabe gleicher Typ (exakt gleiche Kategorie) */
 function nextTaskSameType() {
   if (!roundActive) {
     alert("Bitte zuerst eine Zufallsrunde starten!");
@@ -946,17 +194,45 @@ function nextTaskSameType() {
     finishRound();
     return;
   }
-  if (lastCat === null || lastGenIndex === null) {
+  if (lastCat === null) {
     nextTaskRandom();
     return;
   }
 
   taskNumber++;
 
-  drawTask(lastCat, lastGenIndex);
+  // Gleiche Kategorie erzwingen
+  const task = TASKS[lastCat](getLevel());
+  task.star = false;
+  task.category = lastCat;
+  
+  drawTask(task);
 
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
+}
+
+/* =========================================================
+   ROUND
+========================================================= */
+function updateStatus() {
+  document.getElementById("status").innerHTML = `Punkte: ${points}`;
+}
+
+function startRound() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = true;
+  solvedCurrent = false;
+  lastCat = null;
+  updateStatus();
+  nextTaskRandom();
+}
+
+function finishRound() {
+  roundActive = false;
+  document.getElementById("task").innerHTML = `🏁 Runde beendet!`;
+  document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
 }
 
 /* =========================================================
@@ -975,7 +251,7 @@ function checkAnswer() {
 
   const input = document.getElementById("userAnswer").value.trim();
 
-  // Bei Sach-Aufgaben kann answer auch Text sein (z.B. Uhrzeit)
+  // Bei Sach-Aufgaben kann answer auch Text sein (z.B. Uhrzeit) – hier nur Zahlen
   if (typeof currentAnswer === "string") {
     const ok = input === currentAnswer;
     document.getElementById("feedback").innerHTML = ok
@@ -1021,6 +297,37 @@ function toggleSolution() {
 }
 
 /* =========================================================
+   MODE/UI
+========================================================= */
+function switchMode() {
+  const mode = getMode();
+  const answerArea = document.getElementById("answerArea");
+  const status = document.getElementById("status");
+  const btn = document.getElementById("solutionBtn");
+
+  if (mode === "cards") {
+    answerArea.style.display = "none";
+    status.style.display = "none";
+    btn.textContent = "📌 Lösung aufdecken";
+  } else {
+    answerArea.style.display = "block";
+    status.style.display = "block";
+    btn.textContent = "📌 Lösung anzeigen";
+  }
+
+  // aktuelle Karte/Lösung zurücksetzen
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+}
+
+function onLevelChange() {
+  // BOA/BBR wirkt sofort – wir resetten nicht hart, aber verstecken Lösung und Feedback
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+  document.getElementById("feedback").innerHTML = "";
+}
+
+/* =========================================================
    RESET
 ========================================================= */
 function resetTrainer() {
@@ -1029,7 +336,6 @@ function resetTrainer() {
   roundActive = false;
   solvedCurrent = false;
   lastCat = null;
-  lastGenIndex = null;
   revealed = false;
 
   updateStatus();
@@ -1042,7 +348,7 @@ function resetTrainer() {
 }
 
 /* =========================================================
-   PDF EXPORT (Aufgaben + Lösungen)
+   PDF EXPORT (Aufgaben + Lösungen aus pool.js)
 ========================================================= */
 function escapeHtml(str) {
   return String(str)
@@ -1051,11 +357,11 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;");
 }
 
-function pickTaskFromCategory(cat, genIndex = null) {
-  const list = TASKPOOL[cat];
-  if (!list || list.length === 0) return null;
-  const idx = (genIndex === null) ? rand(0, list.length - 1) : genIndex;
-  return list[idx]();
+function pickTaskForPDF() {
+  const cat = pickCategoryWeighted();
+  const task = TASKS[cat](getLevel());
+  task.category = cat;
+  return task;
 }
 
 function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDuplicates = true) {
@@ -1069,16 +375,13 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
   let safety = 0;
   while (picked.length < tasksCount && safety < tasksCount * 80) {
     safety++;
-
-    const cat = pickCategoryWeighted();
-    const t = pickTaskFromCategory(cat);
-    if (!t) continue;
-
-    const signature = (cat + "||" + t.task).replace(/\s+/g, " ").trim();
+    
+    const task = pickTaskForPDF();
+    const signature = (task.category + "||" + task.text).replace(/\s+/g, " ").trim();
     if (avoidDuplicates && seen.has(signature)) continue;
 
     seen.add(signature);
-    picked.push({ cat, t });
+    picked.push(task);
   }
 
   // --- Print HTML ---
@@ -1086,16 +389,17 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
   html += `<div class="print-title">Mathe-Übungsblatt (BOA/BBR – ${escapeHtml(level.toUpperCase())})</div>`;
   html += `<div class="print-meta">Name:<span class="print-line"></span> Datum: ${escapeHtml(dateStr)}</div>`;
 
-  picked.forEach((item, i) => {
-    const head = `Aufgabe ${i + 1} (${item.cat})`;
-    const text = item.t.task;
+  picked.forEach((task, i) => {
+    const head = `Aufgabe ${i + 1} (${task.category})`;
+    const text = task.text;
 
     html += `<div class="task-block">`;
     html += `<div class="task-head">${escapeHtml(head)}</div>`;
     html += `<div class="task-text">${text}</div>`;
     html += `<div class="work-space"></div>`;
     if (includeSolutions) {
-      html += `<div style="margin-top:4mm; font-size:10.5pt;"><b>Lösung:</b><br>${item.t.solution || "—"}</div>`;
+      const solutionHtml = formatSteps(task.steps, task.sol);
+      html += `<div style="margin-top:4mm; font-size:10.5pt;"><b>Lösung:</b><br>${solutionHtml}</div>`;
     }
     html += `</div>`;
 
