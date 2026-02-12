@@ -23,6 +23,23 @@
 
   #solution { display:none; background:#eef6ff; padding:15px; border-radius:5px; margin-top:15px; }
 
+  /* Aufgaben-Container für Export */
+  #aufgabenContainer {
+    margin-top: 30px;
+    border-top: 2px solid #1976d2;
+    padding-top: 20px;
+  }
+  .aufgabe {
+    background: #f9f9f9;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #1976d2;
+    border-radius: 4px;
+  }
+  .loesung {
+    display: none;
+  }
+  
   /* ===== PRINT / PDF EXPORT ===== */
   @media print {
     body { background:#fff; padding:0; }
@@ -30,7 +47,7 @@
     #printArea { display:block !important; }
   }
 
-  #printArea { font-family: Arial, sans-serif; color:#000; padding:18mm; }
+  #printArea { font-family: Arial, sans-serif; color:#000; padding:18mm; display:none; }
   .print-title { font-size:18pt; font-weight:bold; margin-bottom:6mm; }
   .print-meta { font-size:11pt; margin-bottom:8mm; }
   .print-line { border-bottom:1px solid #000; display:inline-block; width:70mm; height:6mm; vertical-align:bottom; margin-left:3mm; }
@@ -40,8 +57,6 @@
   .work-space { height:22mm; border:1px solid #eee; background:#fafafa; }
   .page-break { page-break-before: always; break-before: page; }
 </style>
-<!-- Aufgabenpool als externe JS-Datei -->
-<script src="pool_113.js"></script>
 </head>
 
 <body>
@@ -63,7 +78,8 @@
   <button onclick="nextTaskRandom()">➡️ Nächste Aufgabe (zufällig)</button>
   <button onclick="nextTaskSameType()">🔁 Gleicher Typ</button>
   <button onclick="toggleSolution()" id="solutionBtn">📌 Lösung anzeigen</button>
-  <button onclick="exportWorksheetPDF()">🧾 PDF-Übungsblatt</button>
+  <button onclick="exportiereBBRPruefung()">🧾 BBR-Prüfung exportieren</button>
+  <button onclick="exportiereBOAPruefung()">📘 BOA-Prüfung exportieren</button>
   <button onclick="resetTrainer()">🔄 Reset</button>
 </div>
 
@@ -82,17 +98,18 @@
   <div id="feedback"></div>
 
   <div id="solution"></div>
+  
+  <!-- Aufgaben-Container für Export -->
+  <div id="aufgabenContainer"></div>
 </div>
 
 <div id="printArea" style="display:none;"></div>
 
 <script>
 /* =========================================================
-   STATE - NUR UI-LOGIK
-   Aufgabenpool wird aus pool_113.js importiert
+   STATE
 ========================================================= */
-let currentTask = null;        // Aktuelle Aufgabe mit allen Details
-let currentAnswer = null;     // Richtige Antwort
+let currentAnswer = null;
 let points = 0;
 
 let roundActive = false;
@@ -101,21 +118,22 @@ let totalTasks = 10;
 
 let solvedCurrent = false;
 
-// Merkt sich den zuletzt gezogenen Aufgabentyp (für "Gleicher Typ")
 let lastCat = null;
 let lastGenIndex = null;
 
-// Für Karteikarten: Lösung ist erst „aufgedeckt“, wenn Nutzer klickt
 let revealed = false;
 
+// Gespeicherte Aufgaben für Export
+let exportedTasks = [];
+
 /* =========================================================
-   UTIL - NUR FÜR UI
+   UTIL
 ========================================================= */
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function getLevel() { return document.getElementById("level").value; }
 function getMode() { return document.getElementById("mode").value; }
 
 function fmt(n) {
-  // „schöne“ Darstellung: Integer ohne Nachkommastellen, sonst max 2
   if (typeof n === "number") {
     if (Number.isInteger(n)) return String(n);
     return (Math.round(n * 100) / 100).toString().replace(".", ",");
@@ -123,9 +141,407 @@ function fmt(n) {
   return String(n);
 }
 
-function normalize(val) {
-  return parseFloat(String(val).trim().replace(",", "."));
+function steps(lines, result) {
+  let html = "";
+  lines.forEach((line, i) => html += `Schritt ${i + 1}: ${line}<br>`);
+  html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
+  return html;
 }
+
+function genTask(taskHtml, answer, stepLines) {
+  return { task: taskHtml, answer, solution: steps(stepLines, answer) };
+}
+
+function round2(x) {
+  return Math.round(x * 100) / 100;
+}
+
+/* =========================================================
+   PRÜFUNGS-REALISTISCHE GEWICHTUNG
+========================================================= */
+const weightedCategories = [
+  "rechnen","rechnen","rechnen","rechnen","rechnen",
+  "sach","sach","sach","sach","sach",
+  "prozent","prozent","prozent","prozent",
+  "geometrie","geometrie","geometrie","geometrie"
+];
+
+/* =========================================================
+   TASKPOOL (höheres Niveau für Note 2-1)
+========================================================= */
+const TASKPOOL = {
+  rechnen: [
+    () => {
+      const x = rand(-3, 8);
+      const ans = 2 * (3 * x - 4) - (x - 5);
+      return genTask(
+        `Berechne den Wert des Terms für x = ${x}:<br>
+         <b>2·(3x − 4) − (x − 5)</b>`,
+        ans,
+        [
+          `Klammern auflösen: 2·3x − 2·4 = 6x − 8`,
+          `Minusklammer: − (x − 5) = −x + 5`,
+          `Zusammenfassen: 6x − 8 − x + 5 = 5x − 3`,
+          `Einsetzen von x = ${x}: 5·${x} − 3 = ${5*x} − 3`
+        ]
+      );
+    },
+    () => {
+      const x = rand(-5, 10);
+      const result = 3 * (x - 2) + 4;
+      return genTask(
+        `Löse nach x:<br>
+         <b>3(x − 2) + 4 = ${result}</b>`,
+        x,
+        [
+          `Klammern auflösen: 3x − 6 + 4 = 3x − 2`,
+          `Gleichung: 3x − 2 = ${result}`,
+          `+2 auf beiden Seiten: 3x = ${result + 2}`,
+          `÷3: x = ${x}`
+        ]
+      );
+    },
+    () => {
+      const a = rand(2, 6);
+      const b = rand(1, 8);
+      const c = rand(3, 9);
+      const x = rand(-4, 9);
+      const ans = a * (b * x + c) - (x - a);
+      return genTask(
+        `Berechne für x = ${x}:<br>
+         <b>${a}·(${b}x + ${c}) − (x − ${a})</b>`,
+        ans,
+        [
+          `Erste Klammer: ${a}·${b}x + ${a}·${c} = ${a*b}x + ${a*c}`,
+          `Zweite Klammer: −x + ${a}`,
+          `Zusammenfassen: ${a*b}x + ${a*c} − x + ${a} = ${a*b-1}x + ${a*c+a}`,
+          `Einsetzen: ${a*b-1}·${x} + ${a*c+a}`
+        ]
+      );
+    },
+    ...Array.from({ length: 18 }, () => () => {
+      const x = rand(-4, 9);
+      const a = rand(2, 6);
+      const b = rand(1, 8);
+      const c = rand(3, 9);
+      const ans = a * (b * x + c) - (x - a);
+      return genTask(
+        `Berechne für x = ${x}:<br>
+         <b>${a}·(${b}x + ${c}) − (x − ${a})</b>`,
+        ans,
+        [
+          `Klammern auflösen`,
+          `Zusammenfassen`,
+          `Einsetzen von x = ${x}`
+        ]
+      );
+    })
+  ],
+  prozent: [
+    () => {
+      const g = rand(150, 600);
+      const p = rand(10, 35);
+      const ans = Number((g * (1 + p / 100)).toFixed(2));
+      return genTask(
+        `Ein Produkt kostet ${g} €.<br>
+         Der Preis wird um ${p}% erhöht.<br>
+         <b>Bestimme den neuen Preis.</b>`,
+        ans,
+        [
+          `100% + ${p}% = ${100 + p}%`,
+          `Neuer Preis = Grundwert × (100 + p)/100`,
+          `${g} × ${100 + p} / 100`,
+          `Ausrechnen: ${g} × ${(100+p)/100}`
+        ]
+      );
+    },
+    () => {
+      const g = rand(120, 400);
+      const p = rand(10, 40);
+      const w = Number((g * p / 100).toFixed(2));
+      return genTask(
+        `${w} € entsprechen ${p}%.<br>
+         <b>Bestimme den Grundwert.</b>`,
+        g,
+        [
+          `Formel: G = W × 100 / p`,
+          `Einsetzen: ${w} × 100 / ${p}`,
+          `Ausrechnen: ${w} × ${100/p}`
+        ]
+      );
+    },
+    () => {
+      const g = rand(200, 800);
+      const p1 = rand(15, 30);
+      const p2 = rand(5, 20);
+      const ans = Number((g * (1 - p1/100) * (1 + p2/100)).toFixed(2));
+      return genTask(
+        `Ein Preis von ${g} € wird um ${p1}% reduziert, dann um ${p2}% erhöht.<br>
+         <b>Neuer Preis?</b>`,
+        ans,
+        [
+          `Erster Schritt: ${g} × ${100-p1}/100 = ${(g * (1 - p1/100)).toFixed(2)}`,
+          `Zweiter Schritt: × ${100+p2}/100`,
+          `Ausrechnen: ${(g * (1 - p1/100)).toFixed(2)} × ${(100+p2)/100}`
+        ]
+      );
+    },
+    () => {
+      const g = rand(250, 700);
+      const p1 = rand(10, 25);
+      const p2 = rand(5, 15);
+      const ans = Number((g * (1 - p1/100) * (1 + p2/100)).toFixed(2));
+      return genTask(
+        `Preis: ${g} €, erst ${p1}% Rabatt, dann ${p2}% Steuer.<br>
+         <b>Endpreis?</b>`,
+        ans,
+        [
+          `Nach Rabatt: ${100-p1}% von ${g} €`,
+          `Nach Steuer: ${100+p2}% vom rabattierten Preis`,
+          `${g} × ${(100-p1)/100} × ${(100+p2)/100}`
+        ]
+      );
+    }
+  ],
+  geometrie: [
+    () => {
+      const a = rand(4, 10);
+      const b = rand(5, 12);
+      const h = rand(6, 18);
+      const ans = a * b * h;
+      return genTask(
+        `Ein Prisma hat eine rechteckige Grundfläche
+         mit a = ${a} cm und b = ${b} cm.<br>
+         Höhe h = ${h} cm.<br>
+         <b>Berechne das Volumen.</b>`,
+        ans,
+        [
+          `Grundfläche: G = a × b = ${a} × ${b} = ${a*b} cm²`,
+          `Volumen: V = G × h = ${a*b} × ${h}`,
+          `Ausrechnen: ${a*b} × ${h}`
+        ]
+      );
+    },
+    () => {
+      const a = rand(4, 10), b = rand(5, 12), h = rand(6, 14);
+      const ans = Number(Math.sqrt(a*a + b*b + h*h).toFixed(2));
+      return genTask(
+        `Ein Quader besitzt die Kantenlängen
+         a=${a} cm, b=${b} cm, h=${h} cm.<br>
+         <b>Bestimme die Raumdiagonale.</b>`,
+        ans,
+        [
+          `Pythagoras im Raum: d² = a² + b² + h²`,
+          `d² = ${a}² + ${b}² + ${h}² = ${a*a} + ${b*b} + ${h*h} = ${a*a + b*b + h*h}`,
+          `Wurzel ziehen: d = √${a*a + b*b + h*h}`
+        ]
+      );
+    },
+    () => {
+      const r = rand(3, 8);
+      const h = rand(8, 20);
+      const ans = Number((Math.PI * r * r * h).toFixed(2));
+      return genTask(
+        `Ein Zylinder hat Radius r = ${r} cm und Höhe h = ${h} cm.<br>
+         (π ≈ 3,14)<br>
+         <b>Berechne das Volumen.</b>`,
+        ans,
+        [
+          `Formel: V = π × r² × h`,
+          `Einsetzen: 3,14 × ${r}² × ${h}`,
+          `${r}² = ${r*r}`,
+          `3,14 × ${r*r} × ${h}`
+        ]
+      );
+    },
+    () => {
+      const a = rand(4, 10);
+      const h = rand(6, 16);
+      const ans = 2 * a * a + 4 * a * h;
+      return genTask(
+        `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm.<br>
+         Höhe h = ${h} cm.<br>
+         <b>Berechne die Oberfläche.</b>`,
+        ans,
+        [
+          `Grundfläche: G = a² = ${a}² = ${a*a} cm²`,
+          `Mantelfläche: M = 4 × a × h = 4 × ${a} × ${h} = ${4*a*h} cm²`,
+          `Oberfläche: O = 2×G + M = 2×${a*a} + ${4*a*h}`,
+          `2×${a*a} = ${2*a*a}, plus ${4*a*h}`
+        ]
+      );
+    },
+    ...Array.from({ length: 10 }, () => () => {
+      const typ = rand(1, 3);
+      if (typ === 1) {
+        const r = rand(3, 7);
+        const h = rand(6, 15);
+        const ans = Number((1/3 * Math.PI * r * r * h).toFixed(2));
+        return genTask(
+          `Ein Kegel hat Radius r = ${r} cm und Höhe h = ${h} cm.<br>
+           (π ≈ 3,14) Berechne das Volumen.`,
+          ans,
+          [
+            `Formel: V = 1/3 × π × r² × h`,
+            `1/3 × 3,14 × ${r}² × ${h}`,
+            `Ausrechnen`
+          ]
+        );
+      } else if (typ === 2) {
+        const r = rand(2, 8);
+        const ans = Number((4 * Math.PI * r * r).toFixed(2));
+        return genTask(
+          `Eine Kugel hat Radius r = ${r} cm.<br>
+           (π ≈ 3,14) Berechne die Oberfläche.`,
+          ans,
+          [
+            `Formel: O = 4 × π × r²`,
+            `4 × 3,14 × ${r}²`,
+            `Ausrechnen`
+          ]
+        );
+      } else {
+        const a = rand(4, 10);
+        const h = rand(6, 16);
+        const ans = Number((1/3 * a * a * h).toFixed(2));
+        return genTask(
+          `Eine quadratische Pyramide hat Grundkante a = ${a} cm und Höhe h = ${h} cm.<br>
+           Berechne das Volumen.`,
+          ans,
+          [
+            `Formel: V = 1/3 × G × h`,
+            `Grundfläche: a² = ${a}² = ${a*a}`,
+            `1/3 × ${a*a} × ${h}`
+          ]
+        );
+      }
+    })
+  ],
+  sach: [
+    () => {
+      const km = rand(80, 420);
+      const h  = rand(2, 7);
+      const ans = Number((km / h).toFixed(1));
+      return genTask(
+        `Ein Auto fährt ${km} km in ${h} h.<br>
+         <b>Berechne die Durchschnittsgeschwindigkeit.</b>`,
+        ans,
+        [
+          `Formel: v = s : t`,
+          `v = ${km} km : ${h} h`,
+          `Ausrechnen: ${km} ÷ ${h}`
+        ]
+      );
+    },
+    () => {
+      const r = rand(3, 8);
+      const h = rand(8, 18);
+      const u = Number((2 * Math.PI * r).toFixed(2));
+      const ans = Number(Math.sqrt(u*u + h*h).toFixed(2));
+      return genTask(
+        `Der Mantel eines Zylinders wird als Rechteck dargestellt.<br>
+         Umfang der Grundfläche: ${u} cm<br>
+         Höhe: ${h} cm<br>
+         <b>Berechne die Länge der Diagonale.</b>`,
+        ans,
+        [
+          `Diagonale im Rechteck: d² = u² + h²`,
+          `d² = ${u}² + ${h}² = ${u*u} + ${h*h} = ${u*u + h*h}`,
+          `Wurzel ziehen: d = √${u*u + h*h}`
+        ]
+      );
+    },
+    () => {
+      const startH = rand(8, 14);
+      const durMin = rand(85, 240);
+      const total = startH*60 + durMin;
+      const hh = Math.floor(total/60) % 24;
+      const mm = String(total%60).padStart(2,"0");
+      const ans = `${hh}:${mm}`;
+      return {
+        task: `Ein Zug startet um <b>${startH}:00</b> Uhr und fährt <b>${durMin}</b> Minuten.<br>
+               <b>Ankunftszeit?</b>`,
+        answer: ans,
+        solution: steps(
+          [
+            `Startzeit in Minuten: ${startH}·60 = ${startH*60}`,
+            `+ Fahrzeit: ${startH*60} + ${durMin} = ${total} Minuten`,
+            `Zurück in Stunden und Minuten: ${total} ÷ 60 = ${Math.floor(total/60)} h ${total%60} min`,
+            `Uhrzeit: ${hh}:${mm}`
+          ],
+          ans
+        )
+      };
+    },
+    () => {
+      const c1 = rand(10, 30);
+      const m1 = rand(100, 300);
+      const c2 = rand(40, 60);
+      const m2 = rand(50, 150);
+      const gesamt = m1 + m2;
+      const konz = round2((c1*m1 + c2*m2) / gesamt);
+      return genTask(
+        `${m1}g einer ${c1}%igen Lösung werden mit ${m2}g einer ${c2}%igen Lösung gemischt.<br>
+         Konzentration der Mischung?`,
+        konz,
+        [
+          `Reine Substanz 1: ${c1}% von ${m1}g = ${c1*m1/100}g`,
+          `Reine Substanz 2: ${c2}% von ${m2}g = ${c2*m2/100}g`,
+          `Gesamtmenge reine Substanz: ${c1*m1/100} + ${c2*m2/100} = ${(c1*m1 + c2*m2)/100}g`,
+          `Gesamtmenge Mischung: ${m1} + ${m2} = ${gesamt}g`,
+          `Konzentration: (${(c1*m1 + c2*m2)/100} ÷ ${gesamt}) × 100`
+        ]
+      );
+    },
+    ...Array.from({ length: 8 }, () => () => {
+      const typ = rand(1, 3);
+      if (typ === 1) {
+        const real = rand(20, 100);
+        const scale = rand(10, 50);
+        const map = real/scale;
+        return genTask(
+          `Im Maßstab 1:${scale} entspricht ${map.toFixed(1)} cm auf der Karte wie vielen Metern in Wirklichkeit?`,
+          real,
+          [
+            `1 cm auf Karte = ${scale} cm in Wirklichkeit`,
+            `${map.toFixed(1)} cm × ${scale} = ${(map*scale).toFixed(1)} cm`,
+            `In Metern: ${(map*scale/100).toFixed(1)} m`
+          ]
+        );
+      } else if (typ === 2) {
+        const kapital = rand(500, 2000);
+        const zins = rand(2, 5);
+        const jahre = rand(2, 5);
+        const ans = Number((kapital * Math.pow(1 + zins/100, jahre)).toFixed(2));
+        return genTask(
+          `${kapital} € werden zu ${zins}% Zinseszins angelegt.<br>
+           Wie viel nach ${jahre} Jahren?`,
+          ans,
+          [
+            `Formel: K_end = K × (1 + p/100)^n`,
+            `${kapital} × (1 + ${zins}/100)^${jahre}`,
+            `${kapital} × ${(1 + zins/100).toFixed(3)}^${jahre}`
+          ]
+        );
+      } else {
+        const a = rand(2, 8);
+        const b = rand(3, 12);
+        const total = rand(50, 200);
+        const anteilA = total * a/(a+b);
+        return genTask(
+          `Im Verhältnis ${a}:${b} werden ${total} € aufgeteilt.<br>
+           Wie viel erhält der erste?`,
+          Number(anteilA.toFixed(2)),
+          [
+            `Gesamte Teile: ${a} + ${b} = ${a+b}`,
+            `Ein Teil: ${total} ÷ ${a+b} = ${(total/(a+b)).toFixed(2)}`,
+            `Erster: ${a} Teile = ${a} × ${(total/(a+b)).toFixed(2)}`
+          ]
+        );
+      }
+    })
+  ]
+};
 
 /* =========================================================
    MODE/UI
@@ -146,40 +562,30 @@ function switchMode() {
     btn.textContent = "📌 Lösung anzeigen";
   }
 
-  // aktuelle Karte/Lösung zurücksetzen
   revealed = false;
   document.getElementById("solution").style.display = "none";
 }
 
 function onLevelChange() {
-  // BOA/BBR wirkt sofort – resetten nicht hart, aber verstecken Lösung und Feedback
   revealed = false;
   document.getElementById("solution").style.display = "none";
   document.getElementById("feedback").innerHTML = "";
 }
 
 /* =========================================================
-   ROUND - UI-LOGIK
+   ROUND
 ========================================================= */
 function updateStatus() {
   document.getElementById("status").innerHTML = `Punkte: ${points}`;
 }
 
 function startRound() {
-  console.log("=== Zufallsrunde wird gestartet ===");
   points = 0;
   taskNumber = 0;
   roundActive = true;
   solvedCurrent = false;
-  lastCat = null;
-  lastGenIndex = null;
+  exportedTasks = [];
   updateStatus();
-  document.getElementById("progress").innerHTML = `Aufgabe 0 von ${totalTasks}`;
-  document.getElementById("feedback").innerHTML = "";
-  document.getElementById("solution").style.display = "none";
-  document.getElementById("userAnswer").value = "";
-  
-  // ✅ DIREKT die erste Aufgabe laden!
   nextTaskRandom();
 }
 
@@ -187,155 +593,133 @@ function finishRound() {
   roundActive = false;
   document.getElementById("task").innerHTML = `🏁 Runde beendet!`;
   document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
-  document.getElementById("answerArea").style.display = getMode() === "exam" ? "block" : "none";
 }
 
 /* =========================================================
-   TASK PICKING - NUTZT AUSGELAGERTE FUNKTIONEN
+   TASK PICKING
 ========================================================= */
+function pickCategoryWeighted() {
+  return weightedCategories[rand(0, weightedCategories.length - 1)];
+}
+
 function drawTask(cat, genIndex) {
-  console.log(`Zeichne Aufgabe: Kategorie=${cat}, Generator=${genIndex}`);
-  
-  // ✅ Nutzung der zentralen Trainer-Funktion aus pool_113.js
-  const t = getTask113Trainer({ category: cat, generatorIndex: genIndex });
+  const list = TASKPOOL[cat];
+  const gen = list[genIndex];
+  const t = gen();
 
-  if (!t) {
-    console.error("Fehler: Keine Aufgabe erhalten!");
-    return;
-  }
-
-  // Aktuelle Aufgabe speichern
-  currentTask = t;
-  currentAnswer = t.answer;
-  
   lastCat = cat;
   lastGenIndex = genIndex;
 
-  // UI reset
+  currentAnswer = t.answer;
+
   solvedCurrent = false;
   revealed = false;
 
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("userAnswer").value = "";
   document.getElementById("solution").style.display = "none";
-  
-  // ✅ Lösung speichern für spätere Anzeige
   document.getElementById("solution").innerHTML =
     "<b>Lösung Schritt-für-Schritt:</b><br><br>" + (t.solution || "—");
 
-  // ✅ Aufgabe anzeigen
-  document.getElementById("task").innerHTML = `<b>${cat.toUpperCase()}</b><br>${t.task}`;
+  document.getElementById("task").innerHTML = `(${cat}) ${t.task}`;
   
-  console.log(`Aufgabe geladen: ${t.task.substring(0, 50)}...`);
+  // Aufgabe für Export speichern
+  exportedTasks.push({
+    cat: cat,
+    task: t.task,
+    answer: t.answer,
+    solution: t.solution
+  });
+  
+  // Aufgaben im Container rendern
+  renderTasksInContainer();
 }
 
-/* Nächste Aufgabe (Kategorie & Typ zufällig) */
-function nextTaskRandom() {
-  console.log("nextTaskRandom aufgerufen");
-  console.log(`roundActive=${roundActive}, taskNumber=${taskNumber}, totalTasks=${totalTasks}`);
+function renderTasksInContainer() {
+  const container = document.getElementById("aufgabenContainer");
+  container.innerHTML = "";
   
+  exportedTasks.forEach((task, index) => {
+    const aufgabeDiv = document.createElement("div");
+    aufgabeDiv.className = "aufgabe";
+    aufgabeDiv.id = `export_aufgabe_${index}`;
+    
+    const aufgabeHtml = `
+      <strong>Aufgabe ${index + 1} (${task.cat}):</strong>
+      <div style="margin-top: 8px;">${task.task}</div>
+      <div class="loesung" style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-left: 3px solid #2e7d32;">
+        <strong>Lösung:</strong> ${task.answer}<br><br>
+        <strong>Rechenweg:</strong><br>${task.solution || "—"}
+      </div>
+    `;
+    
+    aufgabeDiv.innerHTML = aufgabeHtml;
+    container.appendChild(aufgabeDiv);
+  });
+}
+
+function nextTaskRandom() {
   if (!roundActive) {
     alert("Bitte zuerst eine Zufallsrunde starten!");
     return;
   }
-  
   if (taskNumber >= totalTasks) {
     finishRound();
     return;
   }
-  
   taskNumber++;
-  console.log(`Aufgabe ${taskNumber} von ${totalTasks}`);
 
-  // ✅ Zufällige Kategorie mit Gewichtung
-  const cat = getWeightedCategory();
-  console.log(`Gewichtete Kategorie: ${cat}`);
-  
-  // ✅ Prüfen ob Kategorie existiert
-  const poolSize = getTaskPoolSize(cat);
-  console.log(`Pool-Größe für ${cat}: ${poolSize}`);
-  
-  if (poolSize === 0) {
-    console.error(`Kategorie ${cat} hat keine Aufgaben!`);
-    // Fallback auf "rechnen"
-    const fallbackCat = "rechnen";
-    const fallbackSize = getTaskPoolSize(fallbackCat);
-    const genIndex = rand(0, fallbackSize - 1);
-    drawTask(fallbackCat, genIndex);
-  } else {
-    const genIndex = rand(0, poolSize - 1);
-    drawTask(cat, genIndex);
-  }
+  const cat = pickCategoryWeighted();
+  const genIndex = rand(0, TASKPOOL[cat].length - 1);
+
+  drawTask(cat, genIndex);
 
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks}`;
 }
 
-/* Weitere Aufgabe gleicher Typ (exakt gleiche Kategorie + gleicher Generator) */
 function nextTaskSameType() {
-  console.log("nextTaskSameType aufgerufen");
-  
   if (!roundActive) {
     alert("Bitte zuerst eine Zufallsrunde starten!");
     return;
   }
-  
   if (taskNumber >= totalTasks) {
     finishRound();
     return;
   }
-  
   if (lastCat === null || lastGenIndex === null) {
-    console.log("Kein letzter Typ vorhanden -> verwende zufällige Aufgabe");
     nextTaskRandom();
     return;
   }
 
   taskNumber++;
-  console.log(`Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ: ${lastCat}, Index ${lastGenIndex})`);
-
   drawTask(lastCat, lastGenIndex);
-
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
 }
 
 /* =========================================================
-   CHECK ANSWER (nur im Prüfungsmodus sinnvoll)
+   CHECK ANSWER
 ========================================================= */
+function normalize(val) {
+  return parseFloat(String(val).trim().replace(",", "."));
+}
+
 function checkAnswer() {
   if (getMode() === "cards") {
     document.getElementById("feedback").innerHTML = "ℹ️ Karteikartenmodus: Keine Eingabeprüfung.";
     return;
   }
-  if (solvedCurrent) {
-    document.getElementById("feedback").innerHTML = "⚠ Diese Aufgabe wurde bereits beantwortet.";
-    return;
-  }
-  if (!currentAnswer) {
-    document.getElementById("feedback").innerHTML = "⚠ Keine aktive Aufgabe.";
-    return;
-  }
+  if (solvedCurrent) return;
 
   const input = document.getElementById("userAnswer").value.trim();
-  
-  if (input === "") {
-    document.getElementById("feedback").innerHTML = "⚠ Bitte eine Antwort eingeben.";
-    return;
-  }
 
-  // Bei Sach-Aufgaben kann answer auch Text sein (z.B. Uhrzeit)
   if (typeof currentAnswer === "string") {
     const ok = input === currentAnswer;
-    const feedback = document.getElementById("feedback");
-    if (ok) {
-      points += 3;
-      feedback.innerHTML = "✔ Richtig! +3 Punkte";
-      feedback.style.color = "green";
-    } else {
-      feedback.innerHTML = `✘ Falsch. Richtige Lösung: ${currentAnswer}`;
-      feedback.style.color = "red";
-    }
+    document.getElementById("feedback").innerHTML = ok
+      ? "✔ Richtig! +3 Punkte"
+      : `✘ Falsch. Richtige Lösung: ${currentAnswer}`;
+    if (ok) points += 3;
     solvedCurrent = true;
     updateStatus();
     return;
@@ -343,18 +727,15 @@ function checkAnswer() {
 
   const userVal = normalize(input);
   if (isNaN(userVal)) {
-    document.getElementById("feedback").innerHTML = "⚠ Bitte eine gültige Zahl eingeben (z.B. 10,5).";
+    document.getElementById("feedback").innerHTML = "⚠ Bitte eine Zahl eingeben.";
     return;
   }
 
-  // Toleranz für Rundungsfehler
   if (Math.abs(userVal - currentAnswer) < 0.05) {
     points += 3;
     document.getElementById("feedback").innerHTML = "✔ Richtig! +3 Punkte";
-    document.getElementById("feedback").style.color = "green";
   } else {
     document.getElementById("feedback").innerHTML = `✘ Falsch. Richtige Lösung: ${fmt(currentAnswer)}`;
-    document.getElementById("feedback").style.color = "red";
   }
 
   solvedCurrent = true;
@@ -368,19 +749,12 @@ function toggleSolution() {
   const sol = document.getElementById("solution");
   const mode = getMode();
 
-  if (!currentTask) {
-    alert("Keine aktive Aufgabe vorhanden.");
-    return;
-  }
-
   if (mode === "cards") {
-    // Karteikarten: erst aufdecken, dann wieder verstecken
     revealed = !revealed;
     sol.style.display = revealed ? "block" : "none";
     return;
   }
 
-  // Prüfungsmodus: einfach anzeigen (kein Zwang zum Toggle, aber ok)
   sol.style.display = (sol.style.display === "block") ? "none" : "block";
 }
 
@@ -388,7 +762,6 @@ function toggleSolution() {
    RESET
 ========================================================= */
 function resetTrainer() {
-  console.log("Trainer wird zurückgesetzt");
   points = 0;
   taskNumber = 0;
   roundActive = false;
@@ -396,8 +769,7 @@ function resetTrainer() {
   lastCat = null;
   lastGenIndex = null;
   revealed = false;
-  currentTask = null;
-  currentAnswer = null;
+  exportedTasks = [];
 
   updateStatus();
   document.getElementById("task").innerHTML = "Starte eine Zufallsrunde.";
@@ -406,120 +778,170 @@ function resetTrainer() {
   document.getElementById("userAnswer").value = "";
   document.getElementById("solution").style.display = "none";
   document.getElementById("solution").innerHTML = "";
+  document.getElementById("aufgabenContainer").innerHTML = "";
 }
 
 /* =========================================================
-   PDF EXPORT (Aufgaben + Lösungen)
+   EXPORT-FUNKTIONEN (BBR/BOA Prüfungslayout)
 ========================================================= */
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function exportiereBBRPruefung() {
+  exportierePruefungMitLevel("BBR");
 }
 
-function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDuplicates = true) {
-  const level = getLevel();
-  const now = new Date();
-  const dateStr = now.toLocaleDateString("de-DE");
+function exportiereBOAPruefung() {
+  exportierePruefungMitLevel("BOA");
+}
 
-  const picked = [];
-  const seen = new Set();
+function exportierePruefungMitLevel(level) {
+  const container = document.getElementById("aufgabenContainer");
 
-  let safety = 0;
-  while (picked.length < tasksCount && safety < tasksCount * 50) {
-    safety++;
-
-    // ✅ Nutzung der zentralen Weighted-Category-Funktion
-    const cat = getWeightedCategory();
-    // ✅ Nutzung der zentralen Pick-Funktion
-    const t = pickTaskFromCategory(cat);
-    if (!t) continue;
-
-    const signature = (cat + "||" + t.task).replace(/\s+/g, " ").trim();
-    if (avoidDuplicates && seen.has(signature)) continue;
-
-    seen.add(signature);
-    picked.push({ cat, t });
-  }
-
-  if (picked.length === 0) {
-    alert("Keine Aufgaben gefunden – prüfe TASKPOOL.");
+  if (!container || container.innerHTML.trim() === "" || exportedTasks.length === 0) {
+    alert("Keine Aufgaben vorhanden. Bitte zuerst eine Zufallsrunde starten.");
     return;
   }
 
-  const title = `Mathe-Übungsblatt (${level.toUpperCase()}) - Note 2-1`;
-  let html = `
-    <div class="print-title">${escapeHtml(title)}</div>
-    <div class="print-meta">
-      Datum: <span class="print-line"></span> &nbsp;&nbsp;
-      Name: <span class="print-line"></span> &nbsp;&nbsp;
-      Klasse: <span class="print-line" style="width:30mm;"></span>
-      <div style="margin-top:3mm; color:#444;">Erstellt am ${escapeHtml(dateStr)} – ${picked.length} Aufgaben (höheres Niveau)</div>
-    </div>
-  `;
+  const clone = container.cloneNode(true);
 
-  picked.forEach((item, i) => {
-    const t = item.t;
+  // Lösungen entfernen
+  clone.querySelectorAll(".loesung").forEach(el => el.remove());
+
+  // Buttons entfernen
+  clone.querySelectorAll("button").forEach(btn => btn.remove());
+
+  const win = window.open("", "_blank");
+  const titel = level === "BBR" 
+    ? "Vergleichende Arbeit – Mathematik (BBR)" 
+    : "Vergleichende Arbeit – Mathematik (BOA)";
+  const farbe = level === "BBR" ? "#1976d2" : "#2e7d32";
+  const punkteProAufgabe = level === "BBR" ? 3 : 2;
+
+  win.document.write(`
+    <html>
+    <head>
+      <title>${level}-Prüfung Mathematik</title>
+      <style>
+        @media print {
+          body { margin: 0; }
+        }
+        body {
+          font-family: Arial, sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+        }
+        h1 {
+          text-align: center;
+          margin-bottom: 5px;
+          color: ${farbe};
+        }
+        .kopf {
+          margin-bottom: 30px;
+          border-bottom: 3px solid ${farbe};
+          padding-bottom: 10px;
+        }
+        .infofeld {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          flex-wrap: wrap;
+        }
+        .linie {
+          border-bottom: 1px solid black;
+          width: 200px;
+          display: inline-block;
+          margin-left: 8px;
+        }
+        .aufgabe {
+          margin-top: 30px;
+          page-break-inside: avoid;
+          border-left: 4px solid ${farbe};
+          padding-left: 15px;
+        }
+        .loesungsraum {
+          height: ${level === "BBR" ? "80px" : "60px"};
+          border-bottom: 1px dashed #aaa;
+          margin-top: 15px;
+          margin-bottom: 15px;
+        }
+        .footer {
+          margin-top: 50px;
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+        }
+        .punkte {
+          float: right;
+          font-weight: bold;
+          color: ${farbe};
+        }
+        .hinweis {
+          background: #fff3e0;
+          padding: 8px;
+          margin-top: 10px;
+          font-size: 12px;
+          border-left: 3px solid #ff9800;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="kopf">
+        <h1>${titel}</h1>
+        <div style="font-size: 18px; text-align: center; font-weight: bold;">
+          ${level} - ${level === "BBR" ? "Berufsbildungsreife (Note 1–2)" : "Berufsorientierungsabschluss (Note 2–3)"}
+        </div>
+        
+        <div class="infofeld">
+          <div>Name: <span class="linie"></span></div>
+          <div>Datum: <span class="linie"></span></div>
+        </div>
+        <div style="margin-top:10px;">
+          Lerngruppe: <span class="linie"></span>
+          <span style="float: right;">Punkte: ___ / ${exportedTasks.length * punkteProAufgabe}</span>
+        </div>
+        ${level === "BOA" ? '<div class="hinweis">Hinweis: Hilfsmittel wie Taschenrechner und Formelsammlung erlaubt.</div>' : ''}
+      </div>
+
+      ${formatiereAufgabenFuerPruefung(clone, level, punkteProAufgabe)}
+
+      <div class="footer">
+        Erstellt am ${new Date().toLocaleDateString('de-DE')} – ${level}-Prüfungssimulation
+      </div>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+  win.focus();
+}
+
+function formatiereAufgabenFuerPruefung(clone, level = "BBR", punkte = 3) {
+  let nummer = 1;
+  let html = "";
+
+  clone.querySelectorAll(".aufgabe").forEach(aufgabe => {
+    const aufgabeText = aufgabe.innerHTML.replace(/<strong>Aufgabe \d+ \(.*?\):<\/strong>/, '').trim();
+    
     html += `
-      <div class="task-block">
-        <div class="task-head">Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
-        <div class="task-text">${t.task}</div>
-        <div class="work-space"></div>
+      <div class="aufgabe">
+        <div style="display: flex; justify-content: space-between;">
+          <strong>${nummer}. Aufgabe</strong>
+          <span class="punkte">( ${punkte} Punkte )</span>
+        </div>
+        <div style="margin-top: 12px;">
+          ${aufgabeText}
+        </div>
+        <div class="loesungsraum"></div>
+        ${level === "BBR" ? '<div class="loesungsraum"></div>' : ''}
       </div>
     `;
+    nummer++;
   });
 
-  if (includeSolutions) {
-    html += `<div class="page-break"></div>`;
-    html += `
-      <div class="print-title">Lösungen – ${escapeHtml(title)}</div>
-      <div class="print-meta">Hinweis: Detaillierter Rechenweg für höheres Niveau.</div>
-    `;
-
-    picked.forEach((item, i) => {
-      const t = item.t;
-      html += `
-        <div class="task-block">
-          <div class="task-head">Lösung zu Aufgabe ${i + 1} (${escapeHtml(item.cat)})</div>
-          <div class="task-text"><b>Antwort:</b> ${escapeHtml(fmt(t.answer))}</div>
-          <div>${t.solution || "—"}</div>
-        </div>
-      `;
-    });
-  }
-
-  document.getElementById("printArea").innerHTML = html;
-  window.print();
+  return html;
 }
 
-/* =========================================================
-   HILFSFUNKTION: Zufallszahl (Fallback falls nicht aus pool_113.js)
-========================================================= */
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-/* =========================================================
-   INIT
-========================================================= */
-document.addEventListener("DOMContentLoaded", function() {
-  console.log("12.2.html geladen, initialisiere...");
-  switchMode();
-  updateStatus();
-  
-  // Prüfe ob pool_113.js korrekt geladen wurde
-  if (typeof getWeightedCategory === 'undefined') {
-    console.error("pool_113.js nicht geladen! Funktionen fehlen.");
-    alert("Fehler: Aufgabenpool konnte nicht geladen werden!");
-  } else {
-    console.log("pool_113.js erfolgreich geladen");
-    console.log("Verfügbare Kategorien:", getAvailableCategories ? getAvailableCategories() : "nicht verfügbar");
-  }
-});
+/* INIT */
+switchMode();
+updateStatus();
 </script>
 
 </body>
