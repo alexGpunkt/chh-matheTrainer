@@ -8,6 +8,9 @@
 
 <title>Mathe Prüfung – BOA / BBR ⭐</title>
 
+<!-- ZENTRALER AUFGABENPOOL -->
+<script src="pool.js"></script>
+
 <style>
 html, body {
   overflow: hidden;
@@ -193,10 +196,6 @@ let examRunning = false;
 /* =======================
    HELPERS
 ======================= */
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function toggleStarOption() {
   // Stern-Option nur bei BBR sichtbar; bei BOA zusätzlich deaktivieren
   const isBBR = levelEl.value === "bbr";
@@ -205,333 +204,11 @@ function toggleStarOption() {
 }
 
 /* =======================
-   AUFGABEN
-======================= */
-function baseTask(level, idx) {
-
-  /* ======================================================
-     100+ Aufgaben durch Generator-Pool
-     BOA = kleinere Zahlen
-     BBR = größere Zahlen + mehr Varianten
-  ====================================================== */
-
-  const POOL = {
-
-    rechnen: [
-
-      // Punkt-vor-Strich
-      () => {
-        let a = level === "boa" ? rand(20, 80) : rand(60, 180);
-        let b = level === "boa" ? rand(2, 7) : rand(3, 12);
-        let c = level === "boa" ? rand(2, 6) : rand(3, 10);
-        return {
-          text: `Berechne: ${a} − ${b} · ${c}`,
-          sol: a - b * c
-        };
-      },
-
-      // Klammern
-      () => {
-        let a = level === "boa" ? rand(5, 20) : rand(10, 40);
-        let b = level === "boa" ? rand(5, 20) : rand(10, 40);
-        let c = level === "boa" ? rand(2, 6) : rand(3, 10);
-        return {
-          text: `Berechne: (${a} + ${b}) · ${c}`,
-          sol: (a + b) * c
-        };
-      },
-
-      // Division glatt
-      () => {
-        let b = level === "boa" ? rand(2, 10) : rand(3, 12);
-        let ans = level === "boa" ? rand(5, 40) : rand(10, 100);
-        let a = ans * b;
-        return {
-          text: `Berechne: ${a} : ${b}`,
-          sol: ans
-        };
-      },
-
-      // Viele Multiplikationen
-      ...Array.from({ length: 20 }, () => () => {
-        let a = level === "boa" ? rand(10, 70) : rand(20, 200);
-        let b = level === "boa" ? rand(2, 12) : rand(3, 25);
-        return {
-          text: `Berechne: ${a} · ${b}`,
-          sol: a * b
-        };
-      }),
-
-      // Add/Sub Variationen
-      ...Array.from({ length: 10 }, () => () => {
-        let a = level === "boa" ? rand(50, 300) : rand(200, 1200);
-        let b = level === "boa" ? rand(10, 180) : rand(50, 900);
-        let op = Math.random() < 0.5 ? "+" : "−";
-        return {
-          text: `Berechne: ${a} ${op} ${b}`,
-          sol: op === "+" ? a + b : a - b
-        };
-      })
-    ],
-
-
-    einheiten: [
-
-      // m → cm
-      () => {
-        let m = level === "boa" ? rand(1, 12) : rand(2, 35);
-        return {
-          text: `Rechne um: ${m} m = ? cm`,
-          sol: m * 100
-        };
-      },
-
-      // cm → m
-      () => {
-        let cm = level === "boa" ? rand(100, 1200) : rand(250, 5000);
-        return {
-          text: `Rechne um: ${cm} cm = ? m`,
-          sol: cm / 100
-        };
-      },
-
-      // kg → g
-      () => {
-        let kg = level === "boa" ? rand(1, 8) : rand(2, 20);
-        return {
-          text: `Rechne um: ${kg} kg = ? g`,
-          sol: kg * 1000
-        };
-      },
-
-      // Minuten → Stunden
-      () => {
-        let mins = level === "boa"
-          ? [60, 90, 120, 150, 180][rand(0, 4)]
-          : [75, 105, 135, 165, 195, 225, 255, 285][rand(0, 7)];
-        return {
-          text: `Rechne um: ${mins} min = ? h`,
-          sol: mins / 60
-        };
-      },
-
-      ...Array.from({ length: 15 }, () => () => {
-        let cm = level === "boa" ? rand(200, 2000) : rand(500, 9000);
-        return {
-          text: `Rechne um: ${cm} cm = ? m`,
-          sol: cm / 100
-        };
-      })
-    ],
-
-
-    geometrie: [
-
-      // Quadrat Umfang
-      () => {
-        let a = level === "boa" ? rand(2, 12) : rand(4, 25);
-        return {
-          text: `Quadrat: Seite ${a} cm → Umfang?`,
-          sol: 4 * a
-        };
-      },
-
-      // Rechteck Fläche
-      () => {
-        let l = level === "boa" ? rand(3, 18) : rand(6, 35);
-        let b = level === "boa" ? rand(2, 14) : rand(4, 28);
-        return {
-          text: `Rechteck: ${l} cm × ${b} cm → Fläche?`,
-          sol: l * b
-        };
-      },
-
-      // Dreieck Fläche
-      () => {
-        let g = level === "boa" ? rand(4, 20) : rand(8, 40);
-        let h = level === "boa" ? rand(3, 15) : rand(6, 30);
-        return {
-          text: `Dreieck: g=${g} cm, h=${h} cm → Fläche?`,
-          sol: g * h / 2
-        };
-      },
-
-      // Kreis Durchmesser
-      () => {
-        let r = level === "boa" ? rand(2, 10) : rand(3, 20);
-        return {
-          text: `Kreis: Radius ${r} cm → Durchmesser?`,
-          sol: 2 * r
-        };
-      },
-
-      ...Array.from({ length: 15 }, () => () => {
-        let a = level === "boa" ? rand(2, 15) : rand(5, 30);
-        return {
-          text: `Quadrat: Seite ${a} cm → Umfang?`,
-          sol: 4 * a
-        };
-      })
-    ],
-
-
-    sach: [
-
-      // Einkauf
-      () => {
-        let price = level === "boa" ? rand(1, 5) : rand(2, 9);
-        let amount = level === "boa" ? rand(2, 10) : rand(4, 18);
-        return {
-          text: `${amount} Artikel kosten je ${price} €. Gesamtpreis?`,
-          sol: price * amount
-        };
-      },
-
-      // Geschwindigkeit
-      () => {
-        let km = level === "boa" ? rand(30, 200) : rand(80, 420);
-        let h = level === "boa" ? rand(1, 5) : rand(2, 7);
-        return {
-          text: `Auto fährt ${km} km in ${h} h. Geschwindigkeit?`,
-          sol: km / h
-        };
-      },
-
-      ...Array.from({ length: 15 }, () => () => {
-        let pages = level === "boa" ? rand(30, 120) : rand(80, 300);
-        let days = level === "boa" ? rand(2, 8) : rand(3, 14);
-        return {
-          text: `${pages} Seiten in ${days} Tagen. Pro Tag?`,
-          sol: pages / days
-        };
-      })
-    ],
-
-
-    prozent: [
-
-      // Prozentwert
-      () => {
-        let g = level === "boa" ? rand(80, 250) : rand(120, 600);
-        let p = level === "boa"
-          ? [10, 20, 25][rand(0, 2)]
-          : [10, 15, 20, 25, 30, 50][rand(0, 5)];
-        return {
-          text: `Berechne ${p}% von ${g}.`,
-          sol: g * p / 100
-        };
-      },
-
-      // Rabatt
-      () => {
-        let price = level === "boa" ? rand(20, 180) : rand(50, 450);
-        let p = level === "boa" ? 20 : [10, 15, 20, 25, 30][rand(0, 4)];
-        return {
-          text: `${p}% Rabatt auf ${price} €. Neuer Preis?`,
-          sol: price * (1 - p / 100)
-        };
-      },
-
-      // Grundwert
-      () => {
-        let w = level === "boa" ? rand(20, 120) : rand(40, 250);
-        let p = level === "boa" ? [10, 20, 25, 50][rand(0, 3)] : rand(5, 60);
-        return {
-          text: `${w} ist ${p}%. Grundwert?`,
-          sol: w * 100 / p
-        };
-      },
-
-      ...Array.from({ length: 15 }, () => () => {
-        let g = level === "boa" ? rand(100, 300) : rand(150, 700);
-        let diff = level === "boa" ? rand(10, 80) : rand(20, 200);
-        let newVal = g + diff;
-        return {
-          text: `Preis steigt von ${g} auf ${newVal}. Prozent?`,
-          sol: (diff / g) * 100
-        };
-      })
-    ]
-  };
-
-  /* ======================================================
-     Kategorie auswählen wie bisher (gleichmäßige Rotation)
-  ====================================================== */
-  const cats = ["rechnen", "einheiten", "geometrie", "sach", "prozent"];
-  const cat = cats[idx % 5];
-
-  /* ======================================================
-     Zufällige Aufgabe aus dem Pool ziehen
-  ====================================================== */
-  const genList = POOL[cat];
-  const chosen = genList[rand(0, genList.length - 1)]();
-
-  return { text: chosen.text, sol: chosen.sol, star: false };
-}
-
-function starTask() {
-  // Abwechslungsreichere Stern-Aufgaben (BBR)
-  const type = rand(1, 5);
-
-  if (type === 1) {
-    const g = rand(200, 400);
-    return {
-      text: `⭐ Ein Artikel kostet ${g} €.<br>20 % Rabatt, danach 10 % Rabatt.<br>Endpreis?`,
-      sol: g * 0.8 * 0.9,
-      star: true
-    };
-  }
-
-  if (type === 2) {
-    const g = rand(6, 12);
-    const h = rand(4, 8);
-    return {
-      text: `⭐ Dreieck mit Grundseite ${g} cm und Höhe ${h} cm.<br>Flächeninhalt?`,
-      sol: g * h / 2,
-      star: true
-    };
-  }
-
-  if (type === 3) {
-    const km = rand(30, 50);
-    const min = rand(20, 40);
-    return {
-      text: `⭐ Ein Auto fährt ${km} km in ${min} Minuten.<br>Wie viele Minuten pro km?`,
-      sol: min / km,
-      star: true
-    };
-  }
-  
-  if (type === 4) {
-    const a = rand(10, 30);
-    const b = rand(5, 15);
-    const c = rand(2, 8);
-    return {
-      text: `⭐ Berechne: (${a} + ${b}) × ${c} − ${a}`,
-      sol: (a + b) * c - a,
-      star: true
-    };
-  }
-  
-  // type === 5
-  const price = rand(50, 150);
-  const p = rand(15, 30);
-  return {
-    text: `⭐ Artikel: ${price} €, ${p}% Rabatt.<br>Neuer Preis?`,
-    sol: price * (1 - p/100),
-    star: true
-  };
-}
-
-/* =======================
-   PRÜFUNG
+   PRÜFUNG – NUTZT ZENTRALE pool.js
 ======================= */
 function startExam() {
   // ❌ ENTFERNT: Fullscreen-Aufruf, der im iFrame Probleme macht
   // Unterricht-sicher: KEIN Fullscreen mehr, da iFrame-Kompatibilität
-  // if (!document.fullscreenElement) {
-  //   document.documentElement.requestFullscreen().catch(() => {});
-  // }
 
   tasks = [];
   current = 0;
@@ -550,9 +227,20 @@ function startExam() {
 
   const useStars = (lvl === "bbr") && starsEl.checked; // BOA niemals Stern-Aufgaben
 
+  // AUFGABEN ÜBER ZENTRALE getTask() GENERIEREN
   for (let i = 0; i < TASKS_TOTAL; i++) {
-    if (useStars && i >= 6) tasks.push(starTask());
-    else tasks.push(baseTask(lvl, i));
+    const task = getTask({
+      mode: "exam",
+      level: lvl,
+      stars: useStars,
+      index: i
+    });
+    
+    tasks.push({
+      text: task.text,
+      sol: task.sol,
+      star: task.star || false
+    });
   }
   
   // ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
@@ -636,13 +324,9 @@ function finishExam() {
   starsEl.disabled = false;
 
   // ❌ ENTFERNT: exitFullscreen, da kein Fullscreen mehr
-  // if (document.fullscreenElement) {
-  //   document.exitFullscreen().catch(() => {});
-  // }
   
   toggleStarOption();
 }
-
 
 /* =======================
    TIMER
