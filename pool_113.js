@@ -1,17 +1,8 @@
 /* =========================================================
    pool_113.js  — BBR Niveau 11.3 (Note 2–1)
    BEREINIGT auf VA9 2014–2019
-   Nur prüfungsrelevante Formate:
-   - Prozent / Rabatt / Zins
-   - Körperberechnung (Volumen/Oberfläche)
-   - Pythagoras (Sachkontext)
-   - Zuordnungen (proportional/antiproportional)
-   - Statistik (Mittelwert, gewichteter Durchschnitt)
-   - Wahrscheinlichkeit (einfach/mehrstufig)
-   - Lineare Gleichungen (Altersrätsel, Tarife)
-   - Flächenberechnung (Rechteck, Quadrat, Dreieck)
-   - Zinseszins vs. linear (Vergleich)
-========================================================= */
+   Ergänzt um weitere Aufgaben pro Kategorie
+   ========================================================= */
 
 /* =========================================================
    1) Operator-Steuerung (BBR-Stil)
@@ -129,6 +120,30 @@ const pool113 = {
       question: `Berechne den Zahlungsbetrag.`,
       solution: `1.164 €.`,
       steps: `1.200 € · 0,97 = 1.164 €.`
+    },
+    {
+      id: "P113_PRO_06",
+      thema: "Prozent – Rückwärts",
+      kategorie: "prozent_modellierung",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Nach einer Preiserhöhung um 15 % kostet ein Paar Schuhe nun 138 €.`,
+      question: `Berechne den ursprünglichen Preis der Schuhe vor der Erhöhung.`,
+      solution: `120 €.`,
+      steps: `1) 115 % = 138 €; 2) 138 / 1,15 = 120 €.`
+    },
+    {
+      id: "P113_PRO_07",
+      thema: "Zinsrechnung – Zeit",
+      kategorie: "prozent_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Kapital von 5.000 € wird zu einem Zinssatz von 2 % p.a. angelegt.`,
+      question: `Berechne die Zinsen, die nach genau 9 Monaten gutgeschrieben werden.`,
+      solution: `75 €.`,
+      steps: `1) Jahreszinsen: 5.000 · 0,02 = 100 €; 2) 100 · (9/12) = 75 €.`
     }
   ],
 
@@ -169,6 +184,30 @@ const pool113 = {
       question: `Ermittle, wie viele Stunden 4 Bagger bei gleicher Arbeitsleistung benötigen würden.`,
       solution: `9 Stunden.`,
       steps: `1) Gesamtleistung: 3 · 12 = 36 Baggerstunden; 2) 36 / 4 = 9 Stunden.`
+    },
+    {
+      id: "P113_ZUO_04",
+      thema: "Antiproportionale Zuordnung",
+      kategorie: "zuordnung_transfer",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Futtervorrat reicht für 20 Pferde genau 30 Tage lang.`,
+      question: `Berechne, wie lange der Vorrat reicht, wenn 5 Pferde verkauft werden.`,
+      solution: `40 Tage.`,
+      steps: `1) 20 Pferde · 30 Tage = 600 Pferdetage; 2) 20 - 5 = 15 Pferde; 3) 600 / 15 = 40 Tage.`
+    },
+    {
+      id: "P113_ZUO_05",
+      thema: "Proportionale Zuordnung",
+      kategorie: "zuordnung_transfer",
+      typ: "transfer",
+      operatorGroup: "ERMITTLE",
+      punkte: 3,
+      prompt: `In einer Fabrik stellen 5 Maschinen in einer Stunde 250 Bauteile her.`,
+      question: `Ermittle, wie viele Bauteile 8 Maschinen in der gleichen Zeit herstellen.`,
+      solution: `400 Bauteile.`,
+      steps: `1) 250 / 5 = 50 Bauteile pro Maschine; 2) 50 · 8 = 400 Bauteile.`
     }
   ],
 
@@ -209,6 +248,30 @@ const pool113 = {
       question: `Berechne die Gesamtlänge der benötigten Seile (ohne Verschnitt).`,
       solution: `100 m.`,
       steps: `1) s² = 24² + 7² = 576 + 49 = 625; 2) s = √625 = 25 m pro Seil; 3) 25 · 4 = 100 m.`
+    },
+    {
+      id: "P113_PYT_04",
+      thema: "Pythagoras – Leiter",
+      kategorie: "pythagoras_sachkontext",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Eine 5 m lange Leiter wird an eine Hauswand gelehnt. Der Fuß der Leiter steht 1,50 m von der Wand entfernt.`,
+      question: `Berechne, in welcher Höhe die Leiter die Hauswand berührt (Runde auf zwei Dezimalstellen).`,
+      solution: `ca. 4,77 m.`,
+      steps: `1) h² = 5² - 1,5² = 25 - 2,25 = 22,75; 2) h = √22,75 ≈ 4,77 m.`
+    },
+    {
+      id: "P113_PYT_05",
+      thema: "Pythagoras – TV Diagonale",
+      kategorie: "pythagoras_sachkontext",
+      typ: "transfer",
+      operatorGroup: "ERMITTLE",
+      punkte: 3,
+      prompt: `Ein Bildschirm ist 48 cm breit und 27 cm hoch.`,
+      question: `Ermittle die Bildschirmdiagonale in cm.`,
+      solution: `ca. 55 cm.`,
+      steps: `1) d² = 48² + 27² = 2304 + 729 = 3033; 2) d = √3033 ≈ 55,07 cm.`
     }
   ],
 
@@ -261,6 +324,30 @@ const pool113 = {
       question: `Berechne das Gesamtvolumen.`,
       solution: `68 cm³.`,
       steps: `1) V_Quader = 5 · 4 · 3 = 60 cm³; 2) V_Würfel = 2 · 2 · 2 = 8 cm³; 3) 60 + 8 = 68 cm³.`
+    },
+    {
+      id: "P113_KOE_05",
+      thema: "Zylinder – Oberfläche",
+      kategorie: "koerper_mehrschritt",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Eine Konservendose hat einen Durchmesser von 10 cm und eine Höhe von 12 cm. (π = 3,14)`,
+      question: `Berechne die Mantelfläche der Dose (Fläche für das Etikett).`,
+      solution: `376,8 cm².`,
+      steps: `1) r = 5 cm; 2) M = 2 · π · r · h = 2 · 3,14 · 5 · 12 = 376,8 cm².`
+    },
+    {
+      id: "P113_KOE_06",
+      thema: "Würfel – Kantenlänge",
+      kategorie: "koerper_mehrschritt",
+      typ: "transfer",
+      operatorGroup: "ERMITTLE",
+      punkte: 3,
+      prompt: `Ein Würfel hat ein Volumen von 216 cm³.`,
+      question: `Ermittle die Kantenlänge a und die Oberfläche des Würfels.`,
+      solution: `a = 6 cm; O = 216 cm².`,
+      steps: `1) a = ∛216 = 6 cm; 2) O = 6 · a² = 6 · 36 = 216 cm².`
     }
   ],
 
@@ -301,6 +388,30 @@ const pool113 = {
       question: `Berechne die Gesamtnote.`,
       solution: `2,9.`,
       steps: `1) 3,5 · 0,6 = 2,1; 2) 2,0 · 0,4 = 0,8; 3) 2,1 + 0,8 = 2,9.`
+    },
+    {
+      id: "P113_STA_04",
+      thema: "Mittelwert – Fehlender Wert",
+      kategorie: "statistik_begruendung",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Der Durchschnitt von fünf Zahlen ist genau 10. Vier der Zahlen sind bekannt: 8, 12, 7 und 11.`,
+      question: `Berechne die fünfte Zahl.`,
+      solution: `12.`,
+      steps: `1) Gesamtsumme muss sein: 5 · 10 = 50; 2) Vorhandene Summe: 8+12+7+11 = 38; 3) 50 - 38 = 12.`
+    },
+    {
+      id: "P113_STA_05",
+      thema: "Spannweite und Median",
+      kategorie: "statistik_begruendung",
+      typ: "modellieren",
+      operatorGroup: "ERMITTLE",
+      punkte: 3,
+      prompt: `Die Körpergrößen einer Kleingruppe sind (in cm): 162, 158, 175, 168, 162.`,
+      question: `Ermittle den Median und die Spannweite dieser Daten.`,
+      solution: `Median: 162 cm; Spannweite: 17 cm.`,
+      steps: `1) Sortieren: 158, 162, 162, 168, 175; 2) Median (Mitte) = 162; 3) Spannweite = 175 - 158 = 17.`
     }
   ],
 
@@ -329,6 +440,30 @@ const pool113 = {
       question: `Ab wie vielen Minuten ist Tarif B günstiger? Stelle eine Gleichung auf.`,
       solution: `Ab 101 Minuten.`,
       steps: `1) 5 + 0,1x = 10 + 0,05x; 2) 0,05x = 5; 3) x = 100; 4) Ab 101 Minuten günstiger.`
+    },
+    {
+      id: "P113_GLG_03",
+      thema: "Zahlenrätsel",
+      kategorie: "gleichungen_modellierung",
+      typ: "modellieren",
+      operatorGroup: "STELLE_GLEICHUNG",
+      punkte: 3,
+      prompt: `Das Dreifache einer Zahl vermehrt um 15 ergibt das Fünffache der Zahl vermindert um 7.`,
+      question: `Bestimme die Zahl mithilfe einer Gleichung.`,
+      solution: `11.`,
+      steps: `1) 3x + 15 = 5x - 7; 2) 22 = 2x; 3) x = 11.`
+    },
+    {
+      id: "P113_GLG_04",
+      thema: "Gleichungssystem einfach",
+      kategorie: "gleichungen_modellierung",
+      typ: "transfer",
+      operatorGroup: "STELLE_GLEICHUNG",
+      punkte: 4,
+      prompt: `Zwei Zahlen haben die Summe 45. Die eine Zahl ist doppelt so groß wie die andere.`,
+      question: `Bestimme die beiden Zahlen.`,
+      solution: `15 und 30.`,
+      steps: `1) x + 2x = 45; 2) 3x = 45; 3) x = 15; 4) 2x = 30.`
     }
   ],
 
@@ -357,6 +492,30 @@ const pool113 = {
       question: `Berechne die Fläche.`,
       solution: `48 cm².`,
       steps: `A = (12 · 8) : 2 = 48 cm².`
+    },
+    {
+      id: "P113_FL_03",
+      thema: "Zusammengesetzte Fläche (L-Form)",
+      kategorie: "flaeche2d_modellierung",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein L-förmiger Raum besteht aus einem Rechteck (6 m x 4 m) und einem angrenzenden Quadrat (Seite 3 m).`,
+      question: `Berechne die Gesamtfläche des Raumes.`,
+      solution: `33 m².`,
+      steps: `1) A1 = 6 · 4 = 24 m²; 2) A2 = 3 · 3 = 9 m²; 3) Gesamt = 24 + 9 = 33 m².`
+    },
+    {
+      id: "P113_FL_04",
+      thema: "Kreisfläche",
+      kategorie: "flaeche2d_modellierung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein kreisförmiges Blumenbeet hat einen Radius von 3 m. (π = 3,14)`,
+      question: `Berechne die Fläche des Beets.`,
+      solution: `28,26 m².`,
+      steps: `A = 3,14 · 3² = 3,14 · 9 = 28,26 m².`
     }
   ],
 
@@ -385,6 +544,30 @@ const pool113 = {
       question: `Berechne die Wahrscheinlichkeit, dass mindestens einmal Rot erscheint.`,
       solution: `43,75 %.`,
       steps: `1) P(kein Rot) = 0,75 · 0,75 = 0,5625; 2) P(mind. 1x Rot) = 1 - 0,5625 = 0,4375.`
+    },
+    {
+      id: "P113_WSK_03",
+      thema: "Ziehen ohne Zurücklegen",
+      kategorie: "wahrscheinlichkeit_mehrstufig",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `In einer Tüte sind 4 Gummibärchen (2 gelbe, 2 rote). Du nimmst nacheinander zwei Stück heraus, ohne sie zurückzulegen.`,
+      question: `Berechne die Wahrscheinlichkeit, dass beide Gummibärchen rot sind.`,
+      solution: `ca. 16,7 % (1/6).`,
+      steps: `1) P(1. rot) = 2/4 = 1/2; 2) P(2. rot | 1. rot) = 1/3; 3) 1/2 · 1/3 = 1/6 ≈ 0,1667.`
+    },
+    {
+      id: "P113_WSK_04",
+      thema: "Würfel",
+      kategorie: "wahrscheinlichkeit_mehrstufig",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Standardwürfel wird zweimal geworfen.`,
+      question: `Berechne die Wahrscheinlichkeit, zweimal hintereinander eine "6" zu würfeln.`,
+      solution: `ca. 2,8 % (1/36).`,
+      steps: `1) P(6) = 1/6; 2) P(6, 6) = 1/6 · 1/6 = 1/36 ≈ 0,0278.`
     }
   ],
 
@@ -401,6 +584,30 @@ const pool113 = {
       question: `Begründe rechnerisch, ab welchem Jahr Sparplan B lukrativer ist.`,
       solution: `Ab dem 11. Jahr.`,
       steps: `1) A(10) = 14.000, B(10) = 14.106; 2) Vergleich der Werte zeigt den Vorteil von B ab dem 11. Jahr.`
+    },
+    {
+      id: "P113_WACH_02",
+      thema: "Wertverlust linear vs. prozentual",
+      kategorie: "wachstum_vergleich",
+      typ: "transfer",
+      operatorGroup: "UEBERPRUEFE",
+      punkte: 5,
+      prompt: `Ein E-Bike kostet 3.000 €. Modell A verliert jährlich 500 € an Wert (linear). Modell B verliert jährlich 15 % an Wert (prozentual).`,
+      question: `Überprüfe rechnerisch, welches Modell nach 3 Jahren einen höheren Restwert hat.`,
+      solution: `Modell B (Restwert ca. 1.842 € vs. 1.500 €).`,
+      steps: `1) A: 3000 - 3·500 = 1500 €; 2) B: 3000 · 0,85³ ≈ 1842,38 €; 3) B ist höher.`
+    },
+    {
+      id: "P113_WACH_03",
+      thema: "Zinseszins Berechnung",
+      kategorie: "wachstum_vergleich",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein Betrag von 2.000 € wird für 4 Jahre zu einem Zinssatz von 3 % (mit Zinseszins) angelegt.`,
+      question: `Berechne das Endkapital nach 4 Jahren.`,
+      solution: `2251,02 €.`,
+      steps: `1) K_n = 2000 · 1,03⁴; 2) K_n ≈ 2251,017...`
     }
   ]
 };
