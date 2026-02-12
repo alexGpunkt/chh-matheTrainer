@@ -16,6 +16,26 @@ function round2(x) {
 }
 
 /* =========================================================
+   OPERATOR-GRUPPEN FÜR BASISPOOL
+========================================================= */
+const OPERATOR_GROUPS_BASIS = {
+  BERECHNE: ["berechne", "bestimme", "ermittle", "gib an"],
+  RECHNE_UM: ["rechne um", "wandle um"],
+  GIB_AN: ["gib an"],
+  ERMITTLE: ["ermittle"]
+};
+
+function pickFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getOperatorPhraseBasis(group) {
+  const list = OPERATOR_GROUPS_BASIS[group] || ["berechne"];
+  const op = pickFrom(list);
+  return op.charAt(0).toUpperCase() + op.slice(1);
+}
+
+/* =========================================================
    LÖSUNGSSCHRITTE GENERIEREN
 ========================================================= */
 function generateSteps(taskType, params, solution) {
@@ -243,6 +263,7 @@ const TASKS = {
   // ---------------------- RECHNEN ----------------------
   rechnen: (level) => {
     const type = rand(1, 5);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
     // Multiplikation
     if (type === 1) {
@@ -250,7 +271,7 @@ const TASKS = {
       let b = level === "boa" ? rand(2, 10) : rand(3, 25);
       let sol = a * b;
       return {
-        text: `Berechne: ${a} · ${b}`,
+        text: `${opBerechne}: ${a} · ${b}`,
         sol: sol,
         steps: generateSteps("rechnen_multiplikation", {a, b}, sol),
         stepType: "rechnen_multiplikation",
@@ -264,7 +285,7 @@ const TASKS = {
       let ans = level === "boa" ? rand(5, 40) : rand(10, 100);
       let a = ans * b;
       return {
-        text: `Berechne: ${a} : ${b}`,
+        text: `${opBerechne}: ${a} : ${b}`,
         sol: ans,
         steps: generateSteps("rechnen_division", {a, b, ans}, ans),
         stepType: "rechnen_division",
@@ -278,7 +299,7 @@ const TASKS = {
       let b = level === "boa" ? rand(10, 180) : rand(50, 900);
       let sol = a + b;
       return {
-        text: `Berechne: ${a} + ${b}`,
+        text: `${opBerechne}: ${a} + ${b}`,
         sol: sol,
         steps: generateSteps("rechnen_addition", {a, b}, sol),
         stepType: "rechnen_addition",
@@ -293,7 +314,7 @@ const TASKS = {
       if (b > a) [a, b] = [b, a];
       let sol = a - b;
       return {
-        text: `Berechne: ${a} − ${b}`,
+        text: `${opBerechne}: ${a} − ${b}`,
         sol: sol,
         steps: generateSteps("rechnen_subtraktion", {a, b}, sol),
         stepType: "rechnen_subtraktion",
@@ -307,7 +328,7 @@ const TASKS = {
     let c = level === "boa" ? rand(2, 6) : rand(3, 10);
     let sol = a - b * c;
     return {
-      text: `Berechne: ${a} − ${b} · ${c}`,
+      text: `${opBerechne}: ${a} − ${b} · ${c}`,
       sol: sol,
       steps: generateSteps("rechnen_punktvorstrich", {a, b, c}, sol),
       stepType: "rechnen_punktvorstrich",
@@ -318,13 +339,14 @@ const TASKS = {
   // ---------------------- EINHEITEN ----------------------
   einheiten: (level) => {
     const type = rand(1, 5);
+    const opRechneUm = getOperatorPhraseBasis("RECHNE_UM");
     
     // m → cm
     if (type === 1) {
       let m = level === "boa" ? rand(1, 12) : rand(2, 35);
       let sol = m * 100;
       return {
-        text: `Rechne um: ${m} m = ? cm`,
+        text: `${opRechneUm}: ${m} m in cm`,
         sol: sol,
         steps: generateSteps("einheiten_m_cm", {m}, sol),
         stepType: "einheiten_m_cm",
@@ -337,7 +359,7 @@ const TASKS = {
       let cm = level === "boa" ? rand(100, 1200) : rand(250, 5000);
       let sol = round2(cm / 100);
       return {
-        text: `Rechne um: ${cm} cm = ? m`,
+        text: `${opRechneUm}: ${cm} cm in m`,
         sol: sol,
         steps: generateSteps("einheiten_cm_m", {cm}, sol),
         stepType: "einheiten_cm_m",
@@ -350,7 +372,7 @@ const TASKS = {
       let kg = level === "boa" ? rand(1, 8) : rand(2, 20);
       let sol = kg * 1000;
       return {
-        text: `Rechne um: ${kg} kg = ? g`,
+        text: `${opRechneUm}: ${kg} kg in g`,
         sol: sol,
         steps: generateSteps("einheiten_kg_g", {kg}, sol),
         stepType: "einheiten_kg_g",
@@ -363,7 +385,7 @@ const TASKS = {
       let g = level === "boa" ? rand(500, 3000) : rand(1000, 8000);
       let sol = round2(g / 1000);
       return {
-        text: `Rechne um: ${g} g = ? kg`,
+        text: `${opRechneUm}: ${g} g in kg`,
         sol: sol,
         steps: generateSteps("einheiten_g_kg", {g}, sol),
         stepType: "einheiten_g_kg",
@@ -377,7 +399,7 @@ const TASKS = {
       : [75, 105, 135, 165, 195, 225, 255, 285][rand(0, 7)];
     let sol = round2(mins / 60);
     return {
-      text: `Rechne um: ${mins} min = ? h`,
+      text: `${opRechneUm}: ${mins} min in h`,
       sol: sol,
       steps: generateSteps("einheiten_min_h", {mins}, sol),
       stepType: "einheiten_min_h",
@@ -388,13 +410,15 @@ const TASKS = {
   // ---------------------- GEOMETRIE ----------------------
   geometrie: (level) => {
     const type = rand(1, 6);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
+    const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     
     // Quadrat Umfang
     if (type === 1) {
       let a = level === "boa" ? rand(2, 12) : rand(4, 25);
       let sol = 4 * a;
       return {
-        text: `Quadrat: Seite ${a} cm → Umfang?`,
+        text: `${opBerechne}: Umfang eines Quadrats mit a = ${a} cm`,
         sol: sol,
         steps: generateSteps("geometrie_quadrat_umfang", {a}, sol),
         stepType: "geometrie_quadrat_umfang",
@@ -407,7 +431,7 @@ const TASKS = {
       let a = level === "boa" ? rand(2, 12) : rand(4, 20);
       let sol = a * a;
       return {
-        text: `Quadrat: Seite ${a} cm → Fläche?`,
+        text: `${opErmittle}: Fläche eines Quadrats mit a = ${a} cm`,
         sol: sol,
         steps: generateSteps("geometrie_quadrat_flaeche", {a}, sol),
         stepType: "geometrie_quadrat_flaeche",
@@ -421,7 +445,7 @@ const TASKS = {
       let b = level === "boa" ? rand(2, 14) : rand(4, 28);
       let sol = 2 * (l + b);
       return {
-        text: `Rechteck: ${l} cm × ${b} cm → Umfang?`,
+        text: `${opBerechne}: Umfang eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
         sol: sol,
         steps: generateSteps("geometrie_rechteck_umfang", {l, b}, sol),
         stepType: "geometrie_rechteck_umfang",
@@ -435,7 +459,7 @@ const TASKS = {
       let b = level === "boa" ? rand(2, 14) : rand(4, 28);
       let sol = l * b;
       return {
-        text: `Rechteck: ${l} cm × ${b} cm → Fläche?`,
+        text: `${opErmittle}: Fläche eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
         sol: sol,
         steps: generateSteps("geometrie_rechteck_flaeche", {l, b}, sol),
         stepType: "geometrie_rechteck_flaeche",
@@ -449,7 +473,7 @@ const TASKS = {
       let h = level === "boa" ? rand(3, 15) : rand(6, 30);
       let sol = round2((g * h) / 2);
       return {
-        text: `Dreieck: Grundseite ${g} cm, Höhe ${h} cm → Fläche?`,
+        text: `${opBerechne}: Fläche eines Dreiecks mit g = ${g} cm, h = ${h} cm`,
         sol: sol,
         steps: generateSteps("geometrie_dreieck_flaeche", {g, h}, sol),
         stepType: "geometrie_dreieck_flaeche",
@@ -461,7 +485,7 @@ const TASKS = {
     let r = level === "boa" ? rand(2, 10) : rand(3, 20);
     let sol = 2 * r;
     return {
-      text: `Kreis: Radius ${r} cm → Durchmesser?`,
+      text: `${opBerechne}: Durchmesser eines Kreises mit r = ${r} cm`,
       sol: sol,
       steps: generateSteps("geometrie_kreis_durchmesser", {r}, sol),
       stepType: "geometrie_kreis_durchmesser",
@@ -472,6 +496,9 @@ const TASKS = {
   // ---------------------- SACHAUFGABEN ----------------------
   sach: (level) => {
     const type = rand(1, 5);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
+    const opErmittle = getOperatorPhraseBasis("ERMITTLE");
+    const opGibAn = getOperatorPhraseBasis("GIB_AN");
     
     // Einkauf
     if (type === 1) {
@@ -479,7 +506,7 @@ const TASKS = {
       let amount = level === "boa" ? rand(2, 10) : rand(4, 18);
       let sol = price * amount;
       return {
-        text: `${amount} Artikel kosten je ${price} €. Gesamtpreis?`,
+        text: `${opBerechne}: Gesamtpreis für ${amount} Artikel zu je ${price} €`,
         sol: sol,
         steps: generateSteps("sach_einkauf", {price, amount}, sol),
         stepType: "sach_einkauf",
@@ -493,7 +520,7 @@ const TASKS = {
       let h = level === "boa" ? rand(1, 5) : rand(2, 7);
       let sol = round2(km / h);
       return {
-        text: `Ein Auto fährt ${km} km in ${h} h. Geschwindigkeit?`,
+        text: `${opErmittle}: Geschwindigkeit (${km} km in ${h} h)`,
         sol: sol,
         steps: generateSteps("sach_geschwindigkeit", {km, h}, sol),
         stepType: "sach_geschwindigkeit",
@@ -507,7 +534,7 @@ const TASKS = {
       let days = level === "boa" ? rand(2, 8) : rand(3, 14);
       let sol = round2(pages / days);
       return {
-        text: `${pages} Seiten in ${days} Tagen. Wie viele Seiten pro Tag?`,
+        text: `${opGibAn}: Seiten pro Tag (${pages} Seiten in ${days} Tagen)`,
         sol: sol,
         steps: generateSteps("sach_seiten_pro_tag", {pages, days}, sol),
         stepType: "sach_seiten_pro_tag",
@@ -522,7 +549,7 @@ const TASKS = {
       let factor = level === "boa" ? 2 : rand(2, 4);
       let sol = min * factor;
       return {
-        text: `Ein Bus fährt ${km} km in ${min} Minuten. Wie lange für ${km * factor} km?`,
+        text: `${opBerechne}: Zeit für ${km * factor} km (${km} km in ${min} min)`,
         sol: sol,
         steps: generateSteps("sach_zeit", {km, min, factor}, sol),
         stepType: "sach_zeit",
@@ -535,7 +562,7 @@ const TASKS = {
     let paid = level === "boa" ? rand(10, 50) : rand(20, 120);
     let sol = round2(paid / price);
     return {
-      text: `Ein Ticket kostet ${price} €. Du bezahlst ${paid} €. Wie viele Tickets?`,
+      text: `${opBerechne}: Anzahl Tickets (${paid} €, Preis pro Ticket ${price} €)`,
       sol: sol,
       steps: generateSteps("sach_tickets", {price, paid}, sol),
       stepType: "sach_tickets",
@@ -546,6 +573,8 @@ const TASKS = {
   // ---------------------- PROZENTRECHNUNG ----------------------
   prozent: (level) => {
     const type = rand(1, 5);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
+    const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     
     // Prozentwert
     if (type === 1) {
@@ -555,7 +584,7 @@ const TASKS = {
         : rand(10, 40);
       let sol = round2(g * p / 100);
       return {
-        text: `Berechne ${p}% von ${g}.`,
+        text: `${opBerechne}: ${p}% von ${g}`,
         sol: sol,
         steps: generateSteps("prozent_prozentwert", {g, p}, sol),
         stepType: "prozent_prozentwert",
@@ -571,7 +600,7 @@ const TASKS = {
         : [10, 15, 20, 25, 30][rand(0, 4)];
       let sol = round2(price * (100 - p) / 100);
       return {
-        text: `${p}% Rabatt auf ${price} €. Neuer Preis?`,
+        text: `${opBerechne}: Preis nach ${p}% Rabatt (${price} €)`,
         sol: sol,
         steps: generateSteps("prozent_rabatt", {price, p}, sol),
         stepType: "prozent_rabatt",
@@ -587,7 +616,7 @@ const TASKS = {
         : rand(5, 60);
       let sol = round2(w * 100 / p);
       return {
-        text: `${w} ist ${p}%. Wie groß ist der Grundwert?`,
+        text: `${opErmittle}: Grundwert (${w} sind ${p}%)`,
         sol: sol,
         steps: generateSteps("prozent_grundwert", {w, p}, sol),
         stepType: "prozent_grundwert",
@@ -602,7 +631,7 @@ const TASKS = {
       let newVal = g + diff;
       let sol = round2((diff / g) * 100);
       return {
-        text: `Der Preis steigt von ${g} € auf ${newVal} €. Wie viel Prozent?`,
+        text: `${opErmittle}: Prozentuale Steigerung (${g} € auf ${newVal} €)`,
         sol: sol,
         steps: generateSteps("prozent_steigerung", {g, diff, newVal}, sol),
         stepType: "prozent_steigerung",
@@ -616,7 +645,7 @@ const TASKS = {
     if (w > g) [w, g] = [g, w];
     let sol = round2((w / g) * 100);
     return {
-      text: `Wie viel Prozent sind ${w} von ${g}?`,
+      text: `${opErmittle}: Prozentsatz (${w} von ${g})`,
       sol: sol,
       steps: generateSteps("prozent_prozentsatz", {w, g}, sol),
       stepType: "prozent_prozentsatz",
@@ -630,15 +659,15 @@ const TASKS = {
 ========================================================= */
 function starTask() {
   const type = rand(1, 6);
+  const opBerechne = getOperatorPhraseBasis("BERECHNE");
+  const opErmittle = getOperatorPhraseBasis("ERMITTLE");
   
   // Rabattkette
   if (type === 1) {
     const g = rand(200, 400);
     const sol = round2(g * 0.8 * 0.9);
     return {
-      text: `⭐ Ein Artikel kostet ${g} €.
-20% Rabatt, danach 10% Rabatt.
-Berechne den Endpreis.`,
+      text: `⭐ ${opBerechne}: Endpreis (${g} €, 20% Rabatt, danach 10% Rabatt)`,
       sol: sol,
       steps: generateSteps("star_rabattkette", {g}, sol),
       stepType: "star_rabattkette",
@@ -653,8 +682,7 @@ Berechne den Endpreis.`,
     const h = rand(4, 8);
     const sol = round2(g * h / 2);
     return {
-      text: `⭐ Dreieck mit Grundseite ${g} cm und Höhe ${h} cm.
-Berechne den Flächeninhalt.`,
+      text: `⭐ ${opBerechne}: Fläche eines Dreiecks (g = ${g} cm, h = ${h} cm)`,
       sol: sol,
       steps: generateSteps("star_dreieck", {g, h}, sol),
       stepType: "star_dreieck",
@@ -669,8 +697,7 @@ Berechne den Flächeninhalt.`,
     const min = rand(20, 40);
     const sol = round2(min / km);
     return {
-      text: `⭐ Ein Auto fährt ${km} km in ${min} Minuten.
-Wie viele Minuten pro km?`,
+      text: `⭐ ${opErmittle}: Minuten pro km (${km} km in ${min} min)`,
       sol: sol,
       steps: generateSteps("star_zeit_pro_km", {km, min}, sol),
       stepType: "star_zeit_pro_km",
@@ -686,7 +713,7 @@ Wie viele Minuten pro km?`,
     const c = rand(2, 8);
     const sol = (a + b) * c - a;
     return {
-      text: `⭐ Berechne: (${a} + ${b}) × ${c} − ${a}`,
+      text: `⭐ ${opBerechne}: (${a} + ${b}) × ${c} − ${a}`,
       sol: sol,
       steps: generateSteps("star_klammern", {a, b, c}, sol),
       stepType: "star_klammern",
@@ -701,8 +728,7 @@ Wie viele Minuten pro km?`,
     const p = rand(15, 30);
     const sol = round2(price * (100 - p) / 100);
     return {
-      text: `⭐ Ein Artikel kostet ${price} €, erhält ${p}% Rabatt.
-Berechne den neuen Preis.`,
+      text: `⭐ ${opBerechne}: Preis nach ${p}% Rabatt (${price} €)`,
       sol: sol,
       steps: generateSteps("star_rabatt_einfach", {price, p}, sol),
       stepType: "star_rabatt_einfach",
@@ -716,8 +742,7 @@ Berechne den neuen Preis.`,
   const b = rand(3, 7);
   const sol = (a * b) + (b * b);
   return {
-    text: `⭐ Ein Rechteck (${a} cm × ${b} cm) und ein Quadrat (Seite ${b} cm).
-Berechne die Gesamtfläche.`,
+    text: `⭐ ${opBerechne}: Gesamtfläche (Rechteck ${a} cm × ${b} cm + Quadrat Seite ${b} cm)`,
     sol: sol,
     steps: generateSteps("star_flaechen", {a, b}, sol),
     stepType: "star_flaechen",
