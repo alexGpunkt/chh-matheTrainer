@@ -2,10 +2,8 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
 <title>Mathematik – BBR Prüfungsmodus (Note 1–2)</title>
 
 <style>
@@ -98,6 +96,8 @@ input {
   text-align: center;
 }
 </style>
+<!-- Aufgabenpool als externe JS-Datei -->
+<script src="pool_113.js"></script>
 </head>
 
 <body>
@@ -125,9 +125,10 @@ input {
 
 <script>
 /* =====================
-   BASIS
+   BASIS - NUR PRÜFUNGSLOGIK
+   Aufgabenpool wird aus pool_113.js importiert
 ===================== */
-const EXAM_TIME = 90 * 60;
+const EXAM_TIME = 90 * 60;     // 90 Minuten
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
 const TOTAL_POINTS = TASKS_TOTAL * POINTS_PER_TASK;
@@ -135,12 +136,10 @@ const TOTAL_POINTS = TASKS_TOTAL * POINTS_PER_TASK;
 // Für echten Einsatz sollte die PIN serverseitig validiert werden.
 const TEACHER_PIN = "1234"; // ⚠️ NUR ZU DEMONSTRATIONSZWECKEN
 
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-function round2(x) {
-  return Math.round(x * 100) / 100;
-}
+/* =====================
+   HILFSFUNKTIONEN
+   parseNum für Eingabe
+===================== */
 function parseNum(v) {
   if (!v) return NaN;
   return parseFloat(v.replace(",", "."));
@@ -156,372 +155,14 @@ let timeLeft = 0;
 let timerInt = null;
 let running = false;
 
-/* =====================
-   ERWEITERTER AUFGABENPOOL (100 % BBR)
-===================== */
-function hardTask(idx) {
-
-  const POOL = {
-
-    /* =====================
-       ALGEBRA (4 Aufgaben)
-    ===================== */
-    algebra: [
-      () => {
-        const x = rand(-5, 10);
-        return {
-          text: `Berechne den Wert des Terms für x = ${x}:<br>3·(2x − 5) − (x + 7)`,
-          sol: 3*(2*x-5)-(x+7)
-        };
-      },
-      () => {
-        const sol = rand(-6, 12);
-        return {
-          text: `Bestimme x:<br>2(x − 4) + 6 = ${2*(sol-4)+6}`,
-          sol
-        };
-      },
-      () => {
-        const a = rand(2, 8);
-        const b = rand(3, 10);
-        const c = rand(1, 6);
-        const x = rand(-3, 5);
-        return {
-          text: `Berechne für x = ${x}:<br>${a}x² + ${b}x + ${c}`,
-          sol: a*x*x + b*x + c
-        };
-      },
-      () => {
-        const x = rand(2, 10);
-        const y = rand(2, 10);
-        return {
-          text: `Vereinfache den Ausdruck:<br>(${x}x + ${y}) + (${2*x}x - ${y})`,
-          sol: 3*x
-        };
-      }
-    ],
-
-    /* =====================
-       PROZENT / ZINS (4 Aufgaben)
-    ===================== */
-    prozent: [
-      () => {
-        const g = rand(120, 500);
-        const p = rand(10, 30);
-        return {
-          text: `Berechne ${p}% von ${g}.`,
-          sol: round2(g*p/100)
-        };
-      },
-      () => {
-        const g = rand(200, 800);
-        const p = rand(15, 40);
-        const neuerPreis = round2(g * (1 - p/100));
-        return {
-          text: `Ein Preis von ${g} € wird um ${p}% reduziert. Neuer Preis?`,
-          sol: neuerPreis
-        };
-      },
-      () => {
-        const alt = rand(150, 400);
-        const neu = alt + rand(30, 100);
-        const prozent = round2(((neu - alt) / alt) * 100);
-        return {
-          text: `Preis steigt von ${alt} € auf ${neu} €. Prozentuale Steigerung?`,
-          sol: prozent
-        };
-      },
-      () => {
-        const g = rand(300, 700);
-        const p1 = rand(10, 20);
-        const p2 = rand(5, 15);
-        const ans = round2(g * (1 - p1/100) * (1 + p2/100));
-        return {
-          text: `Preis: ${g} €, erst ${p1}% Rabatt, dann ${p2}% Steuer. Endpreis?`,
-          sol: ans
-        };
-      }
-    ],
-
-    /* =====================
-       EBENE GEOMETRIE (4 Aufgaben)
-    ===================== */
-    geometrie: [
-      () => {
-        const a = rand(6, 15), b = rand(8, 20);
-        return {
-          text: `Bestimme die Länge der Hypotenuse eines rechtwinkligen Dreiecks mit Katheten ${a} cm und ${b} cm.`,
-          sol: round2(Math.sqrt(a*a+b*b))
-        };
-      },
-      () => {
-        const a = rand(8, 20);
-        const b = rand(10, 25);
-        return {
-          text: `Rechteck: Länge ${a} cm, Breite ${b} cm. Berechne die Fläche.`,
-          sol: a*b
-        };
-      },
-      () => {
-        const r = rand(5, 12);
-        return {
-          text: `Kreis: Radius ${r} cm. Berechne den Umfang (π ≈ 3,14).`,
-          sol: round2(2 * 3.14 * r)
-        };
-      },
-      () => {
-        const g = rand(8, 18);
-        const h = rand(6, 15);
-        return {
-          text: `Dreieck: Grundseite ${g} cm, Höhe ${h} cm. Berechne die Fläche.`,
-          sol: round2(g*h/2)
-        };
-      }
-    ],
-
-    /* =====================
-       KÖRPER – PRISMEN (4 Aufgaben)
-    ===================== */
-    koerper: [
-      // Prisma mit rechteckiger Grundfläche – Volumen
-      () => {
-        const a = rand(4, 10);
-        const b = rand(5, 14);
-        const h = rand(6, 18);
-        return {
-          text: `Ein Prisma hat eine rechteckige Grundfläche mit a = ${a} cm und b = ${b} cm sowie die Höhe h = ${h} cm.<br>
-                 Berechne das Volumen des Prismas.`,
-          sol: a*b*h
-        };
-      },
-      // Prisma mit quadratischer Grundfläche – Oberfläche
-      () => {
-        const a = rand(4, 10);
-        const h = rand(6, 18);
-        return {
-          text: `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm und die Höhe h = ${h} cm.<br>
-                 Berechne die Oberfläche des Prismas.`,
-          sol: 2*a*a + 4*a*h
-        };
-      },
-      // Prisma mit dreieckiger Grundfläche – Volumen
-      () => {
-        const g = rand(6, 14);
-        const hD = rand(4, 10);
-        const hP = rand(8, 20);
-        return {
-          text: `Ein Prisma besitzt eine dreieckige Grundfläche mit Grundseite g = ${g} cm und Höhe h = ${hD} cm.<br>
-                 Die Höhe des Prismas beträgt ${hP} cm.<br>
-                 Berechne das Volumen des Prismas.`,
-          sol: round2((g*hD/2)*hP)
-        };
-      },
-      // Prisma – komplexere Berechnung (KORREKTUR: Direkter Wert statt Funktion)
-      () => {
-        const a = rand(3, 8);
-        const b = rand(4, 10);
-        const c = rand(5, 12);
-        const h = rand(7, 15);
-        const s = (a+b+c)/2;
-        const G = Math.sqrt(s*(s-a)*(s-b)*(s-c));
-        return {
-          text: `Ein Prisma hat eine dreiseitige Grundfläche mit Seiten: a=${a} cm, b=${b} cm, c=${c} cm.<br>
-                 Höhe h = ${h} cm. Berechne das Volumen.`,
-          sol: round2(G*h)
-        };
-      }
-    ],
-
-    /* =====================
-       PYTHAGORAS AN KÖRPERN (4 Aufgaben)
-    ===================== */
-    pythagoras: [
-      // Raumdiagonale im Quader
-      () => {
-        const a = rand(4, 10);
-        const b = rand(5, 12);
-        const h = rand(6, 14);
-        return {
-          text: `Ein Quader hat die Kantenlängen a = ${a} cm, b = ${b} cm und h = ${h} cm.<br>
-                 Bestimme die Länge der Raumdiagonale.`,
-          sol: round2(Math.sqrt(a*a + b*b + h*h))
-        };
-      },
-      // Seitenhöhe im Prisma
-      () => {
-        const a = rand(4, 10);
-        const h = rand(6, 14);
-        return {
-          text: `Ein Prisma hat eine quadratische Grundfläche mit a = ${a} cm und Höhe h = ${h} cm.<br>
-                 Bestimme die Länge der Seitenkante (Pythagoras).`,
-          sol: round2(Math.sqrt(a*a + h*h))
-        };
-      },
-      // Körperdiagonale komplex
-      () => {
-        const l = rand(5, 12);
-        const w = rand(4, 10);
-        const h = rand(7, 15);
-        return {
-          text: `Berechne die Raumdiagonale eines Quaders: Länge ${l} cm, Breite ${w} cm, Höhe ${h} cm.`,
-          sol: round2(Math.sqrt(l*l + w*w + h*h))
-        };
-      },
-      // Pyramide Höhe berechnen (KORREKTUR: Direkter Wert statt Funktion)
-      () => {
-        const s = rand(6, 12); // Seitenlänge Grundfläche
-        const d = rand(8, 16); // Seitenkante
-        const h = round2(Math.sqrt(d*d - (s*Math.sqrt(2)/2)*(s*Math.sqrt(2)/2)));
-        return {
-          text: `Eine quadratische Pyramide hat Grundkante ${s} cm und Seitenkante ${d} cm.<br>
-                 Berechne die Höhe der Pyramide.`,
-          sol: round2(h)
-        };
-      }
-    ],
-
-    /* =====================
-       ZYLINDER (4 Aufgaben)
-    ===================== */
-    zylinder: [
-      // Volumen
-      () => {
-        const r = rand(3, 8);
-        const h = rand(8, 20);
-        return {
-          text: `Ein Zylinder hat den Radius r = ${r} cm und die Höhe h = ${h} cm.<br>
-                 Berechne das Volumen des Zylinders. (π ≈ 3,14)`,
-          sol: round2(3.14*r*r*h)
-        };
-      },
-      // Mantellinie mit Pythagoras
-      () => {
-        const r = rand(3, 8);
-        const h = rand(8, 20);
-        const u = round2(2*3.14*r);
-        const diag = round2(Math.sqrt(u*u + h*h));
-        return {
-          text: `Ein Zylinder wird aufgeschnitten und der Mantel als Rechteck dargestellt.<br>
-                 Radius r = ${r} cm, Höhe h = ${h} cm.<br>
-                 Bestimme die Länge der Diagonale dieses Rechtecks (Pythagoras).`,
-          sol: diag
-        };
-      },
-      // Oberfläche
-      () => {
-        const r = rand(4, 10);
-        const h = rand(6, 18);
-        return {
-          text: `Berechne die Oberfläche eines Zylinders mit Radius r = ${r} cm und Höhe h = ${h} cm.<br>
-                 (π ≈ 3,14)`,
-          sol: round2(2*3.14*r*r + 2*3.14*r*h)
-        };
-      },
-      // Volumen aus Umfang (KORREKTUR: Direkter Wert statt Funktion)
-      () => {
-        const u = rand(25, 60);
-        const h = rand(10, 25);
-        const r = u/(2*3.14);
-        const vol = round2(3.14*r*r*h);
-        return {
-          text: `Ein Zylinder hat einen Umfang von ${u} cm und Höhe ${h} cm.<br>
-                 Berechne das Volumen. (π ≈ 3,14)`,
-          sol: vol
-        };
-      }
-    ],
-
-    /* =====================
-       SACH- & ANWENDUNGSAUFGABEN (4 Aufgaben)
-    ===================== */
-    sach: [
-      // Geschwindigkeit
-      () => {
-        const km = rand(80, 420);
-        const h  = rand(2, 7);
-        const ans = round2(km / h);
-        return {
-          text: `Ein Auto fährt ${km} km in ${h} h.<br>
-                 Berechne die Durchschnittsgeschwindigkeit in km/h.`,
-          sol: ans
-        };
-      },
-      // Zeitrechnung komplexer
-      () => {
-        const startH = rand(8, 14);
-        const durMin = rand(85, 240);
-        const total = startH*60 + durMin;
-        const hh = Math.floor(total/60) % 24;
-        const mm = String(total%60).padStart(2,"0");
-        const ans = `${hh}:${mm}`;
-        return {
-          text: `Ein Zug startet um <b>${startH}:00</b> Uhr und fährt <b>${durMin}</b> Minuten.<br>
-                 Ankunftszeit?`,
-          sol: ans
-        };
-      },
-      // Mischungsaufgabe
-      () => {
-        const c1 = rand(10, 30);
-        const m1 = rand(100, 300);
-        const c2 = rand(40, 60);
-        const m2 = rand(50, 150);
-        const gesamt = m1 + m2;
-        const konz = round2((c1*m1 + c2*m2) / gesamt);
-        return {
-          text: `${m1}g einer ${c1}%igen Lösung werden mit ${m2}g einer ${c2}%igen Lösung gemischt.<br>
-                 Konzentration der Mischung?`,
-          sol: konz
-        };
-      },
-      // Skalierung/Verhältnis
-      () => {
-        const real = rand(20, 100);
-        const scale = rand(10, 50);
-        const map = round2(real/scale);
-        return {
-          text: `Im Maßstab 1:${scale} entspricht ${map} cm auf der Karte wie vielen Metern in Wirklichkeit?`,
-          sol: real
-        };
-      }
-    ]
-  };
-
-  // Feste Reihenfolge der Kategorien (prüfungsnah & ausgewogen)
-  const cats = [
-    "algebra",
-    "prozent",
-    "geometrie",
-    "koerper",
-    "pythagoras",
-    "zylinder",
-    "sach",
-    "algebra",      // Wiederholung für mehr Vielfalt
-    "prozent",
-    "koerper"
-  ];
-
-  const cat = cats[idx % cats.length];
-  
-  // Sicherstellen, dass die Kategorie existiert
-  if (!POOL[cat] || POOL[cat].length === 0) {
-    // Fallback auf algebra
-    const algebraList = POOL.algebra;
-    return algebraList[rand(0, algebraList.length - 1)]();
-  }
-  
-  const catList = POOL[cat];
-  const taskGenerator = catList[rand(0, catList.length - 1)];
-  
-  // Generator aufrufen und Ergebnis zurückgeben
-  return taskGenerator();
-}
+// Speichert bereits verwendete Aufgabentypen für mehr Abwechslung
+let usedGenerators = [];
 
 /* =====================
-   PRÜFUNG
+   PRÜFUNG - UI-LOGIK
 ===================== */
 function startExam() {
-  console.log("Prüfung wird gestartet...");
+  console.log("=== Prüfung wird gestartet ===");
   
   // DOM-Reset
   tasks = [];
@@ -529,18 +170,36 @@ function startExam() {
   points = 0;
   timeLeft = EXAM_TIME;
   running = true;
+  usedGenerators = [];
 
-  // Aufgaben generieren
+  // Prüfen ob pool_113.js geladen wurde
+  if (typeof getTask113 === 'undefined') {
+    console.error("pool_113.js nicht geladen!");
+    alert("Fehler: Aufgabenpool konnte nicht geladen werden!");
+    return;
+  }
+
+  // Aufgaben generieren - mit Zufallsindex für echte Zufälligkeit
   for (let i = 0; i < TASKS_TOTAL; i++) {
     try {
-      const task = hardTask(i);
+      // ✅ Feste Reihenfolge der Kategorien, aber ZUFÄLLIGE Aufgaben daraus
+      // Statt festen Index zu verwenden, generieren wir einen zufälligen Index
+      // innerhalb der Kategorie für mehr Abwechslung
+      
+      // Kategorie aus fester Reihenfolge (prüfungsnah)
+      const cat = getExamCategoryByIndex(i);
+      
+      // Zufällige Aufgabe aus dieser Kategorie
+      const task = getRandomTaskFromCategory(cat);
+      
       tasks.push(task);
+      console.log(`Aufgabe ${i+1}: Kategorie ${cat} - generiert`);
     } catch (error) {
       console.error("Fehler beim Generieren der Aufgabe", i, error);
       // Fallback-Aufgabe
       tasks.push({
-        text: `Berechne: ${rand(10, 100)} + ${rand(10, 100)}`,
-        sol: rand(20, 200)
+        text: `Berechne: ${Math.floor(Math.random() * 90 + 10)} + ${Math.floor(Math.random() * 90 + 10)}`,
+        sol: Math.floor(Math.random() * 180 + 20)
       });
     }
   }
@@ -552,6 +211,7 @@ function startExam() {
   document.getElementById("timer").classList.remove("hidden");
   document.getElementById("result").innerHTML = "";
   document.getElementById("startBtn").disabled = true;
+  document.getElementById("answer").value = "";
 
   // Timer starten
   clearInterval(timerInt);
@@ -559,6 +219,59 @@ function startExam() {
   
   // Erste Aufgabe anzeigen
   showTask();
+}
+
+/**
+ * Gibt die Kategorie für einen bestimmten Index in der Prüfungsreihenfolge zurück
+ */
+function getExamCategoryByIndex(idx) {
+  // Feste, ausgewogene Reihenfolge der Kategorien für die Prüfung
+  const examOrder = [
+    "rechnen",
+    "prozent",
+    "geometrie",
+    "koerper",
+    "pythagoras",
+    "zylinder",
+    "sach",
+    "rechnen",
+    "prozent",
+    "koerper"
+  ];
+  
+  return examOrder[idx % examOrder.length];
+}
+
+/**
+ * Holt eine ZUFÄLLIGE Aufgabe aus einer bestimmten Kategorie
+ * Das ist der Schlüssel zur Lösung des Problems!
+ */
+function getRandomTaskFromCategory(cat) {
+  // Prüfen ob Kategorie existiert
+  const poolSize = getTaskPoolSize(cat);
+  
+  if (!poolSize || poolSize === 0) {
+    console.warn(`Kategorie ${cat} hat keine Aufgaben, verwende Fallback`);
+    // Fallback auf rechnen
+    const fallbackSize = getTaskPoolSize("rechnen");
+    const randomIndex = Math.floor(Math.random() * fallbackSize);
+    const task = getTask113({ 
+      category: "rechnen", 
+      generatorIndex: randomIndex 
+    });
+    return task;
+  }
+  
+  // ✅ ZUFÄLLIGEN Generator-Index auswählen (NICHT den Index der Aufgabennummer!)
+  const randomIndex = Math.floor(Math.random() * poolSize);
+  
+  // Aufgabe mit diesem zufälligen Generator holen
+  const task = getTask113({ 
+    category: cat, 
+    generatorIndex: randomIndex 
+  });
+  
+  return task;
 }
 
 function showTask() {
@@ -571,30 +284,39 @@ function showTask() {
   document.getElementById("task").innerHTML =
     `<b>Aufgabe ${current+1}/${TASKS_TOTAL}</b><br>${task.text}`;
   document.getElementById("answer").value = "";
+  document.getElementById("answer").focus();
   
-  // Fokus setzen
-  setTimeout(() => document.getElementById("answer").focus(), 100);
+  console.log(`Zeige Aufgabe ${current+1}: ${task.text.substring(0, 50)}...`);
 }
 
 function saveAnswer() {
   const answerInput = document.getElementById("answer");
   const v = parseNum(answerInput.value);
   
-  if (isNaN(v)) return;
+  if (isNaN(v)) return false;
   
   const task = tasks[current];
-  if (!task || typeof task.sol === 'undefined') return;
+  if (!task || typeof task.sol === 'undefined') return false;
   
   // Toleranz für Gleitkommazahlen
   const tolerance = Math.max(0.05, Math.abs(task.sol) * 0.01);
+  const correct = Math.abs(v - task.sol) <= tolerance;
   
-  if (Math.abs(v - task.sol) <= tolerance) {
+  if (correct) {
     points += POINTS_PER_TASK;
+    console.log(`✓ Aufgabe ${current+1} richtig: ${v} = ${task.sol}`);
+  } else {
+    console.log(`✗ Aufgabe ${current+1} falsch: ${v} ≠ ${task.sol}`);
   }
+  
+  return correct;
 }
 
 function nextTask() {
+  // Antwort speichern und Punkte vergeben
   saveAnswer();
+  
+  // Nächste Aufgabe
   current++;
   
   if (current < TASKS_TOTAL) {
@@ -605,6 +327,18 @@ function nextTask() {
 }
 
 function finishExam() {
+  console.log("Prüfung wird beendet");
+  
+  // Timer stoppen
+  clearInterval(timerInt);
+  running = false;
+
+  // Letzte Aufgabe auswerten, falls noch nicht geschehen
+  if (current < TASKS_TOTAL) {
+    saveAnswer();
+  }
+
+  // PIN abfragen (nur für Lehrer)
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
   if (pin !== TEACHER_PIN) {
     alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
@@ -613,34 +347,48 @@ function finishExam() {
     document.getElementById("answerArea").classList.add("hidden");
     document.getElementById("timer").classList.add("hidden");
     document.getElementById("startBtn").disabled = false;
-    running = false;
-    clearInterval(timerInt);
+    document.getElementById("result").innerHTML = 
+      `❌ Prüfung abgebrochen - Falsche PIN`;
     
     return;
   }
 
-  // Letzte Aufgabe auswerten
-  if (current < TASKS_TOTAL) {
-    saveAnswer();
-  }
-
-  // Timer stoppen
-  clearInterval(timerInt);
-  running = false;
-
   // Note berechnen
   const pct = Math.round(points / TOTAL_POINTS * 100);
   let note = "3";
-  if (pct >= 92) note = "1";
-  else if (pct >= 80) note = "2";
-  else if (pct >= 67) note = "3";
-  else if (pct >= 50) note = "4";
-  else note = "5";
+  let noteText = "";
+  
+  if (pct >= 92) { 
+    note = "1"; 
+    noteText = "sehr gut"; 
+  } else if (pct >= 80) { 
+    note = "2"; 
+    noteText = "gut"; 
+  } else if (pct >= 67) { 
+    note = "3"; 
+    noteText = "befriedigend"; 
+  } else if (pct >= 50) { 
+    note = "4"; 
+    noteText = "ausreichend"; 
+  } else { 
+    note = "5"; 
+    noteText = "mangelhaft"; 
+  }
 
   // UI aktualisieren
   document.getElementById("answerArea").classList.add("hidden");
-  document.getElementById("result").innerHTML =
-    `Punkte: <b>${points}/${TOTAL_POINTS}</b> (${pct}%)<br>Trainingsergebnis: <b>Note ${note}</b>`;
+  document.getElementById("timer").classList.add("hidden");
+  document.getElementById("result").innerHTML = `
+    <div style="background: #f0f8ff; padding: 20px; border-radius: 12px; border: 2px solid #1976d2;">
+      <h2 style="margin-top: 0; color: #1976d2;">Prüfung abgeschlossen</h2>
+      <div style="font-size: 1.5rem; margin: 15px 0;">
+        Punkte: <b>${points}/${TOTAL_POINTS}</b> (${pct}%)
+      </div>
+      <div style="font-size: 1.8rem; font-weight: bold; color: #1976d2;">
+        Note: ${note} (${noteText})
+      </div>
+    </div>
+  `;
   
   // Button wieder aktivieren
   document.getElementById("startBtn").disabled = false;
@@ -653,12 +401,21 @@ function updateTimer() {
   if (!running) return;
   
   timeLeft--;
+  
+  if (timeLeft <= 0) {
+    document.getElementById("timer").innerText = `⏱ 0:00 - Zeit abgelaufen!`;
+    finishExam();
+    return;
+  }
+  
   const m = Math.floor(timeLeft/60);
   const s = String(timeLeft%60).padStart(2,"0");
   document.getElementById("timer").innerText = `⏱ ${m}:${s}`;
   
-  if (timeLeft <= 0) {
-    finishExam();
+  // Warnung bei weniger als 5 Minuten
+  if (timeLeft < 300) {
+    document.getElementById("timer").style.color = "#ff0000";
+    document.getElementById("timer").style.fontWeight = "bold";
   }
 }
 
@@ -666,9 +423,21 @@ function updateTimer() {
    EVENTS
 ===================== */
 document.addEventListener("DOMContentLoaded", function() {
+  console.log("11.3.html geladen, initialisiere...");
+  
   const startBtn = document.getElementById("startBtn");
   const nextBtn = document.getElementById("nextBtn");
   const finishBtn = document.getElementById("finishBtn");
+  const answerInput = document.getElementById("answer");
+  
+  // Prüfen ob pool_113.js geladen wurde
+  if (typeof getTask113 === 'undefined') {
+    console.error("pool_113.js nicht geladen!");
+    alert("Fehler: Aufgabenpool konnte nicht geladen werden! Stellen Sie sicher, dass pool_113.js im gleichen Ordner liegt.");
+  } else {
+    console.log("pool_113.js erfolgreich geladen");
+    console.log("Verfügbare Kategorien:", getAvailableCategories ? getAvailableCategories() : "nicht verfügbar");
+  }
   
   if (startBtn) {
     startBtn.addEventListener("click", startExam);
@@ -683,15 +452,62 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   
   // Enter-Taste für Antwort
-  const answerInput = document.getElementById("answer");
   if (answerInput) {
     answerInput.addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
+        e.preventDefault();
         nextTask();
       }
     });
   }
+  
+  // Verhindern des Scrollens bei Eingabe auf mobilen Geräten
+  if (answerInput) {
+    answerInput.addEventListener("touchstart", function(e) {
+      e.stopPropagation();
+    });
+  }
 });
+
+/* =====================
+   FALLBACK-Funktionen falls pool_113.js nicht geladen wurde
+===================== */
+function getTask113(config) {
+  console.warn("Fallback: getTask113 wird verwendet");
+  if (config && config.category && config.generatorIndex !== undefined) {
+    // Versuche aus TASKPOOL zu laden
+    if (typeof window.TASKPOOL !== 'undefined' && window.TASKPOOL[config.category]) {
+      const pool = window.TASKPOOL[config.category];
+      const idx = config.generatorIndex % pool.length;
+      const task = pool[idx]();
+      return {
+        text: task.task,
+        sol: task.answer
+      };
+    }
+  }
+  
+  // Absoluter Fallback
+  const x = Math.floor(Math.random() * 10) + 5;
+  return {
+    text: `Berechne: 2·(${x} + 3) - 4`,
+    sol: 2 * (x + 3) - 4
+  };
+}
+
+function getTaskPoolSize(cat) {
+  if (typeof window.TASKPOOL !== 'undefined' && window.TASKPOOL[cat]) {
+    return window.TASKPOOL[cat].length;
+  }
+  return 5; // Fallback
+}
+
+function getAvailableCategories() {
+  if (typeof window.TASKPOOL !== 'undefined') {
+    return Object.keys(window.TASKPOOL);
+  }
+  return ["rechnen", "prozent", "geometrie", "koerper", "pythagoras", "zylinder", "sach"];
+}
 </script>
 
 </body>
