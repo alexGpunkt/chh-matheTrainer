@@ -26,6 +26,23 @@
 
   #solution { display:none; background:#eef6ff; padding:15px; border-radius:5px; margin-top:15px; }
 
+  /* Aufgaben-Container für Export */
+  #aufgabenContainer {
+    margin-top: 30px;
+    border-top: 2px solid #1976d2;
+    padding-top: 20px;
+  }
+  .aufgabe {
+    background: #f9f9f9;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #1976d2;
+    border-radius: 4px;
+  }
+  .loesung {
+    display: none;
+  }
+
   /* ===== PRINT / PDF EXPORT ===== */
   @media print {
     body { background:#fff; padding:0; }
@@ -33,7 +50,7 @@
     #printArea { display:block !important; }
   }
 
-  #printArea { font-family: Arial, sans-serif; color:#000; padding:18mm; }
+  #printArea { font-family: Arial, sans-serif; color:#000; padding:18mm; display:none; }
   .print-title { font-size:18pt; font-weight:bold; margin-bottom:6mm; }
   .print-meta { font-size:11pt; margin-bottom:8mm; }
   .print-line { border-bottom:1px solid #000; display:inline-block; width:70mm; height:6mm; vertical-align:bottom; margin-left:3mm; }
@@ -64,7 +81,9 @@
   <button onclick="nextTaskRandom()">➡️ Nächste Aufgabe (zufällig)</button>
   <button onclick="nextTaskSameType()">🔁 Gleicher Typ</button>
   <button onclick="toggleSolution()" id="solutionBtn">📌 Lösung anzeigen</button>
-  <button onclick="exportWorksheetPDF()">🧾 PDF-Übungsblatt</button>
+  <button onclick="exportiereBBRPruefung()">🧾 BBR-Prüfung exportieren</button>
+  <button onclick="exportiereBOAPruefung()">📘 BOA-Prüfung exportieren</button>
+  <button onclick="exportWorksheetPDF()" style="background:#666;">📄 Übungsblatt (alt)</button>
   <button onclick="resetTrainer()">🔄 Reset</button>
 </div>
 
@@ -83,6 +102,9 @@
   <div id="feedback"></div>
 
   <div id="solution"></div>
+  
+  <!-- Aufgaben-Container für Export -->
+  <div id="aufgabenContainer"></div>
 </div>
 
 <div id="printArea" style="display:none;"></div>
@@ -105,6 +127,9 @@ let lastCat = null;
 
 // Für Karteikarten: Lösung ist erst „aufgedeckt“, wenn Nutzer klickt
 let revealed = false;
+
+// Gespeicherte Aufgaben für Export
+let exportedTasks = [];
 
 /* =========================================================
    UTIL
@@ -157,6 +182,40 @@ function drawTask(task) {
   const solutionHtml = formatSteps(task.steps, task.sol);
   document.getElementById("solution").innerHTML = "<b>Lösung Schritt-für-Schritt:</b><br><br>" + solutionHtml;
   document.getElementById("task").innerHTML = task.text;
+  
+  // Aufgabe für Export speichern
+  exportedTasks.push({
+    category: task.category,
+    text: task.text,
+    sol: task.sol,
+    steps: task.steps
+  });
+  
+  // Aufgaben im Container rendern
+  renderTasksInContainer();
+}
+
+function renderTasksInContainer() {
+  const container = document.getElementById("aufgabenContainer");
+  container.innerHTML = "";
+  
+  exportedTasks.forEach((task, index) => {
+    const aufgabeDiv = document.createElement("div");
+    aufgabeDiv.className = "aufgabe";
+    aufgabeDiv.id = `export_aufgabe_${index}`;
+    
+    const aufgabeHtml = `
+      <strong>Aufgabe ${index + 1} (${task.category}):</strong>
+      <div style="margin-top: 8px;">${task.text}</div>
+      <div class="loesung" style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-left: 3px solid #2e7d32;">
+        <strong>Lösung:</strong> ${task.sol}<br><br>
+        <strong>Rechenweg:</strong><br>${formatSteps(task.steps, task.sol)}
+      </div>
+    `;
+    
+    aufgabeDiv.innerHTML = aufgabeHtml;
+    container.appendChild(aufgabeDiv);
+  });
 }
 
 /* Nächste Aufgabe (Kategorie & Typ zufällig) */
@@ -225,6 +284,8 @@ function startRound() {
   roundActive = true;
   solvedCurrent = false;
   lastCat = null;
+  exportedTasks = [];
+  document.getElementById("aufgabenContainer").innerHTML = "";
   updateStatus();
   nextTaskRandom();
 }
@@ -337,6 +398,7 @@ function resetTrainer() {
   solvedCurrent = false;
   lastCat = null;
   revealed = false;
+  exportedTasks = [];
 
   updateStatus();
   document.getElementById("task").innerHTML = "Starte eine Zufallsrunde.";
@@ -345,25 +407,173 @@ function resetTrainer() {
   document.getElementById("userAnswer").value = "";
   document.getElementById("solution").style.display = "none";
   document.getElementById("solution").innerHTML = "";
+  document.getElementById("aufgabenContainer").innerHTML = "";
 }
 
 /* =========================================================
-   PDF EXPORT (Aufgaben + Lösungen aus pool.js)
+   NEUE EXPORT-FUNKTIONEN (BBR/BOA Prüfungslayout)
 ========================================================= */
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+function exportiereBBRPruefung() {
+  exportierePruefungMitLevel("BBR");
 }
 
-function pickTaskForPDF() {
-  const cat = pickCategoryWeighted();
-  const task = TASKS[cat](getLevel());
-  task.category = cat;
-  return task;
+function exportiereBOAPruefung() {
+  exportierePruefungMitLevel("BOA");
 }
 
+function exportierePruefungMitLevel(level) {
+  const container = document.getElementById("aufgabenContainer");
+
+  if (!container || container.innerHTML.trim() === "" || exportedTasks.length === 0) {
+    alert("Keine Aufgaben vorhanden. Bitte zuerst eine Zufallsrunde starten!");
+    return;
+  }
+
+  const clone = container.cloneNode(true);
+
+  // Lösungen entfernen
+  clone.querySelectorAll(".loesung").forEach(el => el.remove());
+
+  // Buttons entfernen (falls vorhanden)
+  clone.querySelectorAll("button").forEach(btn => btn.remove());
+
+  const win = window.open("", "_blank");
+  const titel = level === "BBR" 
+    ? "Vergleichende Arbeit – Mathematik (BBR)" 
+    : "Vergleichende Arbeit – Mathematik (BOA)";
+  const farbe = level === "BBR" ? "#1976d2" : "#2e7d32";
+  const punkteProAufgabe = level === "BBR" ? 3 : 2;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("de-DE");
+
+  win.document.write(`
+    <html>
+    <head>
+      <title>${level}-Prüfung Mathematik</title>
+      <style>
+        @media print {
+          body { margin: 0; }
+        }
+        body {
+          font-family: Arial, sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+        }
+        h1 {
+          text-align: center;
+          margin-bottom: 5px;
+          color: ${farbe};
+        }
+        .kopf {
+          margin-bottom: 30px;
+          border-bottom: 3px solid ${farbe};
+          padding-bottom: 10px;
+        }
+        .infofeld {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+          flex-wrap: wrap;
+        }
+        .linie {
+          border-bottom: 1px solid black;
+          width: 200px;
+          display: inline-block;
+          margin-left: 8px;
+        }
+        .aufgabe {
+          margin-top: 30px;
+          page-break-inside: avoid;
+          border-left: 4px solid ${farbe};
+          padding-left: 15px;
+        }
+        .loesungsraum {
+          height: ${level === "BBR" ? "80px" : "60px"};
+          border-bottom: 1px dashed #aaa;
+          margin-top: 15px;
+          margin-bottom: 15px;
+        }
+        .footer {
+          margin-top: 50px;
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+        }
+        .punkte {
+          float: right;
+          font-weight: bold;
+          color: ${farbe};
+        }
+        .hinweis {
+          background: #fff3e0;
+          padding: 8px;
+          margin-top: 10px;
+          font-size: 12px;
+          border-left: 3px solid #ff9800;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="kopf">
+        <h1>${titel}</h1>
+        <div style="font-size: 18px; text-align: center; font-weight: bold;">
+          ${level} - ${level === "BBR" ? "Berufsbildungsreife (Note 4)" : "Berufsorientierungsabschluss (Note 4)"}
+        </div>
+        
+        <div class="infofeld">
+          <div>Name: <span class="linie"></span></div>
+          <div>Datum: <span class="linie"></span></div>
+        </div>
+        <div style="margin-top:10px;">
+          Lerngruppe: <span class="linie"></span>
+          <span style="float: right;">Punkte: ___ / ${exportedTasks.length * punkteProAufgabe}</span>
+        </div>
+        ${level === "BOA" ? '<div class="hinweis">Hinweis: Hilfsmittel wie Taschenrechner und Formelsammlung erlaubt.</div>' : ''}
+      </div>
+
+      ${formatiereAufgabenFuerPruefung(clone, level, punkteProAufgabe)}
+
+      <div class="footer">
+        Erstellt am ${dateStr} – ${level}-Prüfungssimulation
+      </div>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+  win.focus();
+}
+
+function formatiereAufgabenFuerPruefung(clone, level = "BBR", punkte = 3) {
+  let nummer = 1;
+  let html = "";
+
+  clone.querySelectorAll(".aufgabe").forEach(aufgabe => {
+    // Extrahiere den Aufgabentext ohne die Überschrift
+    const aufgabeText = aufgabe.innerHTML.replace(/<strong>Aufgabe \d+ \(.*?\):<\/strong>/, '').trim();
+    
+    html += `
+      <div class="aufgabe">
+        <div style="display: flex; justify-content: space-between;">
+          <strong>${nummer}. Aufgabe</strong>
+          <span class="punkte">( ${punkte} Punkte )</span>
+        </div>
+        <div style="margin-top: 12px;">
+          ${aufgabeText}
+        </div>
+        <div class="loesungsraum"></div>
+        ${level === "BBR" ? '<div class="loesungsraum"></div>' : ''}
+      </div>
+    `;
+    nummer++;
+  });
+
+  return html;
+}
+
+/* =========================================================
+   ALTE EXPORT-FUNKTION (für Kompatibilität)
+========================================================= */
 function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDuplicates = true) {
   const level = getLevel();
   const now = new Date();
@@ -414,8 +624,30 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
   window.print();
 }
 
+function pickTaskForPDF() {
+  const cat = pickCategoryWeighted();
+  const task = TASKS[cat](getLevel());
+  task.category = cat;
+  return task;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+/* =========================================================
+   HILFSFUNKTIONEN
+========================================================= */
+function rand(min, max) { 
+  return Math.floor(Math.random() * (max - min + 1)) + min; 
+}
+
 /* Startzustand */
 switchMode();
+updateStatus();
 </script>
 
 </body>
