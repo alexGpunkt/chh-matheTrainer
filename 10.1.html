@@ -227,39 +227,39 @@ function startExam() {
 
   const useStars = (lvl === "bbr") && starsEl.checked; // BOA niemals Stern-Aufgaben
 
-  // AUFGABEN ÜBER ZENTRALE getTask() GENERIEREN
-  for (let i = 0; i < TASKS_TOTAL; i++) {
-    const task = getTask({
-      mode: "exam",
-      level: lvl,
-      stars: useStars,
-      index: i
-    });
-    
-    tasks.push({
-      text: task.text,
-      sol: task.sol,
-      star: task.star || false
-    });
-  }
+// AUFGABEN ÜBER ZENTRALE getTask() GENERIEREN
+for (let i = 0; i < TASKS_TOTAL; i++) {
+  const task = getTask({
+    mode: "exam",
+    level: lvl,
+    stars: useStars,
+    index: i
+  });
   
-  // ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
-  toggleStarOption();
-
-  // Steuerelemente sperren
-  levelEl.disabled = true;
-  starsEl.disabled = true;
-
-  timerEl.classList.remove("hidden");
-  answerAreaEl.classList.remove("hidden");
-  resultEl.innerHTML = "";
-
-  clearInterval(timerInt);
-  timerInt = setInterval(updateTimer, 1000);
-
-  // Jetzt erst Aufgabe anzeigen
-  showTask();
+  tasks.push({
+    text: task.text,
+    sol: task.sol,
+    category: task.category || "allgemein",
+    star: task.star || false
+  });
 }
+
+// ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
+toggleStarOption();
+
+// Steuerelemente sperren
+levelEl.disabled = true;
+starsEl.disabled = true;
+
+timerEl.classList.remove("hidden");
+answerAreaEl.classList.remove("hidden");
+resultEl.innerHTML = "";
+
+clearInterval(timerInt);
+timerInt = setInterval(updateTimer, 1000);
+
+// Jetzt erst Aufgabe anzeigen
+showTask();
 
 function showTask() {
   const starMark = tasks[current].star ? " ⭐" : "";
@@ -368,3 +368,4 @@ toggleStarOption();
 
 </body>
 </html>
+
