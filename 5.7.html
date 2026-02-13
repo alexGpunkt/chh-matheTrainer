@@ -258,8 +258,6 @@ function nextTaskSameType() {
     return;
   }
 
-  taskNumber++;
-
   // Gleiche Kategorie erzwingen
   const task = TASKS[lastCat](getLevel());
   task.star = false;
@@ -652,3 +650,4 @@ updateStatus();
 
 </body>
 </html>
+
