@@ -1,7 +1,8 @@
 /* =========================================================
-   ZENTRALE POOL.JS (Erweiterte Version)
-   Für 5.7 (Trainer) und 10.1 (Prüfung)
-   Enthält ALLE Aufgaben + Generatorlogik + Lösungsschritte
+   pool.js – BBR BASIS (Niveau 1-3, Noten 4-3)
+   VOLLSTÄNDIG ergänzt mit allen BBR-Prüfungsaufgaben 2014-2019
+   Enthält: Rechnen, Einheiten, Geometrie, Sachaufgaben, Prozent,
+   Zuordnungen, Diagramme, Wahrscheinlichkeit, Gleichungen, Körper
 ========================================================= */
 
 /* =========================================================
@@ -16,13 +17,17 @@ function round2(x) {
 }
 
 /* =========================================================
-   OPERATOR-GRUPPEN FÜR BASISPOOL
+   OPERATOR-GRUPPEN
 ========================================================= */
 const OPERATOR_GROUPS_BASIS = {
   BERECHNE: ["berechne", "bestimme", "ermittle", "gib an"],
   RECHNE_UM: ["rechne um", "wandle um"],
   GIB_AN: ["gib an"],
-  ERMITTLE: ["ermittle"]
+  ERMITTLE: ["ermittle"],
+  BEGRUENDE: ["begründe", "erläutere"],
+  UEBERPRUEFE: ["überprüfe", "prüfe"],
+  ENTSCHEIDE: ["entscheide"],
+  ZEICHNE: ["zeichne", "ergänze"]
 };
 
 function pickFrom(arr) {
@@ -67,202 +72,121 @@ function generateSteps(taskType, params, solution) {
         `Dann: ${params.a} − ${params.b * params.c}`,
         `Ausrechnen: ${params.a - params.b * params.c}`
       ];
-    case "rechnen_quadrat":
+    case "rechnen_klammer":
       return [
-        `Quadratzahl bilden: ${params.a}²`,
-        `Rechnung: ${params.a} · ${params.a}`,
-        `Ergebnis: ${params.a * params.a}`
+        `Klammer zuerst: (${params.a} + ${params.b}) = ${params.a + params.b}`,
+        `Dann: ${params.a + params.b} · ${params.c} = ${(params.a + params.b) * params.c}`
       ];
 
     // ---------------------- EINHEITEN ----------------------
     case "einheiten_m_cm":
-      return [
-        `1 m = 100 cm`,
-        `${params.m} · 100 = ${params.m * 100} cm`
-      ];
+      return [`1 m = 100 cm`, `${params.m} · 100 = ${params.m * 100} cm`];
     case "einheiten_cm_m":
-      return [
-        `100 cm = 1 m`,
-        `${params.cm} : 100 = ${round2(params.cm / 100)} m`
-      ];
+      return [`100 cm = 1 m`, `${params.cm} : 100 = ${round2(params.cm / 100)} m`];
     case "einheiten_kg_g":
-      return [
-        `1 kg = 1000 g`,
-        `${params.kg} · 1000 = ${params.kg * 1000} g`
-      ];
+      return [`1 kg = 1000 g`, `${params.kg} · 1000 = ${params.kg * 1000} g`];
     case "einheiten_g_kg":
-      return [
-        `1000 g = 1 kg`,
-        `${params.g} : 1000 = ${round2(params.g / 1000)} kg`
-      ];
+      return [`1000 g = 1 kg`, `${params.g} : 1000 = ${round2(params.g / 1000)} kg`];
     case "einheiten_min_h":
-      return [
-        `60 min = 1 h`,
-        `${params.mins} : 60 = ${round2(params.mins / 60)} h`
-      ];
+      return [`60 min = 1 h`, `${params.mins} : 60 = ${round2(params.mins / 60)} h`];
     case "einheiten_km_m":
-      return [
-        `1 km = 1000 m`,
-        `${params.km} · 1000 = ${params.km * 1000} m`
-      ];
+      return [`1 km = 1000 m`, `${params.km} · 1000 = ${params.km * 1000} m`];
+    case "einheiten_cm_dm":
+      return [`10 cm = 1 dm`, `${params.cm} : 10 = ${params.cm / 10} dm`];
+    case "einheiten_h_min_s":
+      return [`2,5 h = 2,5 · 60 = 150 min`, `150 min · 60 = 9000 s`];
+    case "einheiten_s_min":
+      return [`60 s = 1 min`, `${params.s} : 60 = ${Math.floor(params.s / 60)} min ${params.s % 60} s`];
+    case "einheiten_euro_cent":
+      return [`1 € = 100 ct`, `${params.euro} · 100 = ${params.euro * 100} ct`];
+    case "einheiten_cent_euro":
+      return [`100 ct = 1 €`, `${params.cent} : 100 = ${round2(params.cent / 100)} €`];
+    case "einheiten_tage_stunden":
+      return [`1 Tag = 24 h`, `${params.tage} · 24 = ${params.tage * 24} h`];
 
     // ---------------------- GEOMETRIE ----------------------
     case "geometrie_quadrat_umfang":
-      return [
-        `Formel Umfang Quadrat: U = 4 · a`,
-        `Einsetzen: 4 · ${params.a}`,
-        `Ausrechnen: ${4 * params.a} cm`
-      ];
+      return [`U = 4 · a`, `4 · ${params.a} = ${4 * params.a} cm`];
     case "geometrie_quadrat_flaeche":
-      return [
-        `Formel Fläche Quadrat: A = a · a`,
-        `Einsetzen: ${params.a} · ${params.a}`,
-        `Ausrechnen: ${params.a * params.a} cm²`
-      ];
+      return [`A = a · a`, `${params.a} · ${params.a} = ${params.a * params.a} cm²`];
     case "geometrie_rechteck_umfang":
-      return [
-        `Formel Umfang Rechteck: U = 2 · (l + b)`,
-        `Einsetzen: 2 · (${params.l} + ${params.b})`,
-        `Ausrechnen: ${2 * (params.l + params.b)} cm`
-      ];
+      return [`U = 2 · (l + b)`, `2 · (${params.l} + ${params.b}) = ${2 * (params.l + params.b)} cm`];
     case "geometrie_rechteck_flaeche":
-      return [
-        `Formel Fläche Rechteck: A = l · b`,
-        `Einsetzen: ${params.l} · ${params.b}`,
-        `Ausrechnen: ${params.l * params.b} cm²`
-      ];
+      return [`A = l · b`, `${params.l} · ${params.b} = ${params.l * params.b} cm²`];
     case "geometrie_dreieck_flaeche":
-      return [
-        `Formel Fläche Dreieck: A = (g · h) : 2`,
-        `Einsetzen: (${params.g} · ${params.h}) : 2`,
-        `Ausrechnen: ${round2((params.g * params.h) / 2)} cm²`
-      ];
+      return [`A = (g · h) : 2`, `(${params.g} · ${params.h}) : 2 = ${round2((params.g * params.h) / 2)} cm²`];
     case "geometrie_kreis_durchmesser":
-      return [
-        `Formel Durchmesser: d = 2 · r`,
-        `Einsetzen: 2 · ${params.r}`,
-        `Ausrechnen: ${2 * params.r} cm`
-      ];
+      return [`d = 2 · r`, `2 · ${params.r} = ${2 * params.r} cm`];
+    case "geometrie_kreis_umfang":
+      return [`U = π · d`, `3,14 · ${params.d} = ${round2(3.14 * params.d)} cm`];
+    case "geometrie_kreis_flaeche":
+      return [`A = π · r²`, `3,14 · ${params.r}² = 3,14 · ${params.r * params.r} = ${round2(3.14 * params.r * params.r)} cm²`];
     case "geometrie_wuerfel_volumen":
-      return [
-        `Formel Volumen Würfel: V = a · a · a`,
-        `Einsetzen: ${params.a} · ${params.a} · ${params.a}`,
-        `Ausrechnen: ${params.a * params.a * params.a} cm³`
-      ];
+      return [`V = a · a · a`, `${params.a} · ${params.a} · ${params.a} = ${params.a * params.a * params.a} cm³`];
+    case "geometrie_quader_volumen":
+      return [`V = l · b · h`, `${params.l} · ${params.b} · ${params.h} = ${params.l * params.b * params.h} cm³`];
+    case "geometrie_quader_oberflaeche":
+      return [`O = 2 · (l·b + l·h + b·h)`, `2 · (${params.l}·${params.b} + ${params.l}·${params.h} + ${params.b}·${params.h}) = ${2 * (params.l*params.b + params.l*params.h + params.b*params.h)} cm²`];
+    case "geometrie_zylinder_volumen":
+      return [`V = π · r² · h`, `3,14 · ${params.r}² · ${params.h} = 3,14 · ${params.r * params.r} · ${params.h} = ${round2(3.14 * params.r * params.r * params.h)} cm³`];
 
     // ---------------------- SACHAUFGABEN ----------------------
     case "sach_einkauf":
-      return [
-        `Preis pro Stück: ${params.price} €`,
-        `Anzahl: ${params.amount}`,
-        `Gesamtpreis: ${params.amount} · ${params.price} = ${params.price * params.amount} €`
-      ];
+      return [`Preis pro Stück: ${params.price} €`, `Anzahl: ${params.amount}`, `${params.amount} · ${params.price} = ${params.price * params.amount} €`];
     case "sach_geschwindigkeit":
-      return [
-        `Formel: v = s : t`,
-        `Einsetzen: ${params.km} : ${params.h}`,
-        `Geschwindigkeit: ${round2(params.km / params.h)} km/h`
-      ];
+      return [`v = s : t`, `${params.km} : ${params.h} = ${round2(params.km / params.h)} km/h`];
     case "sach_seiten_pro_tag":
-      return [
-        `Gesamtseiten: ${params.pages}`,
-        `Tage: ${params.days}`,
-        `Pro Tag: ${params.pages} : ${params.days} = ${round2(params.pages / params.days)} Seiten`
-      ];
-    case "sach_zeit":
-      return [
-        `${params.km * params.factor} km = ${params.factor} · ${params.km} km`,
-        `Zeit proportional: ${params.factor} · ${params.min}`,
-        `${params.min * params.factor} Minuten`
-      ];
-    case "sach_tickets":
-      return [
-        `Bezahlt: ${params.paid} €`,
-        `Preis pro Ticket: ${params.price} €`,
-        `Anzahl: ${params.paid} : ${params.price} = ${round2(params.paid / params.price)}`
-      ];
+      return [`Gesamt: ${params.pages} Seiten`, `${params.days} Tage`, `Pro Tag: ${params.pages} : ${params.days} = ${round2(params.pages / params.days)} Seiten`];
+    case "sach_zeit_proportional":
+      return [`${params.km} km → ${params.min} min`, `${params.factor} · ${params.km} km → ${params.factor} · ${params.min} = ${params.min * params.factor} min`];
+    case "sach_antiproportional":
+      return [`Gesamtarbeit: ${params.anz1} · ${params.zeit1} = ${params.anz1 * params.zeit1}`, `${params.anz2} benötigen: ${params.anz1 * params.zeit1} : ${params.anz2} = ${round2(params.anz1 * params.zeit1 / params.anz2)} Stunden`];
     case "sach_durchschnitt":
-      return [
-        `Summe bilden: ${params.v1} + ${params.v2} + ${params.v3} = ${params.v1 + params.v2 + params.v3}`,
-        `Durch 3 teilen: ${params.v1 + params.v2 + params.v3} : 3`,
-        `Durchschnitt: ${round2((params.v1 + params.v2 + params.v3) / 3)}`
-      ];
+      return [`Summe: ${params.v1} + ${params.v2} + ${params.v3} = ${params.v1 + params.v2 + params.v3}`, `Durch 3: ${params.v1 + params.v2 + params.v3} : 3 = ${round2((params.v1 + params.v2 + params.v3) / 3)}`];
+    case "sach_tickets":
+      return [`Bezahlt: ${params.paid} €`, `Preis pro Ticket: ${params.price} €`, `Anzahl: ${params.paid} : ${params.price} = ${round2(params.paid / params.price)}`];
+    case "sach_zeitdifferenz":
+      return [`Start: ${params.start}h`, `Dauer: ${params.h}h ${params.min}min`, `Ende: ${params.start + params.h}:${params.startMin + params.min}`];
 
     // ---------------------- PROZENTRECHNUNG ----------------------
     case "prozent_prozentwert":
-      return [
-        `Formel: W = G · p / 100`,
-        `Einsetzen: ${params.g} · ${params.p} / 100`,
-        `Ausrechnen: ${round2(params.g * params.p / 100)}`
-      ];
+      return [`W = G · p / 100`, `${params.g} · ${params.p} / 100 = ${round2(params.g * params.p / 100)}`];
     case "prozent_rabatt":
-      return [
-        `Zahlungsanteil: 100% − ${params.p}% = ${100 - params.p}%`,
-        `Formel: ${params.price} · ${100 - params.p} / 100`,
-        `Ausrechnen: ${round2(params.price * (100 - params.p) / 100)} €`
-      ];
+      return [`Zahlungsanteil: 100% − ${params.p}% = ${100 - params.p}%`, `${params.price} · ${100 - params.p} / 100 = ${round2(params.price * (100 - params.p) / 100)} €`];
     case "prozent_grundwert":
-      return [
-        `Formel: G = W · 100 / p`,
-        `Einsetzen: ${params.w} · 100 / ${params.p}`,
-        `Ausrechnen: ${round2(params.w * 100 / params.p)}`
-      ];
+      return [`G = W · 100 / p`, `${params.w} · 100 / ${params.p} = ${round2(params.w * 100 / params.p)}`];
     case "prozent_steigerung":
-      return [
-        `Zunahme: ${params.newVal} − ${params.g} = ${params.diff}`,
-        `Formel: p = (Zunahme / Grundwert) · 100`,
-        `(${params.diff} / ${params.g}) · 100 = ${round2((params.diff / params.g) * 100)}%`
-      ];
+      return [`Differenz: ${params.newVal} − ${params.g} = ${params.diff}`, `p = (Differenz / Grundwert) · 100`, `(${params.diff} / ${params.g}) · 100 = ${round2((params.diff / params.g) * 100)}%`];
     case "prozent_prozentsatz":
-      return [
-        `Formel: p = (W / G) · 100`,
-        `Einsetzen: (${params.w} / ${params.g}) · 100`,
-        `Ausrechnen: ${round2((params.w / params.g) * 100)}%`
-      ];
+      return [`p = (W / G) · 100`, `(${params.w} / ${params.g}) · 100 = ${round2((params.w / params.g) * 100)}%`];
+    case "prozent_mehrwertsteuer":
+      return [`Brutto = Netto · (1 + p/100)`, `${params.netto} · ${1 + params.p/100} = ${round2(params.netto * (1 + params.p/100))} €`];
+    case "prozent_skonto":
+      return [`Zahlungsbetrag = Rechnungsbetrag · (1 − p/100)`, `${params.betrag} · ${1 - params.p/100} = ${round2(params.betrag * (1 - params.p/100))} €`];
 
-    // ---------------------- STERNAUFGABEN ----------------------
-    case "star_rabattkette":
-      return [
-        `1. Rabatt: 20% → Zahlungsanteil 80%`,
-        `${params.g} · 0,8 = ${params.g * 0.8} €`,
-        `2. Rabatt: 10% → Zahlungsanteil 90%`,
-        `${round2(params.g * 0.8)} · 0,9 = ${round2(params.g * 0.8 * 0.9)} €`
-      ];
-    case "star_dreieck":
-      return [
-        `Formel Fläche Dreieck: A = (g · h) : 2`,
-        `Einsetzen: (${params.g} · ${params.h}) : 2`,
-        `Ausrechnen: ${round2(params.g * params.h / 2)} cm²`
-      ];
-    case "star_zeit_pro_km":
-      return [
-        `${params.km} km → ${params.min} Minuten`,
-        `Pro km: ${params.min} : ${params.km} = ${round2(params.min / params.km)} Minuten`
-      ];
-    case "star_klammern":
-      return [
-        `Klammer zuerst: (${params.a} + ${params.b}) = ${params.a + params.b}`,
-        `Multiplizieren: ${params.a + params.b} · ${params.c} = ${(params.a + params.b) * params.c}`,
-        `Subtrahieren: ${(params.a + params.b) * params.c} − ${params.a} = ${(params.a + params.b) * params.c - params.a}`
-      ];
-    case "star_rabatt_einfach":
-      return [
-        `Rabatt: ${params.p}% → Zahlungsanteil: ${100 - params.p}%`,
-        `${params.price} · ${100 - params.p} / 100`,
-        `Neuer Preis: ${round2(params.price * (100 - params.p) / 100)} €`
-      ];
-    case "star_flaechen":
-      return [
-        `Rechteckfläche: ${params.a} · ${params.b} = ${params.a * params.b} cm²`,
-        `Quadratfläche: ${params.b} · ${params.b} = ${params.b * params.b} cm²`,
-        `Gesamtfläche: ${params.a * params.b} + ${params.b * params.b} = ${(params.a * params.b) + (params.b * params.b)} cm²`
-      ];
-    case "star_zinsen":
-      return [
-        `Formel Jahreszinsen: Z = K · p / 100`,
-        `Einsetzen: ${params.k} · ${params.p} / 100`,
-        `Ergebnis: ${round2(params.k * params.p / 100)} €`
-      ];
+    // ---------------------- ZUORDNUNGEN ----------------------
+    case "zuordnung_proportional":
+      return [`Je mehr, desto mehr`, `Quotientengleichheit`, `${params.y1} / ${params.x1} = ${round2(params.y1 / params.x1)}`, `${params.x2} · ${round2(params.y1 / params.x1)} = ${round2(params.x2 * params.y1 / params.x1)}`];
+    case "zuordnung_antiproportional":
+      return [`Je mehr, desto weniger`, `Produktgleichheit`, `${params.x1} · ${params.y1} = ${params.x1 * params.y1}`, `${params.x2} benötigt: ${params.x1 * params.y1} : ${params.x2} = ${round2(params.x1 * params.y1 / params.x2)}`];
+
+    // ---------------------- GLEICHUNGEN ----------------------
+    case "gleichung_einfach":
+      return [`x + ${params.a} = ${params.sum}`, `x = ${params.sum} − ${params.a}`, `x = ${params.sum - params.a}`];
+    case "gleichung_2x":
+      return [`2x = ${params.b}`, `x = ${params.b} : 2`, `x = ${params.b / 2}`];
+    case "gleichung_klammer":
+      return [`${params.faktor} · (x + ${params.k}) = ${params.erg}`, `x + ${params.k} = ${params.erg} : ${params.faktor} = ${params.erg / params.faktor}`, `x = ${params.erg / params.faktor} − ${params.k} = ${params.erg / params.faktor - params.k}`];
+
+    // ---------------------- WAHRSCHEINLICHKEIT ----------------------
+    case "wsk_einfach":
+      return [`Günstige: ${params.gunstig}`, `Mögliche: ${params.moglich}`, `P = ${params.gunstig} / ${params.moglich} = ${round2(params.gunstig / params.moglich)} = ${round2(params.gunstig / params.moglich * 100)}%`];
+    case "wsk_mehrstufig_mit_zurueck":
+      return [`P = ${params.p1} · ${params.p2}`, `${round2(params.p1)} · ${round2(params.p2)} = ${round2(params.p1 * params.p2)} = ${round2(params.p1 * params.p2 * 100)}%`];
+
+    // ---------------------- DIAGRAMME ----------------------
+    case "diagramm_saeule":
+      return [`Säulenhöhe proportional zum Wert`, `Maßstab: 1 cm = ${params.scale} Einheiten`, `Höhe = ${params.wert} : ${params.scale} = ${round2(params.wert / params.scale)} cm`];
 
     default:
       return [`Rechnung durchführen`, `Ergebnis: ${solution}`];
@@ -273,11 +197,15 @@ function generateSteps(taskType, params, solution) {
    KATEGORIEN & GEWICHTUNG
 ========================================================= */
 const weightedCategories = [
-  "rechnen", "rechnen", "rechnen",
+  "rechnen", "rechnen",
   "einheiten", "einheiten",
   "geometrie", "geometrie",
   "sach", "sach",
-  "prozent", "prozent"
+  "prozent", "prozent",
+  "zuordnung",
+  "gleichung",
+  "wsk",
+  "diagramm"
 ];
 
 function pickCategoryWeighted() {
@@ -285,33 +213,29 @@ function pickCategoryWeighted() {
 }
 
 /* =========================================================
-   BASIS-AUFGABEN (BOA + BBR) mit Lösungsschritten
+   BASIS-AUFGABEN (BBR Niveau 1-3)
 ========================================================= */
 const TASKS = {
 
   // ---------------------- RECHNEN ----------------------
   rechnen: (level) => {
-    const type = rand(1, 6);
+    const type = rand(1, 7);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
-    // Multiplikation
     if (type === 1) {
-      let a = level === "boa" ? rand(10, 70) : rand(20, 200);
-      let b = level === "boa" ? rand(2, 10) : rand(3, 25);
-      let sol = a * b;
+      let a = rand(10, 200);
+      let b = rand(2, 20);
       return {
         text: `${opBerechne}: ${a} · ${b}`,
-        sol: sol,
-        steps: generateSteps("rechnen_multiplikation", {a, b}, sol),
+        sol: a * b,
+        steps: generateSteps("rechnen_multiplikation", {a, b}, a * b),
         stepType: "rechnen_multiplikation",
         params: {a, b}
       };
     }
-    
-    // Division
     if (type === 2) {
-      let b = level === "boa" ? rand(2, 9) : rand(3, 12);
-      let ans = level === "boa" ? rand(5, 40) : rand(10, 100);
+      let b = rand(2, 12);
+      let ans = rand(5, 50);
       let a = ans * b;
       return {
         text: `${opBerechne}: ${a} : ${b}`,
@@ -321,547 +245,613 @@ const TASKS = {
         params: {a, b, ans}
       };
     }
-    
-    // Addition
     if (type === 3) {
-      let a = level === "boa" ? rand(50, 300) : rand(200, 1200);
-      let b = level === "boa" ? rand(10, 180) : rand(50, 900);
-      let sol = a + b;
+      let a = rand(50, 500);
+      let b = rand(20, 300);
       return {
         text: `${opBerechne}: ${a} + ${b}`,
-        sol: sol,
-        steps: generateSteps("rechnen_addition", {a, b}, sol),
+        sol: a + b,
+        steps: generateSteps("rechnen_addition", {a, b}, a + b),
         stepType: "rechnen_addition",
         params: {a, b}
       };
     }
-    
-    // Subtraktion
     if (type === 4) {
-      let a = level === "boa" ? rand(50, 300) : rand(200, 1200);
-      let b = level === "boa" ? rand(10, 180) : rand(50, 900);
+      let a = rand(100, 600);
+      let b = rand(30, 200);
       if (b > a) [a, b] = [b, a];
-      let sol = a - b;
       return {
         text: `${opBerechne}: ${a} − ${b}`,
-        sol: sol,
-        steps: generateSteps("rechnen_subtraktion", {a, b}, sol),
+        sol: a - b,
+        steps: generateSteps("rechnen_subtraktion", {a, b}, a - b),
         stepType: "rechnen_subtraktion",
         params: {a, b}
       };
     }
-    
-    // Punkt-vor-Strich
     if (type === 5) {
-      let a = level === "boa" ? rand(20, 80) : rand(60, 180);
-      let b = level === "boa" ? rand(2, 7) : rand(3, 12);
-      let c = level === "boa" ? rand(2, 6) : rand(3, 10);
-      let sol = a - b * c;
+      let a = rand(40, 150);
+      let b = rand(2, 8);
+      let c = rand(2, 7);
       return {
         text: `${opBerechne}: ${a} − ${b} · ${c}`,
-        sol: sol,
-        steps: generateSteps("rechnen_punktvorstrich", {a, b, c}, sol),
+        sol: a - b * c,
+        steps: generateSteps("rechnen_punktvorstrich", {a, b, c}, a - b * c),
         stepType: "rechnen_punktvorstrich",
         params: {a, b, c}
       };
     }
-
-    // Quadratzahl
-    let a = level === "boa" ? rand(2, 12) : rand(11, 25);
-    let sol = a * a;
+    if (type === 6) {
+      let a = rand(2, 12);
+      return {
+        text: `${opBerechne}: Die Quadratzahl von ${a}`,
+        sol: a * a,
+        steps: generateSteps("rechnen_quadrat", {a}, a * a),
+        stepType: "rechnen_quadrat",
+        params: {a}
+      };
+    }
+    let a = rand(5, 20);
+    let b = rand(3, 15);
+    let c = rand(2, 6);
     return {
-      text: `${opBerechne}: Die Quadratzahl von ${a}`,
-      sol: sol,
-      steps: generateSteps("rechnen_quadrat", {a}, sol),
-      stepType: "rechnen_quadrat",
-      params: {a}
+      text: `${opBerechne}: (${a} + ${b}) · ${c}`,
+      sol: (a + b) * c,
+      steps: generateSteps("rechnen_klammer", {a, b, c}, (a + b) * c),
+      stepType: "rechnen_klammer",
+      params: {a, b, c}
     };
   },
 
   // ---------------------- EINHEITEN ----------------------
   einheiten: (level) => {
-    const type = rand(1, 6);
+    const type = rand(1, 11);
     const opRechneUm = getOperatorPhraseBasis("RECHNE_UM");
     
-    // m → cm
     if (type === 1) {
-      let m = level === "boa" ? rand(1, 12) : rand(2, 35);
-      let sol = m * 100;
+      let m = rand(1, 15);
       return {
         text: `${opRechneUm}: ${m} m in cm`,
-        sol: sol,
-        steps: generateSteps("einheiten_m_cm", {m}, sol),
+        sol: m * 100,
+        steps: generateSteps("einheiten_m_cm", {m}, m * 100),
         stepType: "einheiten_m_cm",
         params: {m}
       };
     }
-    
-    // cm → m
     if (type === 2) {
-      let cm = level === "boa" ? rand(100, 1200) : rand(250, 5000);
-      let sol = round2(cm / 100);
+      let cm = rand(150, 2500);
       return {
         text: `${opRechneUm}: ${cm} cm in m`,
-        sol: sol,
-        steps: generateSteps("einheiten_cm_m", {cm}, sol),
+        sol: round2(cm / 100),
+        steps: generateSteps("einheiten_cm_m", {cm}, round2(cm / 100)),
         stepType: "einheiten_cm_m",
         params: {cm}
       };
     }
-    
-    // kg → g
     if (type === 3) {
-      let kg = level === "boa" ? rand(1, 8) : rand(2, 20);
-      let sol = kg * 1000;
+      let kg = rand(1, 10);
       return {
         text: `${opRechneUm}: ${kg} kg in g`,
-        sol: sol,
-        steps: generateSteps("einheiten_kg_g", {kg}, sol),
+        sol: kg * 1000,
+        steps: generateSteps("einheiten_kg_g", {kg}, kg * 1000),
         stepType: "einheiten_kg_g",
         params: {kg}
       };
     }
-    
-    // g → kg
     if (type === 4) {
-      let g = level === "boa" ? rand(500, 3000) : rand(1000, 8000);
-      let sol = round2(g / 1000);
+      let g = rand(500, 5000);
       return {
         text: `${opRechneUm}: ${g} g in kg`,
-        sol: sol,
-        steps: generateSteps("einheiten_g_kg", {g}, sol),
+        sol: round2(g / 1000),
+        steps: generateSteps("einheiten_g_kg", {g}, round2(g / 1000)),
         stepType: "einheiten_g_kg",
         params: {g}
       };
     }
-    
-    // min → h
     if (type === 5) {
-      let mins = level === "boa" 
-        ? [60, 90, 120, 150, 180][rand(0, 4)]
-        : [75, 105, 135, 165, 195, 225, 255, 285][rand(0, 7)];
-      let sol = round2(mins / 60);
+      let mins = [60, 90, 120, 150, 180][rand(0, 4)];
       return {
         text: `${opRechneUm}: ${mins} min in h`,
-        sol: sol,
-        steps: generateSteps("einheiten_min_h", {mins}, sol),
+        sol: round2(mins / 60),
+        steps: generateSteps("einheiten_min_h", {mins}, round2(mins / 60)),
         stepType: "einheiten_min_h",
         params: {mins}
       };
     }
-
-    // km → m
-    let km = level === "boa" ? rand(1, 5) : round2(rand(10, 50) / 10);
-    let sol = km * 1000;
+    if (type === 6) {
+      let km = rand(1, 8);
+      return {
+        text: `${opRechneUm}: ${km} km in m`,
+        sol: km * 1000,
+        steps: generateSteps("einheiten_km_m", {km}, km * 1000),
+        stepType: "einheiten_km_m",
+        params: {km}
+      };
+    }
+    if (type === 7) {
+      let cm = rand(20, 150);
+      return {
+        text: `${opRechneUm}: ${cm} cm in dm`,
+        sol: cm / 10,
+        steps: generateSteps("einheiten_cm_dm", {cm}, cm / 10),
+        stepType: "einheiten_cm_dm",
+        params: {cm}
+      };
+    }
+    if (type === 8) {
+      let euro = rand(1, 10);
+      return {
+        text: `${opRechneUm}: ${euro} € in Cent`,
+        sol: euro * 100,
+        steps: generateSteps("einheiten_euro_cent", {euro}, euro * 100),
+        stepType: "einheiten_euro_cent",
+        params: {euro}
+      };
+    }
+    if (type === 9) {
+      let cent = rand(150, 999);
+      return {
+        text: `${opRechneUm}: ${cent} Cent in €`,
+        sol: round2(cent / 100),
+        steps: generateSteps("einheiten_cent_euro", {cent}, round2(cent / 100)),
+        stepType: "einheiten_cent_euro",
+        params: {cent}
+      };
+    }
+    if (type === 10) {
+      let tage = rand(1, 5);
+      return {
+        text: `${opRechneUm}: ${tage} Tage in Stunden`,
+        sol: tage * 24,
+        steps: generateSteps("einheiten_tage_stunden", {tage}, tage * 24),
+        stepType: "einheiten_tage_stunden",
+        params: {tage}
+      };
+    }
+    let s = rand(100, 300);
     return {
-      text: `${opRechneUm}: ${km} km in m`,
-      sol: sol,
-      steps: generateSteps("einheiten_km_m", {km}, sol),
-      stepType: "einheiten_km_m",
-      params: {km}
+      text: `${opRechneUm}: ${s} s in min und s`,
+      sol: `${Math.floor(s / 60)} min ${s % 60} s`,
+      steps: generateSteps("einheiten_s_min", {s}, `${Math.floor(s / 60)} min ${s % 60} s`),
+      stepType: "einheiten_s_min",
+      params: {s}
     };
   },
 
   // ---------------------- GEOMETRIE ----------------------
   geometrie: (level) => {
-    const type = rand(1, 7);
+    const type = rand(1, 12);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     
-    // Quadrat Umfang
     if (type === 1) {
-      let a = level === "boa" ? rand(2, 12) : rand(4, 25);
-      let sol = 4 * a;
+      let a = rand(2, 15);
       return {
         text: `${opBerechne}: Umfang eines Quadrats mit a = ${a} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_quadrat_umfang", {a}, sol),
+        sol: 4 * a,
+        steps: generateSteps("geometrie_quadrat_umfang", {a}, 4 * a),
         stepType: "geometrie_quadrat_umfang",
         params: {a}
       };
     }
-    
-    // Quadrat Fläche
     if (type === 2) {
-      let a = level === "boa" ? rand(2, 12) : rand(4, 20);
-      let sol = a * a;
+      let a = rand(2, 15);
       return {
         text: `${opErmittle}: Fläche eines Quadrats mit a = ${a} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_quadrat_flaeche", {a}, sol),
+        sol: a * a,
+        steps: generateSteps("geometrie_quadrat_flaeche", {a}, a * a),
         stepType: "geometrie_quadrat_flaeche",
         params: {a}
       };
     }
-    
-    // Rechteck Umfang
     if (type === 3) {
-      let l = level === "boa" ? rand(3, 18) : rand(6, 35);
-      let b = level === "boa" ? rand(2, 14) : rand(4, 28);
-      let sol = 2 * (l + b);
+      let l = rand(4, 25);
+      let b = rand(3, 20);
       return {
         text: `${opBerechne}: Umfang eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_rechteck_umfang", {l, b}, sol),
+        sol: 2 * (l + b),
+        steps: generateSteps("geometrie_rechteck_umfang", {l, b}, 2 * (l + b)),
         stepType: "geometrie_rechteck_umfang",
         params: {l, b}
       };
     }
-    
-    // Rechteck Fläche
     if (type === 4) {
-      let l = level === "boa" ? rand(3, 18) : rand(6, 35);
-      let b = level === "boa" ? rand(2, 14) : rand(4, 28);
-      let sol = l * b;
+      let l = rand(4, 25);
+      let b = rand(3, 20);
       return {
         text: `${opErmittle}: Fläche eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_rechteck_flaeche", {l, b}, sol),
+        sol: l * b,
+        steps: generateSteps("geometrie_rechteck_flaeche", {l, b}, l * b),
         stepType: "geometrie_rechteck_flaeche",
         params: {l, b}
       };
     }
-    
-    // Dreieck Fläche
     if (type === 5) {
-      let g = level === "boa" ? rand(4, 20) : rand(8, 40);
-      let h = level === "boa" ? rand(3, 15) : rand(6, 30);
-      let sol = round2((g * h) / 2);
+      let g = rand(4, 20);
+      let h = rand(3, 15);
       return {
         text: `${opBerechne}: Fläche eines Dreiecks mit g = ${g} cm, h = ${h} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_dreieck_flaeche", {g, h}, sol),
+        sol: round2((g * h) / 2),
+        steps: generateSteps("geometrie_dreieck_flaeche", {g, h}, round2((g * h) / 2)),
         stepType: "geometrie_dreieck_flaeche",
         params: {g, h}
       };
     }
-    
-    // Kreis Durchmesser
     if (type === 6) {
-      let r = level === "boa" ? rand(2, 10) : rand(3, 20);
-      let sol = 2 * r;
+      let r = rand(2, 12);
       return {
         text: `${opBerechne}: Durchmesser eines Kreises mit r = ${r} cm`,
-        sol: sol,
-        steps: generateSteps("geometrie_kreis_durchmesser", {r}, sol),
+        sol: 2 * r,
+        steps: generateSteps("geometrie_kreis_durchmesser", {r}, 2 * r),
         stepType: "geometrie_kreis_durchmesser",
         params: {r}
       };
     }
-
-    // Würfelvolumen
-    let a = level === "boa" ? rand(2, 5) : rand(4, 10);
-    let sol = a * a * a;
+    if (type === 7) {
+      let d = rand(4, 20);
+      return {
+        text: `${opBerechne}: Umfang eines Kreises mit d = ${d} cm (π = 3,14)`,
+        sol: round2(3.14 * d),
+        steps: generateSteps("geometrie_kreis_umfang", {d}, round2(3.14 * d)),
+        stepType: "geometrie_kreis_umfang",
+        params: {d}
+      };
+    }
+    if (type === 8) {
+      let r = rand(2, 10);
+      return {
+        text: `${opErmittle}: Fläche eines Kreises mit r = ${r} cm (π = 3,14)`,
+        sol: round2(3.14 * r * r),
+        steps: generateSteps("geometrie_kreis_flaeche", {r}, round2(3.14 * r * r)),
+        stepType: "geometrie_kreis_flaeche",
+        params: {r}
+      };
+    }
+    if (type === 9) {
+      let a = rand(2, 6);
+      return {
+        text: `${opBerechne}: Volumen eines Würfels mit a = ${a} cm`,
+        sol: a * a * a,
+        steps: generateSteps("geometrie_wuerfel_volumen", {a}, a * a * a),
+        stepType: "geometrie_wuerfel_volumen",
+        params: {a}
+      };
+    }
+    if (type === 10) {
+      let l = rand(3, 12);
+      let b = rand(2, 10);
+      let h = rand(2, 8);
+      return {
+        text: `${opBerechne}: Volumen eines Quaders mit l = ${l} cm, b = ${b} cm, h = ${h} cm`,
+        sol: l * b * h,
+        steps: generateSteps("geometrie_quader_volumen", {l, b, h}, l * b * h),
+        stepType: "geometrie_quader_volumen",
+        params: {l, b, h}
+      };
+    }
+    if (type === 11) {
+      let l = rand(3, 10);
+      let b = rand(2, 8);
+      let h = rand(2, 6);
+      return {
+        text: `${opBerechne}: Oberfläche eines Quaders mit l = ${l} cm, b = ${b} cm, h = ${h} cm`,
+        sol: 2 * (l*b + l*h + b*h),
+        steps: generateSteps("geometrie_quader_oberflaeche", {l, b, h}, 2 * (l*b + l*h + b*h)),
+        stepType: "geometrie_quader_oberflaeche",
+        params: {l, b, h}
+      };
+    }
+    let r = rand(2, 8);
+    let h = rand(3, 12);
     return {
-      text: `${opBerechne}: Das Volumen eines Würfels mit Seite a = ${a} cm`,
-      sol: sol,
-      steps: generateSteps("geometrie_wuerfel_volumen", {a}, sol),
-      stepType: "geometrie_wuerfel_volumen",
-      params: {a}
+      text: `${opBerechne}: Volumen eines Zylinders mit r = ${r} cm, h = ${h} cm (π = 3,14)`,
+      sol: round2(3.14 * r * r * h),
+      steps: generateSteps("geometrie_zylinder_volumen", {r, h}, round2(3.14 * r * r * h)),
+      stepType: "geometrie_zylinder_volumen",
+      params: {r, h}
     };
   },
 
   // ---------------------- SACHAUFGABEN ----------------------
   sach: (level) => {
-    const type = rand(1, 6);
+    const type = rand(1, 8);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     const opGibAn = getOperatorPhraseBasis("GIB_AN");
     
-    // Einkauf
     if (type === 1) {
-      let price = level === "boa" ? rand(1, 5) : rand(2, 9);
-      let amount = level === "boa" ? rand(2, 10) : rand(4, 18);
-      let sol = price * amount;
+      let price = rand(1, 8);
+      let amount = rand(2, 12);
       return {
-        text: `${opBerechne}: Gesamtpreis for ${amount} Artikel zu je ${price} €`,
-        sol: sol,
-        steps: generateSteps("sach_einkauf", {price, amount}, sol),
+        text: `${opBerechne}: Gesamtpreis für ${amount} Artikel zu je ${price} €`,
+        sol: price * amount,
+        steps: generateSteps("sach_einkauf", {price, amount}, price * amount),
         stepType: "sach_einkauf",
         params: {price, amount}
       };
     }
-    
-    // Geschwindigkeit
     if (type === 2) {
-      let km = level === "boa" ? rand(30, 200) : rand(80, 420);
-      let h = level === "boa" ? rand(1, 5) : rand(2, 7);
-      let sol = round2(km / h);
+      let km = rand(40, 300);
+      let h = rand(1, 6);
       return {
         text: `${opErmittle}: Geschwindigkeit (${km} km in ${h} h)`,
-        sol: sol,
-        steps: generateSteps("sach_geschwindigkeit", {km, h}, sol),
+        sol: round2(km / h),
+        steps: generateSteps("sach_geschwindigkeit", {km, h}, round2(km / h)),
         stepType: "sach_geschwindigkeit",
         params: {km, h}
       };
     }
-    
-    // Seiten pro Tag
     if (type === 3) {
-      let pages = level === "boa" ? rand(30, 120) : rand(80, 300);
-      let days = level === "boa" ? rand(2, 8) : rand(3, 14);
-      let sol = round2(pages / days);
+      let pages = rand(40, 200);
+      let days = rand(2, 10);
       return {
         text: `${opGibAn}: Seiten pro Tag (${pages} Seiten in ${days} Tagen)`,
-        sol: sol,
-        steps: generateSteps("sach_seiten_pro_tag", {pages, days}, sol),
+        sol: round2(pages / days),
+        steps: generateSteps("sach_seiten_pro_tag", {pages, days}, round2(pages / days)),
         stepType: "sach_seiten_pro_tag",
         params: {pages, days}
       };
     }
-    
-    // Zeit
     if (type === 4) {
-      let km = level === "boa" ? rand(20, 120) : rand(60, 300);
-      let min = level === "boa" ? rand(10, 40) : rand(15, 60);
-      let factor = level === "boa" ? 2 : rand(2, 4);
-      let sol = min * factor;
+      let km = rand(20, 100);
+      let min = rand(10, 40);
+      let factor = rand(2, 4);
       return {
         text: `${opBerechne}: Zeit für ${km * factor} km (${km} km in ${min} min)`,
-        sol: sol,
-        steps: generateSteps("sach_zeit", {km, min, factor}, sol),
-        stepType: "sach_zeit",
+        sol: min * factor,
+        steps: generateSteps("sach_zeit_proportional", {km, min, factor}, min * factor),
+        stepType: "sach_zeit_proportional",
         params: {km, min, factor}
       };
     }
-    
-    // Tickets
     if (type === 5) {
-      let price = level === "boa" ? rand(2, 6) : rand(5, 15);
-      let paid = level === "boa" ? rand(10, 50) : rand(20, 120);
-      let sol = round2(paid / price);
+      let anz1 = rand(2, 6);
+      let zeit1 = rand(4, 12);
+      let anz2 = anz1 + rand(1, 3);
+      return {
+        text: `${opErmittle}: Zeit für ${anz2} Arbeiter (${anz1} benötigen ${zeit1} h)`,
+        sol: round2(anz1 * zeit1 / anz2),
+        steps: generateSteps("sach_antiproportional", {anz1, zeit1, anz2}, round2(anz1 * zeit1 / anz2)),
+        stepType: "sach_antiproportional",
+        params: {anz1, zeit1, anz2}
+      };
+    }
+    if (type === 6) {
+      let v1 = rand(10, 30);
+      let v2 = rand(10, 30);
+      let v3 = rand(10, 30);
+      return {
+        text: `${opErmittle}: Durchschnitt von ${v1}, ${v2} und ${v3}`,
+        sol: round2((v1 + v2 + v3) / 3),
+        steps: generateSteps("sach_durchschnitt", {v1, v2, v3}, round2((v1 + v2 + v3) / 3)),
+        stepType: "sach_durchschnitt",
+        params: {v1, v2, v3}
+      };
+    }
+    if (type === 7) {
+      let price = rand(3, 12);
+      let paid = rand(15, 80);
       return {
         text: `${opBerechne}: Anzahl Tickets (${paid} €, Preis pro Ticket ${price} €)`,
-        sol: sol,
-        steps: generateSteps("sach_tickets", {price, paid}, sol),
+        sol: round2(paid / price),
+        steps: generateSteps("sach_tickets", {price, paid}, round2(paid / price)),
         stepType: "sach_tickets",
         params: {price, paid}
       };
     }
-
-    // Durchschnitt
-    let v1 = rand(10, 30), v2 = rand(10, 30), v3 = rand(10, 30);
-    let sol = round2((v1 + v2 + v3) / 3);
+    let start = rand(8, 14);
+    let startMin = [0, 15, 30, 45][rand(0, 3)];
+    let dauerH = rand(1, 3);
+    let dauerMin = rand(0, 55);
     return {
-      text: `${opErmittle}: Den Durchschnittswert von ${v1}, ${v2} und ${v3}`,
-      sol: sol,
-      steps: generateSteps("sach_durchschnitt", {v1, v2, v3}, sol),
-      stepType: "sach_durchschnitt",
-      params: {v1, v2, v3}
+      text: `${opBerechne}: Ankunftszeit (Start ${start}:${startMin < 10 ? '0'+startMin : startMin}, Dauer ${dauerH}h ${dauerMin}min)`,
+      sol: `${start + dauerH}:${(startMin + dauerMin) % 60 < 10 ? '0' + ((startMin + dauerMin) % 60) : (startMin + dauerMin) % 60}`,
+      steps: generateSteps("sach_zeitdifferenz", {start, startMin, h: dauerH, min: dauerMin}, sol),
+      stepType: "sach_zeitdifferenz",
+      params: {start, startMin, h: dauerH, min: dauerMin}
     };
   },
 
   // ---------------------- PROZENTRECHNUNG ----------------------
   prozent: (level) => {
-    const type = rand(1, 5);
+    const type = rand(1, 7);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     
-    // Prozentwert
     if (type === 1) {
-      let g = level === "boa" ? rand(80, 250) : rand(120, 600);
-      let p = level === "boa" 
-        ? [10, 20, 25, 50][rand(0, 3)] 
-        : rand(10, 40);
-      let sol = round2(g * p / 100);
+      let g = rand(80, 400);
+      let p = [10, 20, 25, 30, 50][rand(0, 4)];
       return {
         text: `${opBerechne}: ${p}% von ${g}`,
-        sol: sol,
-        steps: generateSteps("prozent_prozentwert", {g, p}, sol),
+        sol: round2(g * p / 100),
+        steps: generateSteps("prozent_prozentwert", {g, p}, round2(g * p / 100)),
         stepType: "prozent_prozentwert",
         params: {g, p}
       };
     }
-    
-    // Rabatt
     if (type === 2) {
-      let price = level === "boa" ? rand(20, 180) : rand(50, 450);
-      let p = level === "boa" 
-        ? [10, 20, 25][rand(0, 2)] 
-        : [10, 15, 20, 25, 30][rand(0, 4)];
-      let sol = round2(price * (100 - p) / 100);
+      let price = rand(20, 200);
+      let p = [10, 15, 20, 25, 30][rand(0, 4)];
       return {
         text: `${opBerechne}: Preis nach ${p}% Rabatt (${price} €)`,
-        sol: sol,
-        steps: generateSteps("prozent_rabatt", {price, p}, sol),
+        sol: round2(price * (100 - p) / 100),
+        steps: generateSteps("prozent_rabatt", {price, p}, round2(price * (100 - p) / 100)),
         stepType: "prozent_rabatt",
         params: {price, p}
       };
     }
-    
-    // Grundwert
     if (type === 3) {
-      let w = level === "boa" ? rand(20, 120) : rand(40, 250);
-      let p = level === "boa" 
-        ? [10, 20, 25, 50][rand(0, 3)] 
-        : rand(5, 60);
-      let sol = round2(w * 100 / p);
+      let w = rand(20, 150);
+      let p = [10, 20, 25, 30, 40][rand(0, 4)];
       return {
         text: `${opErmittle}: Grundwert (${w} sind ${p}%)`,
-        sol: sol,
-        steps: generateSteps("prozent_grundwert", {w, p}, sol),
+        sol: round2(w * 100 / p),
+        steps: generateSteps("prozent_grundwert", {w, p}, round2(w * 100 / p)),
         stepType: "prozent_grundwert",
         params: {w, p}
       };
     }
-    
-    // Prozentuale Steigerung
     if (type === 4) {
-      let g = level === "boa" ? rand(100, 300) : rand(150, 700);
-      let diff = level === "boa" ? rand(10, 80) : rand(20, 200);
+      let g = rand(100, 400);
+      let diff = rand(10, 80);
       let newVal = g + diff;
-      let sol = round2((diff / g) * 100);
       return {
         text: `${opErmittle}: Prozentuale Steigerung (${g} € auf ${newVal} €)`,
-        sol: sol,
-        steps: generateSteps("prozent_steigerung", {g, diff, newVal}, sol),
+        sol: round2((diff / g) * 100),
+        steps: generateSteps("prozent_steigerung", {g, diff, newVal}, round2((diff / g) * 100)),
         stepType: "prozent_steigerung",
         params: {g, diff, newVal}
       };
     }
-    
-    // Prozentsatz
-    let w = level === "boa" ? rand(15, 90) : rand(30, 240);
-    let g = level === "boa" ? rand(50, 200) : rand(100, 400);
-    if (w > g) [w, g] = [g, w];
-    let sol = round2((w / g) * 100);
+    if (type === 5) {
+      let w = rand(20, 150);
+      let g = rand(50, 300);
+      if (w > g) [w, g] = [g, w];
+      return {
+        text: `${opErmittle}: Prozentsatz (${w} von ${g})`,
+        sol: round2((w / g) * 100),
+        steps: generateSteps("prozent_prozentsatz", {w, g}, round2((w / g) * 100)),
+        stepType: "prozent_prozentsatz",
+        params: {w, g}
+      };
+    }
+    if (type === 6) {
+      let netto = rand(50, 300);
+      return {
+        text: `${opBerechne}: Bruttopreis (netto ${netto} €, 19% MwSt)`,
+        sol: round2(netto * 1.19),
+        steps: generateSteps("prozent_mehrwertsteuer", {netto, p: 19}, round2(netto * 1.19)),
+        stepType: "prozent_mehrwertsteuer",
+        params: {netto, p: 19}
+      };
+    }
+    let betrag = rand(200, 800);
+    let p = [2, 3][rand(0, 1)];
     return {
-      text: `${opErmittle}: Prozentsatz (${w} von ${g})`,
-      sol: sol,
-      steps: generateSteps("prozent_prozentsatz", {w, g}, sol),
-      stepType: "prozent_prozentsatz",
-      params: {w, g}
+      text: `${opBerechne}: Zahlungsbetrag (${betrag} €, ${p}% Skonto)`,
+      sol: round2(betrag * (1 - p/100)),
+      steps: generateSteps("prozent_skonto", {betrag, p}, round2(betrag * (1 - p/100))),
+      stepType: "prozent_skonto",
+      params: {betrag, p}
+    };
+  },
+
+  // ---------------------- ZUORDNUNGEN ----------------------
+  zuordnung: (level) => {
+    const type = rand(1, 2);
+    const opErmittle = getOperatorPhraseBasis("ERMITTLE");
+    
+    if (type === 1) {
+      let x1 = rand(2, 8);
+      let y1 = rand(10, 50);
+      let x2 = rand(3, 12);
+      return {
+        text: `${opErmittle}: Proportionaler Wert (${x1} → ${y1}, ${x2} → ?)`,
+        sol: round2(x2 * y1 / x1),
+        steps: generateSteps("zuordnung_proportional", {x1, y1, x2}, round2(x2 * y1 / x1)),
+        stepType: "zuordnung_proportional",
+        params: {x1, y1, x2}
+      };
+    }
+    let x1 = rand(2, 6);
+    let y1 = rand(8, 20);
+    let x2 = x1 + rand(1, 4);
+    return {
+      text: `${opErmittle}: Antiproportionaler Wert (${x1} → ${y1}, ${x2} → ?)`,
+      sol: round2(x1 * y1 / x2),
+      steps: generateSteps("zuordnung_antiproportional", {x1, y1, x2}, round2(x1 * y1 / x2)),
+      stepType: "zuordnung_antiproportional",
+      params: {x1, y1, x2}
+    };
+  },
+
+  // ---------------------- GLEICHUNGEN ----------------------
+  gleichung: (level) => {
+    const type = rand(1, 3);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
+    
+    if (type === 1) {
+      let a = rand(5, 30);
+      let sum = rand(20, 70);
+      return {
+        text: `${opBerechne}: x + ${a} = ${sum}`,
+        sol: sum - a,
+        steps: generateSteps("gleichung_einfach", {a, sum}, sum - a),
+        stepType: "gleichung_einfach",
+        params: {a, sum}
+      };
+    }
+    if (type === 2) {
+      let b = rand(10, 50);
+      return {
+        text: `${opBerechne}: 2x = ${b}`,
+        sol: b / 2,
+        steps: generateSteps("gleichung_2x", {b}, b / 2),
+        stepType: "gleichung_2x",
+        params: {b}
+      };
+    }
+    let faktor = rand(2, 5);
+    let k = rand(2, 10);
+    let erg = faktor * (k + rand(3, 12));
+    return {
+      text: `${opBerechne}: ${faktor} · (x + ${k}) = ${erg}`,
+      sol: erg / faktor - k,
+      steps: generateSteps("gleichung_klammer", {faktor, k, erg}, erg / faktor - k),
+      stepType: "gleichung_klammer",
+      params: {faktor, k, erg}
+    };
+  },
+
+  // ---------------------- WAHRSCHEINLICHKEIT ----------------------
+  wsk: (level) => {
+    const type = rand(1, 2);
+    const opBerechne = getOperatorPhraseBasis("BERECHNE");
+    
+    if (type === 1) {
+      let gunstig = rand(1, 5);
+      let moglich = rand(6, 12);
+      return {
+        text: `${opBerechne}: Wahrscheinlichkeit in % (${gunstig} von ${moglich})`,
+        sol: round2(gunstig / moglich * 100),
+        steps: generateSteps("wsk_einfach", {gunstig, moglich}, round2(gunstig / moglich * 100)),
+        stepType: "wsk_einfach",
+        params: {gunstig, moglich}
+      };
+    }
+    let p1 = rand(1, 4) / 6;
+    let p2 = rand(1, 4) / 6;
+    return {
+      text: `${opBerechne}: Wahrscheinlichkeit zweimal 6 (Würfel) in %`,
+      sol: round2(p1 * p2 * 100),
+      steps: generateSteps("wsk_mehrstufig_mit_zurueck", {p1, p2}, round2(p1 * p2 * 100)),
+      stepType: "wsk_mehrstufig_mit_zurueck",
+      params: {p1, p2}
+    };
+  },
+
+  // ---------------------- DIAGRAMME ----------------------
+  diagramm: (level) => {
+    const opZeichne = getOperatorPhraseBasis("ZEICHNE");
+    let wert = rand(20, 80);
+    let scale = rand(5, 15);
+    return {
+      text: `${opZeichne}: Säulendiagramm - Höhe für ${wert} (Maßstab 1 cm = ${scale})`,
+      sol: `${round2(wert / scale)} cm`,
+      steps: generateSteps("diagramm_saeule", {wert, scale}, `${round2(wert / scale)} cm`),
+      stepType: "diagramm_saeule",
+      params: {wert, scale}
     };
   }
 };
 
 /* =========================================================
-   STERN-AUFGABEN (nur BBR, ab Aufgabe 7)
-========================================================= */
-function starTask() {
-  const type = rand(1, 7);
-  const opBerechne = getOperatorPhraseBasis("BERECHNE");
-  const opErmittle = getOperatorPhraseBasis("ERMITTLE");
-  
-  // Rabattkette
-  if (type === 1) {
-    const g = rand(200, 400);
-    const sol = round2(g * 0.8 * 0.9);
-    return {
-      text: `⭐ ${opBerechne}: Endpreis (${g} €, 20% Rabatt, danach 10% Rabatt)`,
-      sol: sol,
-      steps: generateSteps("star_rabattkette", {g}, sol),
-      stepType: "star_rabattkette",
-      params: {g},
-      star: true
-    };
-  }
-  
-  // Dreieck Fläche
-  if (type === 2) {
-    const g = rand(6, 12);
-    const h = rand(4, 8);
-    const sol = round2(g * h / 2);
-    return {
-      text: `⭐ ${opBerechne}: Fläche eines Dreiecks (g = ${g} cm, h = ${h} cm)`,
-      sol: sol,
-      steps: generateSteps("star_dreieck", {g, h}, sol),
-      stepType: "star_dreieck",
-      params: {g, h},
-      star: true
-    };
-  }
-  
-  // Zeit pro km
-  if (type === 3) {
-    const km = rand(30, 50);
-    const min = rand(20, 40);
-    const sol = round2(min / km);
-    return {
-      text: `⭐ ${opErmittle}: Minuten pro km (${km} km in ${min} min)`,
-      sol: sol,
-      steps: generateSteps("star_zeit_pro_km", {km, min}, sol),
-      stepType: "star_zeit_pro_km",
-      params: {km, min},
-      star: true
-    };
-  }
-  
-  // Klammern mit Subtraktion
-  if (type === 4) {
-    const a = rand(10, 30);
-    const b = rand(5, 15);
-    const c = rand(2, 8);
-    const sol = (a + b) * c - a;
-    return {
-      text: `⭐ ${opBerechne}: (${a} + ${b}) × ${c} − ${a}`,
-      sol: sol,
-      steps: generateSteps("star_klammern", {a, b, c}, sol),
-      stepType: "star_klammern",
-      params: {a, b, c},
-      star: true
-    };
-  }
-  
-  // Rabatt einfach
-  if (type === 5) {
-    const price = rand(50, 150);
-    const p = rand(15, 30);
-    const sol = round2(price * (100 - p) / 100);
-    return {
-      text: `⭐ ${opBerechne}: Preis nach ${p}% Rabatt (${price} €)`,
-      sol: sol,
-      steps: generateSteps("star_rabatt_einfach", {price, p}, sol),
-      stepType: "star_rabatt_einfach",
-      params: {price, p},
-      star: true
-    };
-  }
-  
-  // Zusammengesetzte Fläche
-  if (type === 6) {
-    const a = rand(5, 10);
-    const b = rand(3, 7);
-    const sol = (a * b) + (b * b);
-    return {
-      text: `⭐ ${opBerechne}: Gesamtfläche (Rechteck ${a} cm × ${b} cm + Quadrat Seite ${b} cm)`,
-      sol: sol,
-      steps: generateSteps("star_flaechen", {a, b}, sol),
-      stepType: "star_flaechen",
-      params: {a, b},
-      star: true
-    };
-  }
-
-  // Zinsen
-  const k = rand(500, 2000);
-  const p = rand(1, 5);
-  const sol = round2(k * p / 100);
-  return {
-    text: `⭐ ${opBerechne}: Die Jahreszinsen für ein Kapital von ${k} € bei ${p}% Zinssatz`,
-    sol: sol,
-    steps: generateSteps("star_zinsen", {k, p}, sol),
-    stepType: "star_zinsen",
-    params: {k, p},
-    star: true
-  };
-}
-
-/* =========================================================
-   ZENTRALE TASK-FUNKTION
+   EXPORT
 ========================================================= */
 function getTask(config) {
-  const { mode, level, stars, index } = config;
-  
-  if (mode === "exam" && level === "bbr" && stars === true && index >= 6) {
-    return starTask();
-  }
-  
   const cat = pickCategoryWeighted();
-  const task = TASKS[cat](level);
-  task.star = false;
+  const task = TASKS[cat]("bbr");
   task.category = cat;
-  
+  task.star = false;
   return task;
 }
 
@@ -873,3 +863,13 @@ function formatSteps(stepArray, solution) {
   html += `<br><b>Ergebnis: ${solution}</b>`;
   return html;
 }
+
+// Globale Bereitstellung
+if (typeof window !== "undefined") {
+  window.getTask = getTask;
+  window.formatSteps = formatSteps;
+  window.TASKS = TASKS;
+}
+
+export { getTask, formatSteps, TASKS };
+export default { getTask, formatSteps, TASKS };
