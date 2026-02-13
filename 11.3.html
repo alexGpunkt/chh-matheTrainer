@@ -3,13 +3,10 @@
 <head>
 <meta charset="UTF-8">
 
-<!-- 📱 Mobile Optimierung -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>Mathe Prüfung – Niveau 11.3 ⭐</title>
-
-<!-- ZENTRALER AUFGABENPOOL (11.3) -->
-<script src="pool_113.js"></script>
 
 <style>
 html, body {
@@ -33,27 +30,21 @@ h1 {
 }
 #topbar {
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
 }
-select, button, label {
+button {
   font-size: 1rem;
   padding: 12px 14px;
   border-radius: 8px;
-  border: 1px solid #999;
-}
-button {
+  border: none;
   background: #1976d2;
   color: white;
-  border: none;
   cursor: pointer;
 }
-button:active { background: #0d47a1; }
 button:disabled {
   background: #cccccc;
-  cursor: not-allowed;
 }
 #timer {
   width: 100%;
@@ -98,12 +89,6 @@ input {
   margin-top: 15px;
   text-align: center;
 }
-
-/* 📱 Extra Optimierung für sehr kleine Displays */
-@media (max-width: 480px) {
-  h1 { font-size: 1.3rem; }
-  #task { font-size: 1.15rem; }
-}
 </style>
 </head>
 
@@ -132,19 +117,72 @@ input {
   <div id="result"></div>
 </div>
 
-<script>
-/* =======================
-   KONFIG (wie 10.1 Layout, aber 12.2 Prozess)
-======================= */
-const EXAM_TIME = 90 * 60;    // 90 Minuten
+<!-- =========================
+     ES-MODUL LÖSUNG
+========================= -->
+<script type="module">
+
+import POOL_113 from "./pool_113.js";
+
+/* ============================================
+   TASKPOOL AUS DEM MODUL ERZEUGEN
+============================================ */
+function buildTaskpoolFromModule(mod) {
+
+  const tp = {};
+  const raw = mod.pool;
+
+  Object.keys(raw).forEach(key => {
+
+    if (key === "meta") return;
+
+    tp[key] = raw[key].map(taskObj => {
+
+      return function() {
+
+        return {
+          task:
+            taskObj.prompt.trim() + "<br><br><b>" +
+            taskObj.question.trim() + "</b>",
+
+          answer: extractAnswer(taskObj.solution),
+
+          solution: taskObj.steps || ""
+        };
+      };
+
+    });
+
+  });
+
+  return tp;
+}
+
+function extractAnswer(sol) {
+  const match = sol.match(/[-+]?[0-9]*[.,]?[0-9]+/);
+  if (!match) return sol;
+  return parseFloat(match[0].replace(",", "."));
+}
+
+window.TASKPOOL = buildTaskpoolFromModule(POOL_113);
+
+/* ============================================
+   PRÜFUNGSLOGIK (wie 12.2 StartRound)
+============================================ */
+
+const EXAM_TIME = 90 * 60;
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
-const PASS_POINTS = 24;       // Niveau 11.3: eher hoch (z.B. 8/10 richtig)
-const TEACHER_PIN = "1234";   // optionaler Abschluss-Schutz
+const PASS_POINTS = 24;
+const TEACHER_PIN = "1234";
 
-/* =======================
-   DOM
-======================= */
+let roundActive = false;
+let taskNumber = 0;
+let points = 0;
+let currentAnswer = null;
+let timeLeft = 0;
+let timerInt = null;
+
 const startBtnEl  = document.getElementById("startBtn");
 const timerEl     = document.getElementById("timer");
 const taskEl      = document.getElementById("task");
@@ -154,303 +192,106 @@ const nextBtnEl   = document.getElementById("nextBtn");
 const finishBtnEl = document.getElementById("finishBtn");
 const resultEl    = document.getElementById("result");
 
-/* =======================
-   STATE (analog 12.2 Round-State)
-======================= */
-let timeLeft = 0;
-let timerInt = null;
-
-let roundActive = false;
-let taskNumber = 0;
-let points = 0;
-
-let currentAnswer = null;
-let solvedCurrent = false;
-
-let lastCat = null;
-let lastGenIndex = null;
-
-/* =======================
-   UTIL (wie 12.2)
-======================= */
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function rand(min,max){
+  return Math.floor(Math.random()*(max-min+1))+min;
 }
 
-function normalize(val) {
-  return parseFloat(String(val).trim().replace(",", "."));
-}
-
-function fmt(n) {
-  if (typeof n === "number") {
-    if (Number.isInteger(n)) return String(n);
-    return (Math.round(n * 100) / 100).toString().replace(".", ",");
-  }
-  return String(n);
-}
-
-/* =======================
-   TASKPOOL Zugriff (pool_113.js)
-======================= */
-function getTaskpoolOrFail() {
-  const tp = window.TASKPOOL;
-  if (!tp || typeof tp !== "object") {
-    alert("Fehler: window.TASKPOOL fehlt. Wurde pool_113.js korrekt geladen?");
-    return null;
-  }
-  const cats = Object.keys(tp).filter(c => Array.isArray(tp[c]) && tp[c].length > 0);
-  if (cats.length === 0) {
-    alert("Fehler: TASKPOOL hat keine gefüllten Kategorien.");
-    return null;
-  }
-  return { tp, cats };
-}
-
-/* =======================
-   KATEGORIE-GEWICHTUNG (optional)
-   - Wenn Kategorien im pool_113.js anders heißen, wird automatisch fallback genutzt.
-======================= */
-function buildWeightedCategories(availableCats) {
-  // bevorzugte Kategorien (falls vorhanden)
-  const preferred = [
-    "basis","rechnen","prozent","zuordnung","wahrscheinlichkeit",
-    "statistik","geometrie","flaeche2d","koerper","pythagoras",
-    "koordinaten","sach","terme","gleichungen"
-  ];
-
-  // Nimm nur die, die es wirklich gibt
-  const existingPreferred = preferred.filter(c => availableCats.includes(c));
-
-  // Wenn nichts passt: einfach alle Kategorien gleichwahrscheinlich
-  if (existingPreferred.length === 0) return availableCats.slice();
-
-  // Gewichtung wie „prüfungsnah“: einige doppelt
-  const weighted = [];
-  const add = (cat, k) => { for (let i=0;i<k;i++) weighted.push(cat); };
-
-  existingPreferred.forEach(cat => {
-    // Kernbereiche etwas häufiger
-    if (["rechnen","prozent","geometrie","koerper","pythagoras","gleichungen","terme"].includes(cat)) add(cat, 3);
-    else add(cat, 2);
-  });
-
-  return weighted.length ? weighted : availableCats.slice();
-}
-
-let weightedCategoriesCache = null;
-
-function pickCategoryWeighted(availableCats) {
-  if (!weightedCategoriesCache) {
-    weightedCategoriesCache = buildWeightedCategories(availableCats);
-  }
-  return weightedCategoriesCache[rand(0, weightedCategoriesCache.length - 1)];
-}
-
-/* =======================
-   drawTask (wie 12.2)
-======================= */
-function drawTask(cat, genIndex, tp) {
-  const gen = tp[cat][genIndex];
-  const t = gen();
-
-  // Erwartete Struktur: { task, answer, solution? }
-  if (!t || typeof t !== "object" || !("task" in t) || !("answer" in t)) {
-    console.error("Generator lieferte ungültiges Objekt:", t);
-    alert("Fehler: Eine Aufgabe aus pool_113.js ist ungültig (kein task/answer).");
-    return false;
-  }
-
-  lastCat = cat;
-  lastGenIndex = genIndex;
-
-  currentAnswer = t.answer;
-  solvedCurrent = false;
-
-  const starMark = (t.star === true) ? " ⭐" : "";
-
-  taskEl.innerHTML = `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}${starMark}</b><br>${t.task}`;
-  answerEl.value = "";
-  answerEl.focus();
-
-  return true;
-}
-
-/* =======================
-   ROUND START (wie 12.2 startRound, nur mit Timer + UI wie 10.1)
-======================= */
-function startRound() {
-  const pack = getTaskpoolOrFail();
-  if (!pack) return;
+function startRound(){
 
   points = 0;
   taskNumber = 0;
   roundActive = true;
-  solvedCurrent = false;
-  lastCat = null;
-  lastGenIndex = null;
-  weightedCategoriesCache = null;
-
   timeLeft = EXAM_TIME;
-  resultEl.innerHTML = "";
 
-  // UI
+  resultEl.innerHTML = "";
   startBtnEl.disabled = true;
   answerAreaEl.classList.remove("hidden");
   timerEl.classList.remove("hidden");
 
   clearInterval(timerInt);
-  timerInt = setInterval(updateTimer, 1000);
+  timerInt = setInterval(updateTimer,1000);
 
-  // Erste Aufgabe sofort wie 12.2: startRound() -> nextTaskRandom()
   nextTaskRandom();
 }
 
-/* =======================
-   NEXT RANDOM (wie 12.2 nextTaskRandom)
-======================= */
-function nextTaskRandom() {
-  if (!roundActive) {
-    alert("Bitte zuerst auf „Prüfung starten“ klicken!");
-    return;
-  }
+function nextTaskRandom(){
 
-  const pack = getTaskpoolOrFail();
-  if (!pack) return;
-
-  if (taskNumber >= TASKS_TOTAL) {
-    finishRound(); // analog 12.2 finishRound (hier: Abschluss)
+  if(taskNumber >= TASKS_TOTAL){
+    finishRound();
     return;
   }
 
   taskNumber++;
 
-  // Pick category + generator
-  const cat = pickCategoryWeighted(pack.cats);
+  const cats = Object.keys(window.TASKPOOL);
+  const cat = cats[rand(0,cats.length-1)];
+  const list = window.TASKPOOL[cat];
+  const gen = list[rand(0,list.length-1)];
+  const t = gen();
 
-  // Fallback: falls cat existiert aber aus irgendeinem Grund leer wurde
-  const list = pack.tp[cat];
-  if (!Array.isArray(list) || list.length === 0) {
-    // fallback: irgendeine gefüllte Kategorie
-    const fallbackCat = pack.cats[rand(0, pack.cats.length - 1)];
-    const genIndex = rand(0, pack.tp[fallbackCat].length - 1);
-    drawTask(fallbackCat, genIndex, pack.tp);
-    return;
-  }
+  currentAnswer = t.answer;
 
-  const genIndex = rand(0, list.length - 1);
-  drawTask(cat, genIndex, pack.tp);
+  taskEl.innerHTML =
+    `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}</b><br>` + t.task;
+
+  answerEl.value="";
+  answerEl.focus();
 }
 
-/* =======================
-   ANSWER CHECK + SCORE (wie 12.2 checkAnswer -> Punkte)
-======================= */
-function checkAndScoreCurrent() {
-  if (!roundActive || solvedCurrent) return;
+function checkAndScore(){
 
-  const inputRaw = answerEl.value.trim();
-  if (inputRaw === "") return;
+  const val = parseFloat(answerEl.value.replace(",","."));
 
-  // String-Antwort (z.B. Uhrzeiten "12:35")
-  if (typeof currentAnswer === "string") {
-    const ok = (inputRaw === currentAnswer);
-    if (ok) points += POINTS_PER_TASK;
-    solvedCurrent = true;
-    return;
-  }
-
-  // Zahl-Antwort
-  const userVal = normalize(inputRaw);
-  if (isNaN(userVal)) {
-    // nicht werten, aber auch nicht blocken
-    return;
-  }
-
-  if (Math.abs(userVal - currentAnswer) < 0.05) {
+  if(!isNaN(val) && Math.abs(val-currentAnswer)<0.05){
     points += POINTS_PER_TASK;
   }
-  solvedCurrent = true;
 }
 
-function saveAndNext() {
-  if (!roundActive) return;
-
-  checkAndScoreCurrent();
-
-  // nächste Aufgabe wie 12.2 (dort prüft nextTaskRandom selbst das Limit)
+function saveAndNext(){
+  if(!roundActive) return;
+  checkAndScore();
   nextTaskRandom();
 }
 
-/* =======================
-   FINISH
-======================= */
-function finishRound() {
-  if (!roundActive) return;
+function finishRound(){
 
-  // Letzte Eingabe ggf. noch werten, wenn wir mitten drin abbrechen
-  checkAndScoreCurrent();
+  checkAndScore();
 
-  // optional PIN
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
-  if (pin !== TEACHER_PIN) {
-    alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
-    return;
-  }
+  if(pin!==TEACHER_PIN) return;
 
-  roundActive = false;
-
+  roundActive=false;
   clearInterval(timerInt);
-  timerInt = null;
 
   answerAreaEl.classList.add("hidden");
   timerEl.classList.add("hidden");
-  startBtnEl.disabled = false;
+  startBtnEl.disabled=false;
 
-  const res = points >= PASS_POINTS ? "✅ BESTANDEN" : "❌ NICHT BESTANDEN";
-  resultEl.innerHTML = `Punkte: <b>${points} / ${TASKS_TOTAL * POINTS_PER_TASK}</b><br>${res}`;
+  const res = points>=PASS_POINTS?
+    "✅ BESTANDEN":"❌ NICHT BESTANDEN";
 
-  taskEl.innerHTML = "Prüfung beendet. Neustart möglich.";
+  resultEl.innerHTML =
+    `Punkte: <b>${points}/${TASKS_TOTAL*POINTS_PER_TASK}</b><br>${res}`;
+
+  taskEl.innerHTML="Prüfung beendet.";
 }
 
-/* =======================
-   TIMER (wie 10.1)
-======================= */
-function updateTimer() {
-  if (!roundActive) return;
-
+function updateTimer(){
   timeLeft--;
-  const m = Math.floor(timeLeft / 60);
-  const s = (timeLeft % 60).toString().padStart(2, "0");
-  timerEl.innerText = `⏱ ${m}:${s}`;
-
-  if (timeLeft <= 0) {
-    finishRound();
-  }
+  const m=Math.floor(timeLeft/60);
+  const s=(timeLeft%60).toString().padStart(2,"0");
+  timerEl.innerText=`⏱ ${m}:${s}`;
+  if(timeLeft<=0) finishRound();
 }
 
-/* =======================
-   VERLASSEN-WARNUNG (wie 10.1)
-======================= */
-window.addEventListener("beforeunload", function (e) {
-  if (roundActive) {
-    e.preventDefault();
-    e.returnValue = "Der Test läuft noch. Bitte zuerst abgeben.";
-  }
+startBtnEl.addEventListener("click",startRound);
+nextBtnEl.addEventListener("click",saveAndNext);
+finishBtnEl.addEventListener("click",finishRound);
+
+answerEl.addEventListener("keypress",e=>{
+  if(e.key==="Enter") saveAndNext();
 });
 
-/* =======================
-   EVENTS
-======================= */
-startBtnEl.addEventListener("click", startRound);
-nextBtnEl.addEventListener("click", saveAndNext);
-finishBtnEl.addEventListener("click", finishRound);
-
-// Enter-Taste -> Weiter
-answerEl.addEventListener("keypress", function(e) {
-  if (e.key === "Enter" && roundActive) {
-    e.preventDefault();
-    saveAndNext();
-  }
-});
 </script>
 
 </body>
