@@ -77,6 +77,11 @@ function generateSteps(taskType, params, solution) {
         `Klammer zuerst: (${params.a} + ${params.b}) = ${params.a + params.b}`,
         `Dann: ${params.a + params.b} · ${params.c} = ${(params.a + params.b) * params.c}`
       ];
+    case "rechnen_quadrat":
+      return [
+        `Quadratzahl von ${params.a} berechnen`,
+        `${params.a} · ${params.a} = ${params.a * params.a}`
+      ];
 
     // ---------------------- EINHEITEN ----------------------
     case "einheiten_m_cm":
@@ -93,16 +98,14 @@ function generateSteps(taskType, params, solution) {
       return [`1 km = 1000 m`, `${params.km} · 1000 = ${params.km * 1000} m`];
     case "einheiten_cm_dm":
       return [`10 cm = 1 dm`, `${params.cm} : 10 = ${params.cm / 10} dm`];
-    case "einheiten_h_min_s":
-      return [`2,5 h = 2,5 · 60 = 150 min`, `150 min · 60 = 9000 s`];
-    case "einheiten_s_min":
-      return [`60 s = 1 min`, `${params.s} : 60 = ${Math.floor(params.s / 60)} min ${params.s % 60} s`];
     case "einheiten_euro_cent":
       return [`1 € = 100 ct`, `${params.euro} · 100 = ${params.euro * 100} ct`];
     case "einheiten_cent_euro":
       return [`100 ct = 1 €`, `${params.cent} : 100 = ${round2(params.cent / 100)} €`];
     case "einheiten_tage_stunden":
       return [`1 Tag = 24 h`, `${params.tage} · 24 = ${params.tage * 24} h`];
+    case "einheiten_s_min":
+      return [`60 s = 1 min`, `${params.s} : 60 = ${Math.floor(params.s / 60)} min ${params.s % 60} s`];
 
     // ---------------------- GEOMETRIE ----------------------
     case "geometrie_quadrat_umfang":
@@ -146,7 +149,7 @@ function generateSteps(taskType, params, solution) {
     case "sach_tickets":
       return [`Bezahlt: ${params.paid} €`, `Preis pro Ticket: ${params.price} €`, `Anzahl: ${params.paid} : ${params.price} = ${round2(params.paid / params.price)}`];
     case "sach_zeitdifferenz":
-      return [`Start: ${params.start}h`, `Dauer: ${params.h}h ${params.min}min`, `Ende: ${params.start + params.h}:${params.startMin + params.min}`];
+      return [`Start: ${params.start}:${params.startMin < 10 ? '0'+params.startMin : params.startMin}`, `Dauer: ${params.h}h ${params.min}min`, `Ende: ${params.start + params.h}:${(params.startMin + params.min) % 60 < 10 ? '0' + ((params.startMin + params.min) % 60) : (params.startMin + params.min) % 60}`];
 
     // ---------------------- PROZENTRECHNUNG ----------------------
     case "prozent_prozentwert":
@@ -182,7 +185,7 @@ function generateSteps(taskType, params, solution) {
     case "wsk_einfach":
       return [`Günstige: ${params.gunstig}`, `Mögliche: ${params.moglich}`, `P = ${params.gunstig} / ${params.moglich} = ${round2(params.gunstig / params.moglich)} = ${round2(params.gunstig / params.moglich * 100)}%`];
     case "wsk_mehrstufig_mit_zurueck":
-      return [`P = ${params.p1} · ${params.p2}`, `${round2(params.p1)} · ${round2(params.p2)} = ${round2(params.p1 * params.p2)} = ${round2(params.p1 * params.p2 * 100)}%`];
+      return [`P = ${round2(params.p1)} · ${round2(params.p2)}`, `${round2(params.p1)} · ${round2(params.p2)} = ${round2(params.p1 * params.p2)} = ${round2(params.p1 * params.p2 * 100)}%`];
 
     // ---------------------- DIAGRAMME ----------------------
     case "diagramm_saeule":
@@ -216,8 +219,6 @@ function pickCategoryWeighted() {
    BASIS-AUFGABEN (BBR Niveau 1-3)
 ========================================================= */
 const TASKS = {
-
-  // ---------------------- RECHNEN ----------------------
   rechnen: (level) => {
     const type = rand(1, 7);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -229,7 +230,7 @@ const TASKS = {
         text: `${opBerechne}: ${a} · ${b}`,
         sol: a * b,
         steps: generateSteps("rechnen_multiplikation", {a, b}, a * b),
-        stepType: "rechnen_multiplikation",
+        category: "rechnen",
         params: {a, b}
       };
     }
@@ -241,7 +242,7 @@ const TASKS = {
         text: `${opBerechne}: ${a} : ${b}`,
         sol: ans,
         steps: generateSteps("rechnen_division", {a, b, ans}, ans),
-        stepType: "rechnen_division",
+        category: "rechnen",
         params: {a, b, ans}
       };
     }
@@ -252,7 +253,7 @@ const TASKS = {
         text: `${opBerechne}: ${a} + ${b}`,
         sol: a + b,
         steps: generateSteps("rechnen_addition", {a, b}, a + b),
-        stepType: "rechnen_addition",
+        category: "rechnen",
         params: {a, b}
       };
     }
@@ -264,7 +265,7 @@ const TASKS = {
         text: `${opBerechne}: ${a} − ${b}`,
         sol: a - b,
         steps: generateSteps("rechnen_subtraktion", {a, b}, a - b),
-        stepType: "rechnen_subtraktion",
+        category: "rechnen",
         params: {a, b}
       };
     }
@@ -276,7 +277,7 @@ const TASKS = {
         text: `${opBerechne}: ${a} − ${b} · ${c}`,
         sol: a - b * c,
         steps: generateSteps("rechnen_punktvorstrich", {a, b, c}, a - b * c),
-        stepType: "rechnen_punktvorstrich",
+        category: "rechnen",
         params: {a, b, c}
       };
     }
@@ -286,7 +287,7 @@ const TASKS = {
         text: `${opBerechne}: Die Quadratzahl von ${a}`,
         sol: a * a,
         steps: generateSteps("rechnen_quadrat", {a}, a * a),
-        stepType: "rechnen_quadrat",
+        category: "rechnen",
         params: {a}
       };
     }
@@ -297,12 +298,11 @@ const TASKS = {
       text: `${opBerechne}: (${a} + ${b}) · ${c}`,
       sol: (a + b) * c,
       steps: generateSteps("rechnen_klammer", {a, b, c}, (a + b) * c),
-      stepType: "rechnen_klammer",
+      category: "rechnen",
       params: {a, b, c}
     };
   },
 
-  // ---------------------- EINHEITEN ----------------------
   einheiten: (level) => {
     const type = rand(1, 11);
     const opRechneUm = getOperatorPhraseBasis("RECHNE_UM");
@@ -313,7 +313,7 @@ const TASKS = {
         text: `${opRechneUm}: ${m} m in cm`,
         sol: m * 100,
         steps: generateSteps("einheiten_m_cm", {m}, m * 100),
-        stepType: "einheiten_m_cm",
+        category: "einheiten",
         params: {m}
       };
     }
@@ -323,7 +323,7 @@ const TASKS = {
         text: `${opRechneUm}: ${cm} cm in m`,
         sol: round2(cm / 100),
         steps: generateSteps("einheiten_cm_m", {cm}, round2(cm / 100)),
-        stepType: "einheiten_cm_m",
+        category: "einheiten",
         params: {cm}
       };
     }
@@ -333,7 +333,7 @@ const TASKS = {
         text: `${opRechneUm}: ${kg} kg in g`,
         sol: kg * 1000,
         steps: generateSteps("einheiten_kg_g", {kg}, kg * 1000),
-        stepType: "einheiten_kg_g",
+        category: "einheiten",
         params: {kg}
       };
     }
@@ -343,7 +343,7 @@ const TASKS = {
         text: `${opRechneUm}: ${g} g in kg`,
         sol: round2(g / 1000),
         steps: generateSteps("einheiten_g_kg", {g}, round2(g / 1000)),
-        stepType: "einheiten_g_kg",
+        category: "einheiten",
         params: {g}
       };
     }
@@ -353,7 +353,7 @@ const TASKS = {
         text: `${opRechneUm}: ${mins} min in h`,
         sol: round2(mins / 60),
         steps: generateSteps("einheiten_min_h", {mins}, round2(mins / 60)),
-        stepType: "einheiten_min_h",
+        category: "einheiten",
         params: {mins}
       };
     }
@@ -363,7 +363,7 @@ const TASKS = {
         text: `${opRechneUm}: ${km} km in m`,
         sol: km * 1000,
         steps: generateSteps("einheiten_km_m", {km}, km * 1000),
-        stepType: "einheiten_km_m",
+        category: "einheiten",
         params: {km}
       };
     }
@@ -373,7 +373,7 @@ const TASKS = {
         text: `${opRechneUm}: ${cm} cm in dm`,
         sol: cm / 10,
         steps: generateSteps("einheiten_cm_dm", {cm}, cm / 10),
-        stepType: "einheiten_cm_dm",
+        category: "einheiten",
         params: {cm}
       };
     }
@@ -383,7 +383,7 @@ const TASKS = {
         text: `${opRechneUm}: ${euro} € in Cent`,
         sol: euro * 100,
         steps: generateSteps("einheiten_euro_cent", {euro}, euro * 100),
-        stepType: "einheiten_euro_cent",
+        category: "einheiten",
         params: {euro}
       };
     }
@@ -393,7 +393,7 @@ const TASKS = {
         text: `${opRechneUm}: ${cent} Cent in €`,
         sol: round2(cent / 100),
         steps: generateSteps("einheiten_cent_euro", {cent}, round2(cent / 100)),
-        stepType: "einheiten_cent_euro",
+        category: "einheiten",
         params: {cent}
       };
     }
@@ -403,21 +403,22 @@ const TASKS = {
         text: `${opRechneUm}: ${tage} Tage in Stunden`,
         sol: tage * 24,
         steps: generateSteps("einheiten_tage_stunden", {tage}, tage * 24),
-        stepType: "einheiten_tage_stunden",
+        category: "einheiten",
         params: {tage}
       };
     }
     let s = rand(100, 300);
+    let mins = Math.floor(s / 60);
+    let secs = s % 60;
     return {
       text: `${opRechneUm}: ${s} s in min und s`,
-      sol: `${Math.floor(s / 60)} min ${s % 60} s`,
-      steps: generateSteps("einheiten_s_min", {s}, `${Math.floor(s / 60)} min ${s % 60} s`),
-      stepType: "einheiten_s_min",
+      sol: `${mins} min ${secs} s`,
+      steps: generateSteps("einheiten_s_min", {s}, `${mins} min ${secs} s`),
+      category: "einheiten",
       params: {s}
     };
   },
 
-  // ---------------------- GEOMETRIE ----------------------
   geometrie: (level) => {
     const type = rand(1, 12);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -429,7 +430,7 @@ const TASKS = {
         text: `${opBerechne}: Umfang eines Quadrats mit a = ${a} cm`,
         sol: 4 * a,
         steps: generateSteps("geometrie_quadrat_umfang", {a}, 4 * a),
-        stepType: "geometrie_quadrat_umfang",
+        category: "geometrie",
         params: {a}
       };
     }
@@ -439,7 +440,7 @@ const TASKS = {
         text: `${opErmittle}: Fläche eines Quadrats mit a = ${a} cm`,
         sol: a * a,
         steps: generateSteps("geometrie_quadrat_flaeche", {a}, a * a),
-        stepType: "geometrie_quadrat_flaeche",
+        category: "geometrie",
         params: {a}
       };
     }
@@ -450,7 +451,7 @@ const TASKS = {
         text: `${opBerechne}: Umfang eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
         sol: 2 * (l + b),
         steps: generateSteps("geometrie_rechteck_umfang", {l, b}, 2 * (l + b)),
-        stepType: "geometrie_rechteck_umfang",
+        category: "geometrie",
         params: {l, b}
       };
     }
@@ -461,7 +462,7 @@ const TASKS = {
         text: `${opErmittle}: Fläche eines Rechtecks mit l = ${l} cm, b = ${b} cm`,
         sol: l * b,
         steps: generateSteps("geometrie_rechteck_flaeche", {l, b}, l * b),
-        stepType: "geometrie_rechteck_flaeche",
+        category: "geometrie",
         params: {l, b}
       };
     }
@@ -472,7 +473,7 @@ const TASKS = {
         text: `${opBerechne}: Fläche eines Dreiecks mit g = ${g} cm, h = ${h} cm`,
         sol: round2((g * h) / 2),
         steps: generateSteps("geometrie_dreieck_flaeche", {g, h}, round2((g * h) / 2)),
-        stepType: "geometrie_dreieck_flaeche",
+        category: "geometrie",
         params: {g, h}
       };
     }
@@ -482,7 +483,7 @@ const TASKS = {
         text: `${opBerechne}: Durchmesser eines Kreises mit r = ${r} cm`,
         sol: 2 * r,
         steps: generateSteps("geometrie_kreis_durchmesser", {r}, 2 * r),
-        stepType: "geometrie_kreis_durchmesser",
+        category: "geometrie",
         params: {r}
       };
     }
@@ -492,7 +493,7 @@ const TASKS = {
         text: `${opBerechne}: Umfang eines Kreises mit d = ${d} cm (π = 3,14)`,
         sol: round2(3.14 * d),
         steps: generateSteps("geometrie_kreis_umfang", {d}, round2(3.14 * d)),
-        stepType: "geometrie_kreis_umfang",
+        category: "geometrie",
         params: {d}
       };
     }
@@ -502,7 +503,7 @@ const TASKS = {
         text: `${opErmittle}: Fläche eines Kreises mit r = ${r} cm (π = 3,14)`,
         sol: round2(3.14 * r * r),
         steps: generateSteps("geometrie_kreis_flaeche", {r}, round2(3.14 * r * r)),
-        stepType: "geometrie_kreis_flaeche",
+        category: "geometrie",
         params: {r}
       };
     }
@@ -512,7 +513,7 @@ const TASKS = {
         text: `${opBerechne}: Volumen eines Würfels mit a = ${a} cm`,
         sol: a * a * a,
         steps: generateSteps("geometrie_wuerfel_volumen", {a}, a * a * a),
-        stepType: "geometrie_wuerfel_volumen",
+        category: "geometrie",
         params: {a}
       };
     }
@@ -524,7 +525,7 @@ const TASKS = {
         text: `${opBerechne}: Volumen eines Quaders mit l = ${l} cm, b = ${b} cm, h = ${h} cm`,
         sol: l * b * h,
         steps: generateSteps("geometrie_quader_volumen", {l, b, h}, l * b * h),
-        stepType: "geometrie_quader_volumen",
+        category: "geometrie",
         params: {l, b, h}
       };
     }
@@ -536,7 +537,7 @@ const TASKS = {
         text: `${opBerechne}: Oberfläche eines Quaders mit l = ${l} cm, b = ${b} cm, h = ${h} cm`,
         sol: 2 * (l*b + l*h + b*h),
         steps: generateSteps("geometrie_quader_oberflaeche", {l, b, h}, 2 * (l*b + l*h + b*h)),
-        stepType: "geometrie_quader_oberflaeche",
+        category: "geometrie",
         params: {l, b, h}
       };
     }
@@ -546,12 +547,11 @@ const TASKS = {
       text: `${opBerechne}: Volumen eines Zylinders mit r = ${r} cm, h = ${h} cm (π = 3,14)`,
       sol: round2(3.14 * r * r * h),
       steps: generateSteps("geometrie_zylinder_volumen", {r, h}, round2(3.14 * r * r * h)),
-      stepType: "geometrie_zylinder_volumen",
+      category: "geometrie",
       params: {r, h}
     };
   },
 
-  // ---------------------- SACHAUFGABEN ----------------------
   sach: (level) => {
     const type = rand(1, 8);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -565,7 +565,7 @@ const TASKS = {
         text: `${opBerechne}: Gesamtpreis für ${amount} Artikel zu je ${price} €`,
         sol: price * amount,
         steps: generateSteps("sach_einkauf", {price, amount}, price * amount),
-        stepType: "sach_einkauf",
+        category: "sach",
         params: {price, amount}
       };
     }
@@ -576,7 +576,7 @@ const TASKS = {
         text: `${opErmittle}: Geschwindigkeit (${km} km in ${h} h)`,
         sol: round2(km / h),
         steps: generateSteps("sach_geschwindigkeit", {km, h}, round2(km / h)),
-        stepType: "sach_geschwindigkeit",
+        category: "sach",
         params: {km, h}
       };
     }
@@ -587,7 +587,7 @@ const TASKS = {
         text: `${opGibAn}: Seiten pro Tag (${pages} Seiten in ${days} Tagen)`,
         sol: round2(pages / days),
         steps: generateSteps("sach_seiten_pro_tag", {pages, days}, round2(pages / days)),
-        stepType: "sach_seiten_pro_tag",
+        category: "sach",
         params: {pages, days}
       };
     }
@@ -599,7 +599,7 @@ const TASKS = {
         text: `${opBerechne}: Zeit für ${km * factor} km (${km} km in ${min} min)`,
         sol: min * factor,
         steps: generateSteps("sach_zeit_proportional", {km, min, factor}, min * factor),
-        stepType: "sach_zeit_proportional",
+        category: "sach",
         params: {km, min, factor}
       };
     }
@@ -611,7 +611,7 @@ const TASKS = {
         text: `${opErmittle}: Zeit für ${anz2} Arbeiter (${anz1} benötigen ${zeit1} h)`,
         sol: round2(anz1 * zeit1 / anz2),
         steps: generateSteps("sach_antiproportional", {anz1, zeit1, anz2}, round2(anz1 * zeit1 / anz2)),
-        stepType: "sach_antiproportional",
+        category: "sach",
         params: {anz1, zeit1, anz2}
       };
     }
@@ -623,7 +623,7 @@ const TASKS = {
         text: `${opErmittle}: Durchschnitt von ${v1}, ${v2} und ${v3}`,
         sol: round2((v1 + v2 + v3) / 3),
         steps: generateSteps("sach_durchschnitt", {v1, v2, v3}, round2((v1 + v2 + v3) / 3)),
-        stepType: "sach_durchschnitt",
+        category: "sach",
         params: {v1, v2, v3}
       };
     }
@@ -634,7 +634,7 @@ const TASKS = {
         text: `${opBerechne}: Anzahl Tickets (${paid} €, Preis pro Ticket ${price} €)`,
         sol: round2(paid / price),
         steps: generateSteps("sach_tickets", {price, paid}, round2(paid / price)),
-        stepType: "sach_tickets",
+        category: "sach",
         params: {price, paid}
       };
     }
@@ -642,16 +642,18 @@ const TASKS = {
     let startMin = [0, 15, 30, 45][rand(0, 3)];
     let dauerH = rand(1, 3);
     let dauerMin = rand(0, 55);
+    let endH = start + dauerH;
+    let endMin = startMin + dauerMin;
+    let endMinFormatted = (endMin % 60) < 10 ? '0' + (endMin % 60) : (endMin % 60);
     return {
       text: `${opBerechne}: Ankunftszeit (Start ${start}:${startMin < 10 ? '0'+startMin : startMin}, Dauer ${dauerH}h ${dauerMin}min)`,
-      sol: `${start + dauerH}:${(startMin + dauerMin) % 60 < 10 ? '0' + ((startMin + dauerMin) % 60) : (startMin + dauerMin) % 60}`,
-      steps: generateSteps("sach_zeitdifferenz", {start, startMin, h: dauerH, min: dauerMin}, sol),
-      stepType: "sach_zeitdifferenz",
+      sol: `${endH}:${endMinFormatted}`,
+      steps: generateSteps("sach_zeitdifferenz", {start, startMin, h: dauerH, min: dauerMin}, `${endH}:${endMinFormatted}`),
+      category: "sach",
       params: {start, startMin, h: dauerH, min: dauerMin}
     };
   },
 
-  // ---------------------- PROZENTRECHNUNG ----------------------
   prozent: (level) => {
     const type = rand(1, 7);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -664,7 +666,7 @@ const TASKS = {
         text: `${opBerechne}: ${p}% von ${g}`,
         sol: round2(g * p / 100),
         steps: generateSteps("prozent_prozentwert", {g, p}, round2(g * p / 100)),
-        stepType: "prozent_prozentwert",
+        category: "prozent",
         params: {g, p}
       };
     }
@@ -675,7 +677,7 @@ const TASKS = {
         text: `${opBerechne}: Preis nach ${p}% Rabatt (${price} €)`,
         sol: round2(price * (100 - p) / 100),
         steps: generateSteps("prozent_rabatt", {price, p}, round2(price * (100 - p) / 100)),
-        stepType: "prozent_rabatt",
+        category: "prozent",
         params: {price, p}
       };
     }
@@ -686,7 +688,7 @@ const TASKS = {
         text: `${opErmittle}: Grundwert (${w} sind ${p}%)`,
         sol: round2(w * 100 / p),
         steps: generateSteps("prozent_grundwert", {w, p}, round2(w * 100 / p)),
-        stepType: "prozent_grundwert",
+        category: "prozent",
         params: {w, p}
       };
     }
@@ -698,7 +700,7 @@ const TASKS = {
         text: `${opErmittle}: Prozentuale Steigerung (${g} € auf ${newVal} €)`,
         sol: round2((diff / g) * 100),
         steps: generateSteps("prozent_steigerung", {g, diff, newVal}, round2((diff / g) * 100)),
-        stepType: "prozent_steigerung",
+        category: "prozent",
         params: {g, diff, newVal}
       };
     }
@@ -710,7 +712,7 @@ const TASKS = {
         text: `${opErmittle}: Prozentsatz (${w} von ${g})`,
         sol: round2((w / g) * 100),
         steps: generateSteps("prozent_prozentsatz", {w, g}, round2((w / g) * 100)),
-        stepType: "prozent_prozentsatz",
+        category: "prozent",
         params: {w, g}
       };
     }
@@ -720,7 +722,7 @@ const TASKS = {
         text: `${opBerechne}: Bruttopreis (netto ${netto} €, 19% MwSt)`,
         sol: round2(netto * 1.19),
         steps: generateSteps("prozent_mehrwertsteuer", {netto, p: 19}, round2(netto * 1.19)),
-        stepType: "prozent_mehrwertsteuer",
+        category: "prozent",
         params: {netto, p: 19}
       };
     }
@@ -730,12 +732,11 @@ const TASKS = {
       text: `${opBerechne}: Zahlungsbetrag (${betrag} €, ${p}% Skonto)`,
       sol: round2(betrag * (1 - p/100)),
       steps: generateSteps("prozent_skonto", {betrag, p}, round2(betrag * (1 - p/100))),
-      stepType: "prozent_skonto",
+      category: "prozent",
       params: {betrag, p}
     };
   },
 
-  // ---------------------- ZUORDNUNGEN ----------------------
   zuordnung: (level) => {
     const type = rand(1, 2);
     const opErmittle = getOperatorPhraseBasis("ERMITTLE");
@@ -748,7 +749,7 @@ const TASKS = {
         text: `${opErmittle}: Proportionaler Wert (${x1} → ${y1}, ${x2} → ?)`,
         sol: round2(x2 * y1 / x1),
         steps: generateSteps("zuordnung_proportional", {x1, y1, x2}, round2(x2 * y1 / x1)),
-        stepType: "zuordnung_proportional",
+        category: "zuordnung",
         params: {x1, y1, x2}
       };
     }
@@ -759,12 +760,11 @@ const TASKS = {
       text: `${opErmittle}: Antiproportionaler Wert (${x1} → ${y1}, ${x2} → ?)`,
       sol: round2(x1 * y1 / x2),
       steps: generateSteps("zuordnung_antiproportional", {x1, y1, x2}, round2(x1 * y1 / x2)),
-      stepType: "zuordnung_antiproportional",
+      category: "zuordnung",
       params: {x1, y1, x2}
     };
   },
 
-  // ---------------------- GLEICHUNGEN ----------------------
   gleichung: (level) => {
     const type = rand(1, 3);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -776,7 +776,7 @@ const TASKS = {
         text: `${opBerechne}: x + ${a} = ${sum}`,
         sol: sum - a,
         steps: generateSteps("gleichung_einfach", {a, sum}, sum - a),
-        stepType: "gleichung_einfach",
+        category: "gleichung",
         params: {a, sum}
       };
     }
@@ -786,7 +786,7 @@ const TASKS = {
         text: `${opBerechne}: 2x = ${b}`,
         sol: b / 2,
         steps: generateSteps("gleichung_2x", {b}, b / 2),
-        stepType: "gleichung_2x",
+        category: "gleichung",
         params: {b}
       };
     }
@@ -797,12 +797,11 @@ const TASKS = {
       text: `${opBerechne}: ${faktor} · (x + ${k}) = ${erg}`,
       sol: erg / faktor - k,
       steps: generateSteps("gleichung_klammer", {faktor, k, erg}, erg / faktor - k),
-      stepType: "gleichung_klammer",
+      category: "gleichung",
       params: {faktor, k, erg}
     };
   },
 
-  // ---------------------- WAHRSCHEINLICHKEIT ----------------------
   wsk: (level) => {
     const type = rand(1, 2);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
@@ -814,22 +813,21 @@ const TASKS = {
         text: `${opBerechne}: Wahrscheinlichkeit in % (${gunstig} von ${moglich})`,
         sol: round2(gunstig / moglich * 100),
         steps: generateSteps("wsk_einfach", {gunstig, moglich}, round2(gunstig / moglich * 100)),
-        stepType: "wsk_einfach",
+        category: "wsk",
         params: {gunstig, moglich}
       };
     }
-    let p1 = rand(1, 4) / 6;
-    let p2 = rand(1, 4) / 6;
+    let p1 = 1/6;
+    let p2 = 1/6;
     return {
       text: `${opBerechne}: Wahrscheinlichkeit zweimal 6 (Würfel) in %`,
       sol: round2(p1 * p2 * 100),
       steps: generateSteps("wsk_mehrstufig_mit_zurueck", {p1, p2}, round2(p1 * p2 * 100)),
-      stepType: "wsk_mehrstufig_mit_zurueck",
+      category: "wsk",
       params: {p1, p2}
     };
   },
 
-  // ---------------------- DIAGRAMME ----------------------
   diagramm: (level) => {
     const opZeichne = getOperatorPhraseBasis("ZEICHNE");
     let wert = rand(20, 80);
@@ -838,7 +836,7 @@ const TASKS = {
       text: `${opZeichne}: Säulendiagramm - Höhe für ${wert} (Maßstab 1 cm = ${scale})`,
       sol: `${round2(wert / scale)} cm`,
       steps: generateSteps("diagramm_saeule", {wert, scale}, `${round2(wert / scale)} cm`),
-      stepType: "diagramm_saeule",
+      category: "diagramm",
       params: {wert, scale}
     };
   }
@@ -848,14 +846,32 @@ const TASKS = {
    EXPORT
 ========================================================= */
 function getTask(config) {
+  // Standard-Konfiguration
+  const mode = config.mode || "trainer";
+  const level = config.level || "bbr";
+  const useStars = config.stars || false;
+  const index = config.index || 0;
+  
+  // Kategorie zufällig auswählen
   const cat = pickCategoryWeighted();
-  const task = TASKS[cat]("bbr");
+  
+  // Aufgabe aus der entsprechenden Kategorie generieren
+  let task = TASKS[cat](level);
+  
+  // Kategorie setzen (falls nicht schon vorhanden)
   task.category = cat;
-  task.star = false;
+  
+  // Stern-Aufgaben für BBR (optional)
+  task.star = (level === "bbr" && useStars && Math.random() > 0.5);
+  
   return task;
 }
 
 function formatSteps(stepArray, solution) {
+  if (!stepArray || !Array.isArray(stepArray)) {
+    return "Keine Schritt-für-Schritt-Lösung verfügbar.";
+  }
+  
   let html = "";
   stepArray.forEach((line, i) => {
     html += `Schritt ${i + 1}: ${line}<br>`;
@@ -864,12 +880,16 @@ function formatSteps(stepArray, solution) {
   return html;
 }
 
-// Globale Bereitstellung
+// Globale Bereitstellung für Browser
 if (typeof window !== "undefined") {
   window.getTask = getTask;
   window.formatSteps = formatSteps;
   window.TASKS = TASKS;
+  window.rand = rand;
+  window.round2 = round2;
 }
 
-export { getTask, formatSteps, TASKS };
-export default { getTask, formatSteps, TASKS };
+// Für Module-Export (falls benötigt)
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { getTask, formatSteps, TASKS };
+}
