@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
-<title>Mathe Trainer – Niveau 11.3 (BBR 1–2)</title>
+<title>Mathe Trainer – Niveau 11.3 (Freies Training)</title>
 
 <style>
 body {
@@ -13,13 +13,10 @@ body {
   background:#f2f2f2;
   padding:20px;
 }
-h1 { text-align:center; margin: 8px 0 14px; }
+h1 { text-align:center; }
 
-#topbar { text-align:center; margin-bottom:10px; }
+#topbar { text-align:center; margin-bottom:12px; }
 button { padding:10px; font-size:16px; margin:4px; }
-
-#status { text-align:center; font-size:18px; font-weight:bold; margin-bottom:6px; }
-#progress { text-align:center; font-size:16px; margin-bottom:10px; }
 
 #card {
   max-width:820px;
@@ -28,9 +25,13 @@ button { padding:10px; font-size:16px; margin:4px; }
   padding:25px;
   border-radius:10px;
 }
+
 #task { font-size:20px; margin-bottom:15px; }
+
 input { font-size:18px; padding:5px; width:220px; }
+
 #feedback { margin-top:10px; font-size:18px; font-weight:bold; }
+
 #solution {
   display:none;
   background:#eef6ff;
@@ -40,27 +41,22 @@ input { font-size:18px; padding:5px; width:220px; }
 }
 </style>
 
-<!-- Externer Aufgabenpool -->
 <script src="pool_113.js"></script>
 </head>
 
 <body>
 
-<h1>🎓 Mathe-Trainer – Niveau 11.3</h1>
+<h1>🎓 Mathe Trainer – 11.3 (BBR 1–2)</h1>
 
 <div id="topbar">
-  <button onclick="startRound()">🎲 Zufallsrunde starten</button>
-  <button onclick="nextTaskRandom()">➡️ Nächste Aufgabe (zufällig)</button>
+  <button onclick="nextTaskRandom()">➡️ Weiter (neu würfeln)</button>
   <button onclick="nextTaskSameType()">🔁 Gleicher Typ</button>
   <button onclick="toggleSolution()">📌 Lösung anzeigen</button>
   <button onclick="resetTrainer()">🔄 Reset</button>
 </div>
 
-<div id="status">Punkte: 0</div>
-<div id="progress">Noch keine Runde gestartet.</div>
-
 <div id="card">
-  <div id="task">Starte eine Zufallsrunde.</div>
+  <div id="task">Klicke auf „Weiter“ um zu starten.</div>
 
   <div>
     Deine Antwort:
@@ -74,67 +70,33 @@ input { font-size:18px; padding:5px; width:220px; }
 
 <script>
 
-/* ================================
+/* =============================
    STATE
-================================ */
+============================= */
 let currentAnswer = null;
 let currentSolution = "";
-let points = 0;
-
-let roundActive = false;
-let taskNumber = 0;
-let totalTasks = 10;
-
 let lastCat = null;
 let lastGenIndex = null;
 
-
-/* ================================
+/* =============================
    UTIL
-================================ */
+============================= */
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function normalize(val) {
-  return parseFloat(String(val).trim().replace(",", "."));
+  return parseFloat(String(val).replace(",", "."));
 }
 
 function fmt(n) {
-  if (Number.isInteger(n)) return String(n);
+  if (Number.isInteger(n)) return n;
   return (Math.round(n * 100) / 100).toString().replace(".", ",");
 }
 
-
-/* ================================
-   ROUND LOGIC
-================================ */
-function startRound() {
-
-  if (typeof window.TASKPOOL === "undefined") {
-    alert("pool_113.js wurde nicht geladen!");
-    return;
-  }
-
-  points = 0;
-  taskNumber = 0;
-  roundActive = true;
-
-  updateStatus();
-  nextTaskRandom();
-}
-
-function finishRound() {
-  roundActive = false;
-  document.getElementById("task").innerHTML = "🏁 Runde beendet!";
-  document.getElementById("progress").innerHTML =
-    "Endpunktzahl: " + points + " Punkte";
-}
-
-
-/* ================================
-   TASK SELECTION (wie 12.2)
-================================ */
+/* =============================
+   ZUFALL
+============================= */
 function pickCategory() {
   const cats = Object.keys(window.TASKPOOL);
   return cats[rand(0, cats.length - 1)];
@@ -151,42 +113,35 @@ function drawTask(cat, genIndex) {
   currentAnswer = t.answer;
   currentSolution = t.solution || "";
 
+  document.getElementById("task").innerHTML =
+    "(" + cat + ") " + t.task;
+
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("userAnswer").value = "";
+
   document.getElementById("solution").style.display = "none";
   document.getElementById("solution").innerHTML =
     "<b>Lösung:</b><br><br>" + currentSolution;
-
-  document.getElementById("task").innerHTML =
-    "(" + cat + ") " + t.task;
 }
+
+/* =============================
+   BUTTONS
+============================= */
 
 function nextTaskRandom() {
 
-  if (!roundActive) {
-    alert("Bitte zuerst eine Zufallsrunde starten!");
+  if (typeof window.TASKPOOL === "undefined") {
+    alert("pool_113.js wurde nicht geladen!");
     return;
   }
-
-  if (taskNumber >= totalTasks) {
-    finishRound();
-    return;
-  }
-
-  taskNumber++;
 
   const cat = pickCategory();
   const genIndex = rand(0, window.TASKPOOL[cat].length - 1);
 
   drawTask(cat, genIndex);
-
-  document.getElementById("progress").innerHTML =
-    "Aufgabe " + taskNumber + " von " + totalTasks;
 }
 
 function nextTaskSameType() {
-
-  if (!roundActive) return;
 
   if (lastCat === null) {
     nextTaskRandom();
@@ -194,15 +149,12 @@ function nextTaskSameType() {
   }
 
   drawTask(lastCat, lastGenIndex);
-
-  document.getElementById("progress").innerHTML =
-    "Aufgabe " + taskNumber + " von " + totalTasks + " (gleicher Typ)";
 }
 
+/* =============================
+   CHECK
+============================= */
 
-/* ================================
-   CHECK ANSWER
-================================ */
 function checkAnswer() {
 
   const input = document.getElementById("userAnswer").value.trim();
@@ -210,7 +162,6 @@ function checkAnswer() {
   if (typeof currentAnswer === "string") {
 
     if (input === currentAnswer) {
-      points += 3;
       document.getElementById("feedback").innerHTML = "✔ Richtig!";
     } else {
       document.getElementById("feedback").innerHTML =
@@ -219,58 +170,40 @@ function checkAnswer() {
 
   } else {
 
-    const userVal = normalize(input);
+    const val = normalize(input);
 
-    if (isNaN(userVal)) {
+    if (isNaN(val)) {
       document.getElementById("feedback").innerHTML =
-        "⚠ Bitte eine Zahl eingeben.";
+        "⚠ Bitte Zahl eingeben.";
       return;
     }
 
-    if (Math.abs(userVal - currentAnswer) < 0.05) {
-      points += 3;
+    if (Math.abs(val - currentAnswer) < 0.05) {
       document.getElementById("feedback").innerHTML = "✔ Richtig!";
     } else {
       document.getElementById("feedback").innerHTML =
         "✘ Falsch. Richtige Lösung: " + fmt(currentAnswer);
     }
   }
-
-  updateStatus();
 }
 
-
-/* ================================
+/* =============================
    UI
-================================ */
-function updateStatus() {
-  document.getElementById("status").innerHTML =
-    "Punkte: " + points;
-}
+============================= */
 
 function toggleSolution() {
-  const sol = document.getElementById("solution");
-  sol.style.display =
-    (sol.style.display === "block") ? "none" : "block";
+  const s = document.getElementById("solution");
+  s.style.display = (s.style.display === "block") ? "none" : "block";
 }
 
 function resetTrainer() {
-
-  points = 0;
-  taskNumber = 0;
-  roundActive = false;
-  lastCat = null;
-  lastGenIndex = null;
-
-  updateStatus();
-
   document.getElementById("task").innerHTML =
-    "Starte eine Zufallsrunde.";
-  document.getElementById("progress").innerHTML =
-    "Noch keine Runde gestartet.";
+    "Klicke auf „Weiter“ um zu starten.";
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("solution").style.display = "none";
   document.getElementById("solution").innerHTML = "";
+  document.getElementById("userAnswer").value = "";
+  lastCat = null;
 }
 
 </script>
