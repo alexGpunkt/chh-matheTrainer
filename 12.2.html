@@ -692,7 +692,6 @@ function nextTaskSameType() {
     return;
   }
 
-  taskNumber++;
   drawTask(lastCat, lastGenIndex);
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
@@ -946,3 +945,4 @@ updateStatus();
 
 </body>
 </html>
+
