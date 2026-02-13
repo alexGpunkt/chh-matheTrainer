@@ -155,8 +155,8 @@ let timeLeft = 0;
 let timerInt = null;
 let running = false;
 
-// Speichert bereits verwendete Aufgabentypen für mehr Abwechslung
-let usedGenerators = [];
+// Speichert bereits verwendete Kategorien für mehr Abwechslung
+let usedCategories = [];
 
 /* =====================
    PRÜFUNG - UI-LOGIK
@@ -170,7 +170,7 @@ function startExam() {
   points = 0;
   timeLeft = EXAM_TIME;
   running = true;
-  usedGenerators = [];
+  usedCategories = [];
 
   // Prüfen ob pool_113.js geladen wurde
   if (typeof getTask113 === 'undefined') {
@@ -179,15 +179,20 @@ function startExam() {
     return;
   }
 
-  // Aufgaben generieren - mit Zufallsindex für echte Zufälligkeit
+  // Prüfen ob TASKPOOL verfügbar ist
+  if (typeof window.TASKPOOL === 'undefined') {
+    console.error("TASKPOOL nicht verfügbar!");
+    alert("Fehler: Aufgabenpool nicht korrekt initialisiert!");
+    return;
+  }
+
+  console.log("Verfügbare Kategorien:", Object.keys(window.TASKPOOL));
+
+  // Aufgaben generieren - mit Zufallsauswahl aus verschiedenen Kategorien
   for (let i = 0; i < TASKS_TOTAL; i++) {
     try {
-      // ✅ Feste Reihenfolge der Kategorien, aber ZUFÄLLIGE Aufgaben daraus
-      // Statt festen Index zu verwenden, generieren wir einen zufälligen Index
-      // innerhalb der Kategorie für mehr Abwechslung
-      
-      // Kategorie aus fester Reihenfolge (prüfungsnah)
-      const cat = getExamCategoryByIndex(i);
+      // Kategorie zufällig auswählen, aber sicherstellen dass alle Kategorien vorkommen
+      const cat = getRandomCategory(i);
       
       // Zufällige Aufgabe aus dieser Kategorie
       const task = getRandomTaskFromCategory(cat);
@@ -197,14 +202,16 @@ function startExam() {
     } catch (error) {
       console.error("Fehler beim Generieren der Aufgabe", i, error);
       // Fallback-Aufgabe
+      const fallbackNum = Math.floor(Math.random() * 90 + 10);
       tasks.push({
-        text: `Berechne: ${Math.floor(Math.random() * 90 + 10)} + ${Math.floor(Math.random() * 90 + 10)}`,
-        sol: Math.floor(Math.random() * 180 + 20)
+        text: `Berechne: ${fallbackNum} + ${Math.floor(Math.random() * 90 + 10)}`,
+        sol: fallbackNum + Math.floor(Math.random() * 90 + 10)
       });
     }
   }
 
   console.log(`${tasks.length} Aufgaben generiert`);
+  console.log("Verwendete Kategorien:", tasks.map(t => t.category).join(", "));
 
   // UI aktualisieren
   document.getElementById("answerArea").classList.remove("hidden");
@@ -222,56 +229,60 @@ function startExam() {
 }
 
 /**
- * Gibt die Kategorie für einen bestimmten Index in der Prüfungsreihenfolge zurück
+ * Wählt eine zufällige Kategorie aus, mit Gewichtung für Abwechslung
  */
-function getExamCategoryByIndex(idx) {
-  // Feste, ausgewogene Reihenfolge der Kategorien für die Prüfung
-  const examOrder = [
-    "rechnen",
-    "prozent",
-    "geometrie",
-    "koerper",
-    "pythagoras",
-    "zylinder",
-    "sach",
-    "rechnen",
-    "prozent",
-    "koerper"
-  ];
+function getRandomCategory(index) {
+  // Alle verfügbaren Kategorien aus dem TASKPOOL
+  const allCategories = Object.keys(window.TASKPOOL);
   
-  return examOrder[idx % examOrder.length];
+  if (allCategories.length === 0) {
+    return "rechnen"; // Fallback
+  }
+  
+  // Für die ersten Aufgaben: sicherstellen dass jede Kategorie einmal vorkommt
+  if (index < allCategories.length) {
+    // Mische die Kategorien, aber verwende jede einmal
+    const shuffled = [...allCategories].sort(() => Math.random() - 0.5);
+    return shuffled[index % shuffled.length];
+  }
+  
+  // Für weitere Aufgaben: zufällige Auswahl
+  const randomIndex = Math.floor(Math.random() * allCategories.length);
+  return allCategories[randomIndex];
 }
 
 /**
  * Holt eine ZUFÄLLIGE Aufgabe aus einer bestimmten Kategorie
- * Das ist der Schlüssel zur Lösung des Problems!
  */
 function getRandomTaskFromCategory(cat) {
   // Prüfen ob Kategorie existiert
-  const poolSize = getTaskPoolSize(cat);
-  
-  if (!poolSize || poolSize === 0) {
+  if (!window.TASKPOOL[cat] || window.TASKPOOL[cat].length === 0) {
     console.warn(`Kategorie ${cat} hat keine Aufgaben, verwende Fallback`);
     // Fallback auf rechnen
-    const fallbackSize = getTaskPoolSize("rechnen");
-    const randomIndex = Math.floor(Math.random() * fallbackSize);
-    const task = getTask113({ 
-      category: "rechnen", 
-      generatorIndex: randomIndex 
-    });
-    return task;
+    const fallbackCat = "rechnen";
+    if (window.TASKPOOL[fallbackCat] && window.TASKPOOL[fallbackCat].length > 0) {
+      const randomIndex = Math.floor(Math.random() * window.TASKPOOL[fallbackCat].length);
+      const task = window.TASKPOOL[fallbackCat][randomIndex]();
+      return {
+        text: task.task,
+        sol: task.answer,
+        category: fallbackCat
+      };
+    }
   }
   
-  // ✅ ZUFÄLLIGEN Generator-Index auswählen (NICHT den Index der Aufgabennummer!)
+  // ZUFÄLLIGEN Generator-Index auswählen
+  const poolSize = window.TASKPOOL[cat].length;
   const randomIndex = Math.floor(Math.random() * poolSize);
   
   // Aufgabe mit diesem zufälligen Generator holen
-  const task = getTask113({ 
-    category: cat, 
-    generatorIndex: randomIndex 
-  });
+  const task = window.TASKPOOL[cat][randomIndex]();
   
-  return task;
+  return {
+    text: task.task,
+    sol: task.answer,
+    category: cat
+  };
 }
 
 function showTask() {
@@ -281,8 +292,9 @@ function showTask() {
   }
   
   const task = tasks[current];
+  const categoryText = task.category ? ` (${task.category})` : '';
   document.getElementById("task").innerHTML =
-    `<b>Aufgabe ${current+1}/${TASKS_TOTAL}</b><br>${task.text}`;
+    `<b>Aufgabe ${current+1}/${TASKS_TOTAL}${categoryText}</b><br>${task.text}`;
   document.getElementById("answer").value = "";
   document.getElementById("answer").focus();
   
@@ -313,6 +325,8 @@ function saveAnswer() {
 }
 
 function nextTask() {
+  if (!running) return;
+  
   // Antwort speichern und Punkte vergeben
   saveAnswer();
   
@@ -328,6 +342,8 @@ function nextTask() {
 
 function finishExam() {
   console.log("Prüfung wird beendet");
+  
+  if (!running) return;
   
   // Timer stoppen
   clearInterval(timerInt);
@@ -416,6 +432,9 @@ function updateTimer() {
   if (timeLeft < 300) {
     document.getElementById("timer").style.color = "#ff0000";
     document.getElementById("timer").style.fontWeight = "bold";
+  } else {
+    document.getElementById("timer").style.color = "darkred";
+    document.getElementById("timer").style.fontWeight = "normal";
   }
 }
 
@@ -436,7 +455,11 @@ document.addEventListener("DOMContentLoaded", function() {
     alert("Fehler: Aufgabenpool konnte nicht geladen werden! Stellen Sie sicher, dass pool_113.js im gleichen Ordner liegt.");
   } else {
     console.log("pool_113.js erfolgreich geladen");
-    console.log("Verfügbare Kategorien:", getAvailableCategories ? getAvailableCategories() : "nicht verfügbar");
+    if (typeof window.TASKPOOL !== 'undefined') {
+      console.log("Verfügbare Kategorien:", Object.keys(window.TASKPOOL));
+    } else {
+      console.error("TASKPOOL nicht definiert!");
+    }
   }
   
   if (startBtn) {
