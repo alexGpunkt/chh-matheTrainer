@@ -54,10 +54,16 @@ button {
   background: #1976d2;
   color: white;
   border: none;
+  cursor: pointer;
 }
 
 button:active {
   background: #0d47a1;
+}
+
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
 }
 
 #timer {
@@ -129,7 +135,7 @@ input {
 <div id="topbar">
   <select id="level" onchange="toggleStarOption()">
     <option value="boa">BOA</option>
-    <option value="bbr">BBR</option>
+    <option value="bbr" selected>BBR</option>
   </select>
 
   <label id="starBox" class="hidden">
@@ -207,9 +213,7 @@ function toggleStarOption() {
    PRÜFUNG – NUTZT ZENTRALE pool.js
 ======================= */
 function startExam() {
-  // ❌ ENTFERNT: Fullscreen-Aufruf, der im iFrame Probleme macht
-  // Unterricht-sicher: KEIN Fullscreen mehr, da iFrame-Kompatibilität
-
+  // Prüfung zurücksetzen
   tasks = [];
   current = 0;
   points = 0;
@@ -218,61 +222,67 @@ function startExam() {
 
   const lvl = levelEl.value;
 
-  // 🔐 OPTIONALER SICHERHEITS-CHECK:
-  // Falls jemand vor Start BBR → BOA umgestellt hat,
-  // erzwingen wir: BOA bekommt NIE Stern-Aufgaben
+  // BOA bekommt NIE Stern-Aufgaben
   if (lvl !== "bbr") {
     starsEl.checked = false;
   }
 
-  const useStars = (lvl === "bbr") && starsEl.checked; // BOA niemals Stern-Aufgaben
+  const useStars = (lvl === "bbr") && starsEl.checked;
 
-// AUFGABEN ÜBER ZENTRALE getTask() GENERIEREN
-for (let i = 0; i < TASKS_TOTAL; i++) {
-  const task = getTask({
-    mode: "exam",
-    level: lvl,
-    stars: useStars,
-    index: i
-  });
-  
-  tasks.push({
-    text: task.text,
-    sol: task.sol,
-    category: task.category || "allgemein",
-    star: task.star || false
-  });
+  // AUFGABEN ÜBER ZENTRALE getTask() GENERIEREN
+  for (let i = 0; i < TASKS_TOTAL; i++) {
+    const task = getTask({
+      mode: "exam",
+      level: lvl,
+      stars: useStars,
+      index: i
+    });
+    
+    tasks.push({
+      text: task.text,
+      sol: task.sol,
+      category: task.category || "allgemein",
+      star: task.star || false
+    });
+  }
+
+  // ⭐ UI-Zustand korrekt setzen
+  toggleStarOption();
+
+  // Steuerelemente sperren
+  levelEl.disabled = true;
+  starsEl.disabled = true;
+  startBtnEl.disabled = true;
+
+  timerEl.classList.remove("hidden");
+  answerAreaEl.classList.remove("hidden");
+  resultEl.innerHTML = "";
+
+  // Timer starten
+  clearInterval(timerInt);
+  timerInt = setInterval(updateTimer, 1000);
+
+  // Erste Aufgabe anzeigen
+  showTask();
 }
 
-// ⭐ UI-Zustand korrekt setzen (Checkbox sichtbar / unsichtbar)
-toggleStarOption();
-
-// Steuerelemente sperren
-levelEl.disabled = true;
-starsEl.disabled = true;
-
-timerEl.classList.remove("hidden");
-answerAreaEl.classList.remove("hidden");
-resultEl.innerHTML = "";
-
-clearInterval(timerInt);
-timerInt = setInterval(updateTimer, 1000);
-
-// Jetzt erst Aufgabe anzeigen
-showTask();
-
 function showTask() {
+  if (!examRunning || !tasks[current]) return;
+  
   const starMark = tasks[current].star ? " ⭐" : "";
-  taskEl.innerHTML = `<b>Aufgabe ${current + 1}/10${starMark}</b><br>${tasks[current].text}`;
+  taskEl.innerHTML = `<b>Aufgabe ${current + 1}/${TASKS_TOTAL}${starMark}</b><br>${tasks[current].text}`;
   answerEl.value = "";
-
-  // Fokus-Zwang (Touch)
-  setTimeout(() => answerEl.focus(), 200);
+  answerEl.focus();
 }
 
 function saveCurrentAnswer() {
-  // Keine Eingabe -> einfach keine Punkte (kein Alert im Unterricht, damit ruhig bleibt)
-  const v = parseFloat(answerEl.value.replace(",", "."));
+  if (!examRunning || !tasks[current]) return;
+  
+  // Eingabe auswerten
+  const input = answerEl.value.trim().replace(",", ".");
+  if (input === "") return;
+  
+  const v = parseFloat(input);
   if (!isNaN(v) && Math.abs(v - tasks[current].sol) < 0.05) {
     points += POINTS_PER_TASK;
   }
@@ -287,12 +297,17 @@ function saveAndNext() {
   if (current < TASKS_TOTAL) {
     showTask();
   } else {
-    finishExam(); // PIN-Abgabe
+    finishExam();
   }
 }
 
 function finishExam() {
   if (!examRunning) return;
+
+  // Letzte Aufgabe auswerten, falls noch nicht geschehen
+  if (current < TASKS_TOTAL) {
+    saveCurrentAnswer();
+  }
 
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
   if (pin !== TEACHER_PIN) {
@@ -300,30 +315,25 @@ function finishExam() {
     return;
   }
 
-  // 🔴 WICHTIG: letzte Aufgabe sicher auswerten
-  if (current < TASKS_TOTAL) {
-    saveCurrentAnswer();
-  }
-
+  // Timer stoppen
   clearInterval(timerInt);
   timerInt = null;
 
   examRunning = false;
-  timeLeft = 0;
-
+  
+  // UI zurücksetzen
   answerAreaEl.classList.add("hidden");
-
-  const res = points >= PASS_POINTS
-    ? "✅ BESTANDEN"
-    : "❌ NICHT BESTANDEN";
-
-  resultEl.innerHTML =
-    `Punkte: <b>${points} / ${TASKS_TOTAL * POINTS_PER_TASK}</b><br>${res}`;
-
+  timerEl.classList.add("hidden");
+  
   levelEl.disabled = false;
   starsEl.disabled = false;
+  startBtnEl.disabled = false;
 
-  // ❌ ENTFERNT: exitFullscreen, da kein Fullscreen mehr
+  // Ergebnis anzeigen
+  const res = points >= PASS_POINTS ? "✅ BESTANDEN" : "❌ NICHT BESTANDEN";
+  resultEl.innerHTML = `Punkte: <b>${points} / ${TASKS_TOTAL * POINTS_PER_TASK}</b><br>${res}`;
+  
+  taskEl.innerHTML = "Prüfung beendet. Neustart möglich.";
   
   toggleStarOption();
 }
@@ -340,7 +350,6 @@ function updateTimer() {
   timerEl.innerText = `⏱ ${m}:${s}`;
 
   if (timeLeft <= 0) {
-    // Zeit ist um: Unterricht-sicher -> Lehrer-PIN zum Beenden
     finishExam();
   }
 }
@@ -362,10 +371,17 @@ startBtnEl.addEventListener("click", startExam);
 nextBtnEl.addEventListener("click", saveAndNext);
 finishBtnEl.addEventListener("click", finishExam);
 
-// Init
+// Enter-Taste im Eingabefeld
+answerEl.addEventListener("keypress", function(e) {
+  if (e.key === "Enter" && examRunning) {
+    e.preventDefault();
+    saveAndNext();
+  }
+});
+
+// Initialisierung
 toggleStarOption();
 </script>
 
 </body>
 </html>
-
