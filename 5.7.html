@@ -295,12 +295,10 @@ function nextTaskRandom() {
   }
   taskNumber++;
 
-  const task = getTask({
-    mode: "trainer",
-    level: getLevel(),
-    stars: false,
-    index: 0
-  });
+  const cat = pickCategoryWeighted();
+  const task = TASKS[cat](getLevel());
+  task.category = cat;
+  task.star = false;
 
   drawTask(task);
 
@@ -754,3 +752,4 @@ updateStatus();
 
 </body>
 </html>
+
