@@ -7,6 +7,7 @@
    Zuordnungen (proportional/antiproportional), Wahrscheinlichkeit (mehrstufig),
    Gleichungen (modellieren), Wachstumsvergleich, Flächen 2D,
    Volumen, Oberfläche, Maßstab, Diagramme
+   ERWEITERT mit Diagrammtypen 13-21
 ========================================================= */
 
 /* =========================================================
@@ -62,14 +63,14 @@ function formatTaskText(task, rng = Math.random) {
 }
 
 /* =========================================================
-   POOL-DATEN (NUR BBR Niveau 2-1)
+   POOL-DATEN (NUR BBR Niveau 2-1) - ERWEITERT MIT NEUEN DIAGRAMMTYPEN 13-21
 ========================================================= */
 
 const pool113 = {
   meta: {
     niveau: "BBR Niveau 2-1 (Note 2–1)",
     ziel: "BBR Prüfungsniveau, VA9 2014–2019",
-    version: "2026-02-13 (vollständig ergänzt)"
+    version: "2026-02-13 (vollständig ergänzt mit Diagrammtypen 13-21)"
   },
 
   // ---------- PROZENT / RABATT / ZINS / MwSt / SKONTO ----------
@@ -1051,6 +1052,204 @@ const pool113 = {
       solution: `26,25 €.`,
       steps: `6 + 0,09 · 225 = 6 + 20,25 = 26,25 €.`
     }
+  ],
+
+  // ========== NEUE DIAGRAMMTYPEN 13-21 ==========
+
+  // 1️⃣3️⃣ NEU: dreiseitiges_prisma
+  dreiseitiges_prisma: [
+    {
+      id: "P113_PRISMA_01",
+      thema: "Dreiseitiges Prisma",
+      kategorie: "dreiseitiges_prisma",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein dreiseitiges Prisma hat eine Grundfläche in Form eines rechtwinkligen Dreiecks. Die Katheten sind ${base = rand(3,8)} cm und ${side = rand(4,10)} cm lang. Die Höhe des Prismas beträgt ${height = rand(5,15)} cm.`,
+      question: `Berechne das Volumen des Prismas.`,
+      solution: `${round2(base * side / 2 * height)} cm³`,
+      steps: `1) Grundfläche: (${base} · ${side}) : 2 = ${base * side / 2} cm²; 2) Volumen: Grundfläche · Höhe = ${base * side / 2} · ${height} = ${round2(base * side / 2 * height)} cm³.`,
+      params: {base, side, height},
+      diagram: {
+        type: "dreiseitiges_prisma",
+        dynamic: true,
+        params: { base, side, height }
+      }
+    }
+  ],
+
+  // 1️⃣4️⃣ NEU: dachgeschoss_prisma
+  dachgeschoss_prisma: [
+    {
+      id: "P113_DACH_01",
+      thema: "Dachgeschoss (Prisma)",
+      kategorie: "dachgeschoss_prisma",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein Dachgeschoss hat die Form eines dreiseitigen Prismas. Das Haus ist ${width = rand(8,12)} m breit, die Dachhöhe beträgt ${roofHeight = rand(3,6)} m. Die Tiefe des Hauses (Prismenhöhe) beträgt ${prismDepth = rand(6,10)} m.`,
+      question: `Berechne das Volumen des Dachgeschosses.`,
+      solution: `${round2(width * roofHeight / 2 * prismDepth)} m³`,
+      steps: `1) Grundfläche (Dreieck): (${width} · ${roofHeight}) : 2 = ${width * roofHeight / 2} m²; 2) Volumen: ${width * roofHeight / 2} · ${prismDepth} = ${round2(width * roofHeight / 2 * prismDepth)} m³.`,
+      params: {width, roofHeight, prismDepth},
+      diagram: {
+        type: "dachgeschoss_prisma",
+        dynamic: true,
+        params: { width, roofHeight, prismDepth }
+      }
+    }
+  ],
+
+  // 1️⃣5️⃣ NEU: zelt_prisma
+  zelt_prisma: [
+    {
+      id: "P113_ZELT_01",
+      thema: "Zelt (Prisma)",
+      kategorie: "zelt_prisma",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 3,
+      prompt: `Ein Zelt hat die Form eines Dreiecksprismas. Die Grundfläche ist ein Dreieck mit g = 3 m und h = 2 m. Das Zelt ist 4 m lang.`,
+      question: `Berechne das Volumen des Zeltes.`,
+      solution: `12 m³`,
+      steps: `1) A_Dreieck = (3 · 2) : 2 = 3 m²; 2) V = 3 · 4 = 12 m³.`,
+      params: {g: 3, h: 2, length: 4},
+      diagram: {
+        type: "zelt_prisma",
+        dynamic: false
+      }
+    }
+  ],
+
+  // 1️⃣6️⃣ NEU: keksverpackung
+  keksverpackung: [
+    {
+      id: "P113_KEKS_01",
+      thema: "Keksverpackung (Prisma)",
+      kategorie: "keksverpackung",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Eine Keksverpackung hat die Form eines dreiseitigen Prismas. Die Grundfläche ist ein Dreieck mit den Seitenlängen ${a = rand(5,10)} cm, ${b = rand(5,10)} cm und ${c = rand(5,10)} cm. Die Höhe (Länge) der Verpackung beträgt ${h = rand(8,15)} cm.`,
+      question: `a) Berechne die Grundfläche mit dem Satz des Heron. b) Berechne das Volumen der Verpackung.`,
+      solution: `Volumen = ${round2((s = (a+b+c)/2) * Math.sqrt(s*(s-a)*(s-b)*(s-c)) * h)} cm³`,
+      steps: `1) s = (${a}+${b}+${c})/2 = ${(a+b+c)/2}; 2) A = √(s·(s-a)·(s-b)·(s-c)) = ${round2(Math.sqrt((a+b+c)/2 * ((a+b+c)/2-a) * ((a+b+c)/2-b) * ((a+b+c)/2-c)))} cm²; 3) V = A · h = ${round2(Math.sqrt((a+b+c)/2 * ((a+b+c)/2-a) * ((a+b+c)/2-b) * ((a+b+c)/2-c)) * h)} cm³.`,
+      params: {a, b, c, h},
+      diagram: {
+        type: "keksverpackung",
+        dynamic: true,
+        params: { a, b }
+      }
+    }
+  ],
+
+  // 1️⃣7️⃣ NEU: holztisch
+  holztisch: [
+    {
+      id: "P113_TISCH_01",
+      thema: "Holztisch (zusammengesetzter Körper)",
+      kategorie: "holztisch",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 5,
+      prompt: `Ein runder Holztisch hat eine Tischplatte mit Durchmesser ${diameter = rand(80,120)} cm und Dicke ${thickness = rand(2,4)} cm. Die vier zylindrischen Tischbeine haben jeweils einen Durchmesser von ${legDiameter = rand(5,8)} cm und eine Höhe von ${height = rand(70,80)} cm.`,
+      question: `Berechne das Gesamtvolumen des Tisches in Litern. (1 Liter = 1000 cm³)`,
+      solution: `${round2((Math.PI * (diameter/2)**2 * thickness + 4 * Math.PI * (legDiameter/2)**2 * height) / 1000)} Liter`,
+      steps: `1) Volumen Tischplatte: π · r² · h = 3,14 · ${diameter/2}² · ${thickness} = ${round2(3.14 * (diameter/2)**2 * thickness)} cm³; 2) Volumen ein Bein: 3,14 · ${legDiameter/2}² · ${height} = ${round2(3.14 * (legDiameter/2)**2 * height)} cm³; 3) Gesamtvolumen: ${round2(3.14 * (diameter/2)**2 * thickness + 4 * 3.14 * (legDiameter/2)**2 * height)} cm³ = ${round2((3.14 * (diameter/2)**2 * thickness + 4 * 3.14 * (legDiameter/2)**2 * height) / 1000)} Liter.`,
+      params: {diameter, thickness, height, legDiameter},
+      diagram: {
+        type: "holztisch",
+        dynamic: true,
+        params: { diameter, thickness, height, legOffset: diameter/3 }
+      }
+    }
+  ],
+
+  // 1️⃣8️⃣ NEU: skateboardrampe
+  skateboardrampe: [
+    {
+      id: "P113_RAMPE_01",
+      thema: "Skateboardrampe (Prisma)",
+      kategorie: "skateboardrampe",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Eine Skateboardrampe hat die Form eines Prismas mit trapezförmiger Grundfläche. Die untere Breite beträgt ${baseL = rand(150,200)} cm, die obere Breite ${topL = rand(40,80)} cm. Die Höhe der Rampe beträgt ${baseH = rand(30,50)} cm. Die Rampe ist ${width = rand(80,120)} cm breit.`,
+      question: `Berechne das Volumen der Rampe in Litern. (1 Liter = 1000 cm³)`,
+      solution: `${round2((baseL + topL) * baseH / 2 * width / 1000)} Liter`,
+      steps: `1) Grundfläche (Trapez): (${baseL} + ${topL}) · ${baseH} : 2 = ${(baseL + topL) * baseH / 2} cm²; 2) Volumen: ${(baseL + topL) * baseH / 2} · ${width} = ${(baseL + topL) * baseH / 2 * width} cm³; 3) In Liter: ${(baseL + topL) * baseH / 2 * width} : 1000 = ${round2((baseL + topL) * baseH / 2 * width / 1000)} Liter.`,
+      params: {baseL, baseH, topL, width},
+      diagram: {
+        type: "skateboardrampe",
+        dynamic: true,
+        params: { baseL, baseH, topL }
+      }
+    }
+  ],
+
+  // 1️⃣9️⃣ NEU: weideland_viereck
+  weideland_viereck: [
+    {
+      id: "P113_WEIDE_01",
+      thema: "Weideland (Viereck)",
+      kategorie: "weideland_viereck",
+      typ: "transfer",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein viereckiges Weideland hat die Seitenlängen a = ${a = rand(40,60)} m, b = ${b = rand(30,50)} m, c = ${c = rand(40,60)} m und d = ${d = rand(30,50)} m. Die Diagonale zwischen a und b beträgt ${diag = rand(50,70)} m.`,
+      question: `Berechne die Fläche des Weidelands in Hektar (ha), indem du es in zwei Dreiecke zerlegst. (1 ha = 10.000 m²)`,
+      solution: `${round2(((a*b/2) + (c*d/2)) / 10000)} ha (vereinfacht)`,
+      steps: `1) Dreieck 1 (Seiten a, b, Diagonale): Fläche mit Heron: s1 = (${a}+${b}+${diag})/2 = ${(a+b+diag)/2}; A1 = √(s1·(s1-a)·(s1-b)·(s1-diag)) ≈ ${round2(Math.sqrt((a+b+diag)/2 * ((a+b+diag)/2-a) * ((a+b+diag)/2-b) * ((a+b+diag)/2-diag)))} m²; 2) Dreieck 2 (Seiten c, d, Diagonale): A2 ≈ ${round2(Math.sqrt((c+d+diag)/2 * ((c+d+diag)/2-c) * ((c+d+diag)/2-d) * ((c+d+diag)/2-diag)))} m²; 3) Gesamtfläche: ${round2(Math.sqrt((a+b+diag)/2 * ((a+b+diag)/2-a) * ((a+b+diag)/2-b) * ((a+b+diag)/2-diag) + Math.sqrt((c+d+diag)/2 * ((c+d+diag)/2-c) * ((c+d+diag)/2-d) * ((c+d+diag)/2-diag)))} m² = ${round2((Math.sqrt((a+b+diag)/2 * ((a+b+diag)/2-a) * ((a+b+diag)/2-b) * ((a+b+diag)/2-diag) + Math.sqrt((c+d+diag)/2 * ((c+d+diag)/2-c) * ((c+d+diag)/2-d) * ((c+d+diag)/2-diag))) / 10000)} ha.`,
+      params: {a, b, c, d, diag},
+      diagram: {
+        type: "weideland_viereck",
+        dynamic: true,
+        params: { a, b, c, d }
+      }
+    }
+  ],
+
+  // 2️⃣0️⃣ NEU: flaechenberechnung_garten
+  flaechenberechnung_garten: [
+    {
+      id: "P113_GARTEN_01",
+      thema: "Flächenberechnung Garten",
+      kategorie: "flaechenberechnung_garten",
+      typ: "modellieren",
+      operatorGroup: "BERECHNE",
+      punkte: 4,
+      prompt: `Ein rechteckiger Garten ist ${outerW = rand(20,30)} m lang und ${outerH = rand(15,25)} m breit. In der Mitte befindet sich ein rechteckiges Blumenbeet mit den Maßen ${cutW = rand(5,10)} m × ${cutH = rand(4,8)} m.`,
+      question: `Berechne die Rasenfläche (Gartenfläche minus Blumenbeet).`,
+      solution: `${outerW * outerH - cutW * cutH} m²`,
+      steps: `1) Gartenfläche: ${outerW} · ${outerH} = ${outerW * outerH} m²; 2) Blumenbeetfläche: ${cutW} · ${cutH} = ${cutW * cutH} m²; 3) Rasenfläche: ${outerW * outerH} - ${cutW * cutH} = ${outerW * outerH - cutW * cutH} m².`,
+      params: {outerW, outerH, cutW, cutH},
+      diagram: {
+        type: "flaechenberechnung_garten",
+        dynamic: true,
+        params: { outerW, outerH, cutW, cutH }
+      }
+    }
+  ],
+
+  // 2️⃣1️⃣ NEU: rechte_winkel_argumentation
+  rechte_winkel_argumentation: [
+    {
+      id: "P113_WINKEL_01",
+      thema: "Rechte Winkel argumentieren",
+      kategorie: "rechte_winkel_argumentation",
+      typ: "argumentieren",
+      operatorGroup: "BEGRUENDE",
+      punkte: 3,
+      prompt: `In einem Dreieck sind die Seitenlängen 3 cm, 4 cm und 5 cm gegeben.`,
+      question: `Begründe, ob das Dreieck einen rechten Winkel hat.`,
+      solution: `Ja, denn 3² + 4² = 9 + 16 = 25 = 5².`,
+      steps: `1) Satz des Pythagoras: a² + b² = c²; 2) 3² + 4² = 9 + 16 = 25; 3) 5² = 25; 4) 25 = 25 → rechtwinklig.`,
+      params: {a: 3, b: 4, c: 5},
+      diagram: {
+        type: "rechte_winkel_argumentation",
+        dynamic: false
+      }
+    }
   ]
 };
 
@@ -1074,8 +1273,16 @@ function getTasksByCategory(category) {
 
 function getRandomTask(options = {}) {
   const { category = null, rng = Math.random } = options;
-  const tasks = category ? getTasksByCategory(category) : flattenPool(pool113);
+  
+  // Bestimme alle verfügbaren Kategorien (ohne meta)
+  const categories = Object.keys(pool113).filter(k => k !== "meta");
+  
+  // Wähle zufällige Kategorie, wenn keine angegeben
+  const selectedCategory = category || categories[Math.floor(rng() * categories.length)];
+  
+  const tasks = getTasksByCategory(selectedCategory);
   if (!tasks.length) return null;
+  
   const t = tasks[Math.floor(rng() * tasks.length)];
   return { ...t, formattedText: formatTaskText(t, rng) };
 }
