@@ -77,6 +77,7 @@ button:disabled {
   font-size: clamp(1.1rem, 4vw, 1.4rem);
   margin-bottom: 14px;
 }
+
 /* Diagramm-Container */
 .diagram-container {
   margin: 15px 0;
@@ -84,11 +85,18 @@ button:disabled {
   background: #f5f5f5;
   border-radius: 8px;
   text-align: center;
+  min-height: 120px;
 }
+
+/* ✅ WICHTIG: SVG braucht feste Höhe, sonst 0px (height="auto" im Renderer) */
 .diagram-container svg {
+  width: 100%;
+  height: 280px;      /* <- Fix */
   max-width: 100%;
-  height: auto;
+  display: block;
+  margin: 0 auto;
 }
+
 #answerArea {
   display: flex;
   flex-direction: column;
@@ -151,39 +159,26 @@ input {
 <script>
 /* =========================================================
    11.3.html - Prüfungsmodus für Note 1-2
-   Verwendet pool_113.js für anspruchsvolle Aufgaben
 ========================================================= */
 
-/* =========================================================
-   KONFIGURATION
-========================================================= */
 const EXAM_TIME = 90 * 60;        // 90 Minuten
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
 const PASS_POINTS = 24;           // 80% für Note 1-2
 const TEACHER_PIN = "1234";       // Demo-PIN
 
-/* =========================================================
-   STATE
-========================================================= */
 let roundActive = false;
-let taskNumber = 0;
 let points = 0;
 let currentAnswer = null;
 let currentTask = null;
 let timeLeft = 0;
 let timerInt = null;
 
-// Aufgaben-Array für die Prüfung
 let examTasks = [];
 let currentTaskIndex = 0;
 
-// Verfügbare Kategorien
 let availableCategories = [];
 
-/* =========================================================
-   DOM-ELEMENTE
-========================================================= */
 const startBtnEl = document.getElementById("startBtn");
 const timerEl = document.getElementById("timer");
 const taskContainer = document.getElementById("taskContainer");
@@ -194,87 +189,28 @@ const finishBtnEl = document.getElementById("finishBtn");
 const resultEl = document.getElementById("result");
 const categorySelect = document.getElementById("categorySelect");
 
-/* =========================================================
-   HILFSFUNKTIONEN
-========================================================= */
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function fmt(n) {
-  if (typeof n === "number") {
-    if (Number.isInteger(n)) return String(n);
-    return (Math.round(n * 100) / 100).toString().replace(".", ",");
-  }
-  return String(n);
-}
-
-function formatSteps(stepLines, result) {
-  if (!stepLines) return "Keine Schritt-für-Schritt-Lösung verfügbar.";
-  
-  let html = "";
-  if (Array.isArray(stepLines)) {
-    stepLines.forEach((line, i) => {
-      html += `${i + 1}. ${line}<br>`;
-    });
-  } else {
-    html += stepLines + "<br>";
-  }
-  html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
-  return html;
-}
-
-/* Diagramm rendern */
-function renderTaskDiagram(diagramData, container) {
-  if (!diagramData || !container) return;
-  
-  const existingDiagram = container.querySelector('.diagram-container');
-  if (existingDiagram) existingDiagram.remove();
-  
-  const diagramContainer = document.createElement('div');
-  diagramContainer.className = 'diagram-container';
-  
-  try {
-    if (typeof window.renderDiagram === 'function') {
-      window.renderDiagram(diagramData, diagramContainer);
-    }
-    container.appendChild(diagramContainer);
-  } catch (e) {
-    console.error('Fehler beim Rendern des Diagramms:', e);
-  }
-}
-
-/* =========================================================
-   TASKPOOL AUS POOL_113.JS LADEN
-========================================================= */
 function initTaskPool() {
   if (typeof window.TASKPOOL_113 === 'undefined') {
     console.error('TASKPOOL_113 nicht gefunden! pool_113.js wurde nicht korrekt geladen.');
     alert('Fehler: Aufgabenpool konnte nicht geladen werden!');
     return false;
   }
-  
   availableCategories = Object.keys(window.TASKPOOL_113);
-  console.log('Geladene Kategorien:', availableCategories);
-  
-  // Kategorie-Auswahl füllen
   updateCategorySelect();
-  
   return true;
 }
 
 function updateCategorySelect() {
-  // Bestehende Optionen löschen (außer "Alle")
-  while (categorySelect.options.length > 1) {
-    categorySelect.remove(1);
-  }
-  
-  // Neue Optionen hinzufügen
+  while (categorySelect.options.length > 1) categorySelect.remove(1);
+
   availableCategories.forEach(cat => {
     const option = document.createElement('option');
     option.value = cat;
-    
-    // Kategorie-Namen formatieren
+
     let displayName = cat
       .replace(/_/g, ' ')
       .replace(/prozent/g, 'Prozent')
@@ -286,9 +222,8 @@ function updateCategorySelect() {
       .replace(/flaeche2d/g, 'Flächen')
       .replace(/wahrscheinlichkeit/g, 'Wahrscheinlichkeit')
       .replace(/wachstum/g, 'Wachstum');
-    
+
     displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-    
     option.textContent = displayName;
     categorySelect.appendChild(option);
   });
@@ -296,53 +231,72 @@ function updateCategorySelect() {
 
 function getRandomTask() {
   let category = categorySelect.value;
-  
+
   if (category === 'all' && availableCategories.length > 0) {
     category = availableCategories[rand(0, availableCategories.length - 1)];
   }
-  
+
   if (!window.TASKPOOL_113[category] || window.TASKPOOL_113[category].length === 0) {
     console.error('Kategorie nicht verfügbar:', category);
     return null;
   }
-  
+
   const taskList = window.TASKPOOL_113[category];
   const genIndex = rand(0, taskList.length - 1);
   const taskGen = taskList[genIndex];
-  
+
   const task = taskGen();
   task.category = category;
   task.genIndex = genIndex;
-  
   return task;
 }
 
-/* =========================================================
-   PRÜFUNGSLOGIK
-========================================================= */
+/* ✅ defensives Diagramm-Rendering */
+function renderTaskDiagram(diagramData, hostContainer) {
+  if (!diagramData || !hostContainer) return;
+
+  const old = hostContainer.querySelector('.diagram-container');
+  if (old) old.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'diagram-container';
+
+  try {
+    if (typeof window.renderDiagram === 'function') {
+      window.renderDiagram(diagramData, wrap, { size: "screen" });
+    } else {
+      wrap.innerHTML = "⚠ renderDiagram() nicht gefunden.";
+    }
+
+    // Falls der Renderer nichts produziert hat:
+    if (!wrap.querySelector("svg") && wrap.innerHTML.trim() === "") {
+      wrap.innerHTML = "⚠ Diagramm konnte nicht gerendert werden.";
+    }
+
+  } catch (e) {
+    console.error('Fehler beim Rendern des Diagramms:', e);
+    wrap.innerHTML = "❌ Diagramm-Fehler (siehe Konsole).";
+  }
+
+  hostContainer.appendChild(wrap);
+}
 
 function startExam() {
-  // Prüfung zurücksetzen
+  // harter Schutz: Pool muss da sein
+  if (!availableCategories.length) {
+    const ok = initTaskPool();
+    if (!ok) return;
+  }
+
   points = 0;
-  taskNumber = 0;
   currentTaskIndex = 0;
   examTasks = [];
   roundActive = true;
   timeLeft = EXAM_TIME;
 
-  // 10 Aufgaben für die Prüfung generieren
   for (let i = 0; i < TASKS_TOTAL; i++) {
     const task = getRandomTask();
-    if (task) {
-      examTasks.push(task);
-    } else {
-      // Fallback, falls keine Aufgabe generiert werden konnte
-      examTasks.push({
-        task: "Fehler: Keine Aufgabe verfügbar",
-        answer: 0,
-        category: "error"
-      });
-    }
+    examTasks.push(task || { task: "Fehler: Keine Aufgabe verfügbar", answer: 0, category: "error" });
   }
 
   resultEl.innerHTML = "";
@@ -359,22 +313,19 @@ function startExam() {
 
 function showCurrentTask() {
   if (!roundActive || !examTasks[currentTaskIndex]) return;
-  
+
   const task = examTasks[currentTaskIndex];
   currentAnswer = task.answer;
   currentTask = task;
 
-  // Task-Container leeren und neu aufbauen
-  taskContainer.innerHTML = '';
-  
-  const taskTextDiv = document.createElement('div');
-  taskTextDiv.className = 'task-text';
+  taskContainer.innerHTML = "";
+
+  const taskTextDiv = document.createElement("div");
+  taskTextDiv.className = "task-text";
   taskTextDiv.innerHTML = `<b>Aufgabe ${currentTaskIndex + 1}/${TASKS_TOTAL} (${task.category})</b><br>${task.task}`;
   taskContainer.appendChild(taskTextDiv);
-  
-  if (task.diagram) {
-    renderTaskDiagram(task.diagram, taskContainer);
-  }
+
+  if (task.diagram) renderTaskDiagram(task.diagram, taskContainer);
 
   answerEl.value = "";
   answerEl.focus();
@@ -382,40 +333,27 @@ function showCurrentTask() {
 
 function checkAndScore() {
   const input = answerEl.value.trim().replace(",", ".");
-  
+
   if (typeof currentAnswer === "string") {
-    if (input.toLowerCase() === currentAnswer.toLowerCase()) {
-      points += POINTS_PER_TASK;
-    }
+    if (input.toLowerCase() === currentAnswer.toLowerCase()) points += POINTS_PER_TASK;
     return;
   }
-  
+
   const val = parseFloat(input);
-  if (!isNaN(val) && Math.abs(val - currentAnswer) < 0.05) {
-    points += POINTS_PER_TASK;
-  }
+  if (!isNaN(val) && Math.abs(val - currentAnswer) < 0.05) points += POINTS_PER_TASK;
 }
 
 function saveAndNext() {
   if (!roundActive) return;
-  
+
   checkAndScore();
   currentTaskIndex++;
-  taskNumber++;
 
-  if (currentTaskIndex < TASKS_TOTAL) {
-    showCurrentTask();
-  } else {
-    finishExam();
-  }
+  if (currentTaskIndex < TASKS_TOTAL) showCurrentTask();
+  else finishExam();
 }
 
 function finishExam() {
-  // Letzte Aufgabe auswerten, falls noch nicht geschehen
-  if (currentTaskIndex < TASKS_TOTAL) {
-    checkAndScore();
-  }
-
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
   if (pin !== TEACHER_PIN) {
     alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
@@ -440,15 +378,10 @@ function updateTimer() {
   const m = Math.floor(timeLeft / 60);
   const s = (timeLeft % 60).toString().padStart(2, "0");
   timerEl.innerText = `⏱ ${m}:${s}`;
-  
-  if (timeLeft <= 0) {
-    finishExam();
-  }
+
+  if (timeLeft <= 0) finishExam();
 }
 
-/* =========================================================
-   VERLASSEN-WARNUNG
-========================================================= */
 window.addEventListener("beforeunload", function (e) {
   if (roundActive) {
     e.preventDefault();
@@ -456,9 +389,6 @@ window.addEventListener("beforeunload", function (e) {
   }
 });
 
-/* =========================================================
-   EVENT LISTENER
-========================================================= */
 startBtnEl.addEventListener("click", startExam);
 nextBtnEl.addEventListener("click", saveAndNext);
 finishBtnEl.addEventListener("click", finishExam);
@@ -470,15 +400,8 @@ answerEl.addEventListener("keypress", function(e) {
   }
 });
 
-/* =========================================================
-   INITIALISIERUNG
-========================================================= */
 document.addEventListener('DOMContentLoaded', function() {
-  if (initTaskPool()) {
-    console.log('11.3.html erfolgreich initialisiert');
-  } else {
-    alert('Fehler beim Laden des Aufgabenpools!');
-  }
+  initTaskPool();
 });
 </script>
 
