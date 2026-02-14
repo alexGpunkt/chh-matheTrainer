@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mathe Trainer – BOA / BBR (Vollversion)</title>
 
-<!-- ZENTRALER AUFGABENPOOL -->
+<!-- ZENTRALER AUFGABENPOOL + DIAGRAMM-SKRIPTE -->
 <script src="pool.js"></script>
+<script src="staticDiagrams.js"></script>
+<script src="diagramRenderer.js"></script>
 
 <style>
   body { font-family: Arial, sans-serif; background:#f2f2f2; padding:20px; }
@@ -19,12 +21,26 @@
   #progress { text-align:center; font-size:16px; margin-bottom:10px; }
 
   #card { max-width:820px; margin:auto; background:white; padding:25px; border-radius:10px; }
-  #task { font-size:20px; margin-bottom:15px; }
+  #taskContainer { font-size:20px; margin-bottom:15px; }
   #answerArea { margin-top: 8px; }
   input { font-size:18px; padding:5px; width:220px; }
   #feedback { margin-top:10px; font-size:18px; font-weight:bold; }
 
   #solution { display:none; background:#eef6ff; padding:15px; border-radius:5px; margin-top:15px; }
+
+  /* Diagramm-Container */
+  .diagram-container {
+    margin: 20px 0;
+    padding: 10px;
+    background: #fafafa;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .diagram-container svg {
+    max-width: 100%;
+    height: auto;
+  }
 
   /* Aufgaben-Container für Export */
   #aufgabenContainer {
@@ -59,6 +75,16 @@
   .task-text { margin-bottom:4mm; }
   .work-space { height:22mm; border:1px solid #eee; background:#fafafa; }
   .page-break { page-break-before: always; break-before: page; }
+  
+  /* Print-Diagramme */
+  .print-diagram {
+    margin: 10px 0;
+    text-align: center;
+  }
+  .print-diagram svg {
+    max-width: 100%;
+    height: auto;
+  }
 </style>
 </head>
 
@@ -91,7 +117,7 @@
 <div id="progress">Noch keine Runde gestartet.</div>
 
 <div id="card">
-  <div id="task">Starte eine Zufallsrunde.</div>
+  <div id="taskContainer"></div>
 
   <div id="answerArea">
     Deine Antwort:
@@ -156,6 +182,27 @@ function formatSteps(stepArray, solution) {
   return html;
 }
 
+/* Diagramm rendern */
+function renderTaskDiagram(diagramData, container) {
+  if (!diagramData || !container) return;
+  
+  // Vorhandenes Diagramm entfernen
+  const existingDiagram = container.querySelector('.diagram-container');
+  if (existingDiagram) existingDiagram.remove();
+  
+  // Neues Diagramm-Container erstellen
+  const diagramContainer = document.createElement('div');
+  diagramContainer.className = 'diagram-container';
+  
+  try {
+    // Diagramm rendern
+    renderDiagram(diagramData, diagramContainer);
+    container.prepend(diagramContainer);
+  } catch (e) {
+    console.error('Fehler beim Rendern des Diagramms:', e);
+  }
+}
+
 /* =========================================================
    TASK PICKING – NUTZT ZENTRALE pool.js
 ========================================================= */
@@ -181,14 +228,23 @@ function drawTask(task) {
   // Lösungsschritte aus der Aufgabe verwenden!
   const solutionHtml = formatSteps(task.steps, task.sol);
   document.getElementById("solution").innerHTML = "<b>Lösung Schritt-für-Schritt:</b><br><br>" + solutionHtml;
-  document.getElementById("task").innerHTML = task.text;
+  
+  // Task-Container leeren und neuen Inhalt setzen
+  const taskContainer = document.getElementById("taskContainer");
+  taskContainer.innerHTML = task.text;
+  
+  // Diagramm rendern falls vorhanden
+  if (task.diagram) {
+    renderTaskDiagram(task.diagram, taskContainer);
+  }
   
   // Aufgabe für Export speichern
   exportedTasks.push({
     category: task.category,
     text: task.text,
     sol: task.sol,
-    steps: task.steps
+    steps: task.steps,
+    diagram: task.diagram ? JSON.parse(JSON.stringify(task.diagram)) : null // Deep copy
   });
   
   // Aufgaben im Container rendern
@@ -204,9 +260,18 @@ function renderTasksInContainer() {
     aufgabeDiv.className = "aufgabe";
     aufgabeDiv.id = `export_aufgabe_${index}`;
     
+    // Diagramm für die Aufgaben-Ansicht
+    let diagramHtml = '';
+    if (task.diagram) {
+      // Wir können das Diagramm hier nicht einfach als HTML einfügen,
+      // da es dynamisch gerendert werden muss. Stattdessen fügen wir einen Platzhalter ein.
+      diagramHtml = '<div class="diagram-placeholder" style="background:#f0f0f0; padding:10px; margin:10px 0; text-align:center; border:1px dashed #999;">[Diagramm]</div>';
+    }
+    
     const aufgabeHtml = `
       <strong>Aufgabe ${index + 1} (${task.category}):</strong>
       <div style="margin-top: 8px;">${task.text}</div>
+      ${diagramHtml}
       <div class="loesung" style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-left: 3px solid #2e7d32;">
         <strong>Lösung:</strong> ${task.sol}<br><br>
         <strong>Rechenweg:</strong><br>${formatSteps(task.steps, task.sol)}
@@ -289,7 +354,7 @@ function startRound() {
 
 function finishRound() {
   roundActive = false;
-  document.getElementById("task").innerHTML = `🏁 Runde beendet!`;
+  document.getElementById("taskContainer").innerHTML = `🏁 Runde beendet!`;
   document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
 }
 
@@ -398,7 +463,7 @@ function resetTrainer() {
   exportedTasks = [];
 
   updateStatus();
-  document.getElementById("task").innerHTML = "Starte eine Zufallsrunde.";
+  document.getElementById("taskContainer").innerHTML = "Starte eine Zufallsrunde.";
   document.getElementById("progress").innerHTML = "Noch keine Runde gestartet.";
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("userAnswer").value = "";
@@ -447,6 +512,9 @@ function exportierePruefungMitLevel(level) {
     <html>
     <head>
       <title>${level}-Prüfung Mathematik</title>
+      <script src="pool.js"></script>
+      <script src="staticDiagrams.js"></script>
+      <script src="diagramRenderer.js"></script>
       <style>
         @media print {
           body { margin: 0; }
@@ -483,6 +551,17 @@ function exportierePruefungMitLevel(level) {
           page-break-inside: avoid;
           border-left: 4px solid ${farbe};
           padding-left: 15px;
+        }
+        .diagram-container {
+          margin: 15px 0;
+          padding: 10px;
+          background: #f9f9f9;
+          border-radius: 5px;
+          text-align: center;
+        }
+        .diagram-container svg {
+          max-width: 100%;
+          height: auto;
         }
         .loesungsraum {
           height: ${level === "BBR" ? "80px" : "60px"};
@@ -528,11 +607,27 @@ function exportierePruefungMitLevel(level) {
         ${level === "BOA" ? '<div class="hinweis">Hinweis: Hilfsmittel wie Taschenrechner und Formelsammlung erlaubt.</div>' : ''}
       </div>
 
-      ${formatiereAufgabenFuerPruefung(clone, level, punkteProAufgabe)}
+      ${formatiereAufgabenFuerPruefung(exportedTasks, level, punkteProAufgabe)}
 
       <div class="footer">
         Erstellt am ${dateStr} – ${level}-Prüfungssimulation
       </div>
+      
+      <script>
+        // Diagramme nach dem Laden rendern
+        window.onload = function() {
+          if (typeof renderDiagram !== 'undefined') {
+            document.querySelectorAll('.diagram-container[data-diagram]').forEach(function(container) {
+              try {
+                const diagramData = JSON.parse(container.dataset.diagram);
+                renderDiagram(diagramData, container);
+              } catch(e) {
+                console.error('Fehler beim Rendern:', e);
+              }
+            });
+          }
+        };
+      <\/script>
     </body>
     </html>
   `);
@@ -541,13 +636,16 @@ function exportierePruefungMitLevel(level) {
   win.focus();
 }
 
-function formatiereAufgabenFuerPruefung(clone, level = "BBR", punkte = 3) {
+function formatiereAufgabenFuerPruefung(tasks, level = "BBR", punkte = 3) {
   let nummer = 1;
   let html = "";
 
-  clone.querySelectorAll(".aufgabe").forEach(aufgabe => {
-    // Extrahiere den Aufgabentext ohne die Überschrift
-    const aufgabeText = aufgabe.innerHTML.replace(/<strong>Aufgabe \d+ \(.*?\):<\/strong>/, '').trim();
+  tasks.forEach(task => {
+    // Diagramm-HTML vorbereiten
+    let diagramHtml = '';
+    if (task.diagram) {
+      diagramHtml = `<div class="diagram-container" data-diagram='${JSON.stringify(task.diagram).replace(/'/g, "&apos;")}'></div>`;
+    }
     
     html += `
       <div class="aufgabe">
@@ -556,8 +654,9 @@ function formatiereAufgabenFuerPruefung(clone, level = "BBR", punkte = 3) {
           <span class="punkte">( ${punkte} Punkte )</span>
         </div>
         <div style="margin-top: 12px;">
-          ${aufgabeText}
+          ${task.text}
         </div>
+        ${diagramHtml}
         <div class="loesungsraum"></div>
         ${level === "BBR" ? '<div class="loesungsraum"></div>' : ''}
       </div>
@@ -603,6 +702,12 @@ function exportWorksheetPDF(tasksCount = 10, includeSolutions = true, avoidDupli
     html += `<div class="task-block">`;
     html += `<div class="task-head">${escapeHtml(head)}</div>`;
     html += `<div class="task-text">${text}</div>`;
+    
+    // Diagramm für PDF (falls vorhanden)
+    if (task.diagram) {
+      html += `<div class="print-diagram" data-diagram='${escapeHtml(JSON.stringify(task.diagram))}'></div>`;
+    }
+    
     html += `<div class="work-space"></div>`;
     if (includeSolutions) {
       const solutionHtml = formatSteps(task.steps, task.sol);
@@ -649,5 +754,3 @@ updateStatus();
 
 </body>
 </html>
-
-
