@@ -149,8 +149,17 @@ async function loadDiagramScripts() {
 }
 
 // POOL_113 importieren
-import POOL_113 from "./pool_113.js";
+//import POOL_113 from "./pool_113.js";
+// RICHTIG - verwende das globale TASKPOOL_113:
+window.TASKPOOL = {};
 
+// Direkt das globale Objekt verwenden:
+if (typeof window.TASKPOOL_113 !== 'undefined') {
+  window.TASKPOOL = window.TASKPOOL_113;
+} else {
+  console.error('TASKPOOL_113 nicht geladen!');
+}
+      
 /* ============================================
    TASKPOOL AUS DEM MODUL ERZEUGEN
 ============================================ */
@@ -366,3 +375,4 @@ answerEl.addEventListener("keypress",e=>{
 
 </body>
 </html>
+
