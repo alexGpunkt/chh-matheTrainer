@@ -8,10 +8,7 @@
 
 <title>Mathe Prüfung – Niveau 11.3 ⭐</title>
 
-<!-- ZENTRALER AUFGABENPOOL + DIAGRAMM-SKRIPTE -->
-<script src="pool.js"></script>
-<script src="staticDiagrams.js"></script>
-<script src="diagramRenderer.js"></script>
+<!-- KEINE globalen Skripte mehr - nur Diagramm-Renderer wird im Modul geladen -->
 
 <style>
 html, body {
@@ -137,10 +134,21 @@ input {
 </div>
 
 <!-- =========================
-     ES-MODUL LÖSUNG
+     ES-MODUL LÖSUNG mit Diagramm-Unterstützung
 ========================= -->
 <script type="module">
 
+// Diagramm-Skripte dynamisch laden
+async function loadDiagramScripts() {
+  // Prüfen ob bereits geladen
+  if (typeof window.renderDiagram !== 'undefined') return;
+  
+  // Skripte nacheinander laden
+  await import('./staticDiagrams.js');
+  await import('./diagramRenderer.js');
+}
+
+// POOL_113 importieren
 import POOL_113 from "./pool_113.js";
 
 /* ============================================
@@ -162,7 +170,7 @@ function buildTaskpoolFromModule(mod) {
           solution: taskObj.steps || "",
           diagram: taskObj.diagram || null,
           category: key,
-          taskObj: taskObj // Für mögliche Erweiterungen
+          taskObj: taskObj
         };
       };
     });
@@ -180,10 +188,13 @@ function extractAnswer(sol) {
 window.TASKPOOL = buildTaskpoolFromModule(POOL_113);
 
 /* ============================================
-   DIAGRAMM-RENDERING
+   DIAGRAMM-RENDERING (mit dynamischem Laden)
 ============================================ */
-function renderTaskDiagram(diagramData, container) {
+async function renderTaskDiagram(diagramData, container) {
   if (!diagramData || !container) return;
+  
+  // Sicherstellen, dass Diagramm-Skripte geladen sind
+  await loadDiagramScripts();
   
   // Vorhandenes Diagramm entfernen
   const existingDiagram = container.querySelector('.diagram-container');
@@ -194,8 +205,14 @@ function renderTaskDiagram(diagramData, container) {
   diagramContainer.className = 'diagram-container';
   
   try {
-    // Diagramm rendern
-    renderDiagram(diagramData, diagramContainer);
+    // Diagramm rendern (jetzt sollte renderDiagram global verfügbar sein)
+    if (typeof window.renderDiagram === 'function') {
+      window.renderDiagram(diagramData, diagramContainer);
+    } else {
+      console.warn('renderDiagram nicht verfügbar');
+      diagramContainer.innerHTML = '<p style="color:#999;">[Diagramm konnte nicht geladen werden]</p>';
+    }
+    
     // Nach dem Aufgaben-Text einfügen
     const taskText = container.querySelector('.task-text');
     if (taskText) {
@@ -205,11 +222,13 @@ function renderTaskDiagram(diagramData, container) {
     }
   } catch (e) {
     console.error('Fehler beim Rendern des Diagramms:', e);
+    diagramContainer.innerHTML = '<p style="color:#999;">[Diagramm-Fehler]</p>';
+    container.appendChild(diagramContainer);
   }
 }
 
 /* ============================================
-   PRÜFUNGSLOGIK (wie 12.2 StartRound)
+   PRÜFUNGSLOGIK
 ============================================ */
 
 const EXAM_TIME = 90 * 60;
@@ -257,7 +276,7 @@ function startRound(){
   nextTaskRandom();
 }
 
-function nextTaskRandom(){
+async function nextTaskRandom(){
   if(taskNumber >= TASKS_TOTAL){
     finishRound();
     return;
@@ -283,9 +302,9 @@ function nextTaskRandom(){
   taskTextDiv.innerHTML = `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}</b><br>${t.task}`;
   taskContainer.appendChild(taskTextDiv);
   
-  // Diagramm rendern falls vorhanden
+  // Diagramm rendern falls vorhanden (async)
   if (t.diagram) {
-    renderTaskDiagram(t.diagram, taskContainer);
+    await renderTaskDiagram(t.diagram, taskContainer);
   }
 
   answerEl.value="";
