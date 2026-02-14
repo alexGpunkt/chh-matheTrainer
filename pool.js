@@ -28,7 +28,8 @@ const OPERATOR_GROUPS_BASIS = {
   BEGRUENDE: ["begründe", "erläutere"],
   UEBERPRUEFE: ["überprüfe", "prüfe"],
   ENTSCHEIDE: ["entscheide"],
-  ZEICHNE: ["zeichne", "ergänze"]
+  ZEICHNE: ["zeichne", "ergänze"],
+  ERGAENZE: ["ergänze", "vervollständige"]
 };
 
 function pickFrom(arr) {
@@ -505,11 +506,10 @@ const TASKS = {
   },
 
   geometrie: (level) => {
-    const type = rand(1, 18); // Erweitert auf 18 Typen
+    const type = rand(1, 18);
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     const opErmittle = getOperatorPhraseBasis("ERMITTLE");
     
-    // Bestehende Geometrie-Aufgaben (1-12)
     if (type === 1) {
       let a = rand(2, 15);
       return {
@@ -639,9 +639,7 @@ const TASKS = {
       };
     }
     
-    // 1️⃣ NEU: flaeche_dreieck_koordinaten
     if (type === 13) {
-      // Koordinaten für ein Dreieck generieren
       let x1 = rand(1, 10);
       let y1 = rand(1, 10);
       let x2 = rand(1, 10);
@@ -649,7 +647,6 @@ const TASKS = {
       let x3 = rand(1, 10);
       let y3 = rand(1, 10);
       
-      // Determinantenformel für Fläche
       let det = Math.abs(x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2));
       let area = det / 2;
       
@@ -672,9 +669,7 @@ const TASKS = {
       };
     }
     
-    // 2️⃣ NEU: viereck_koordinaten
     if (type === 14) {
-      // Koordinaten für ein Viereck generieren (einfaches Rechteck oder Parallelogramm)
       let x1 = rand(1, 5);
       let y1 = rand(1, 5);
       let x2 = x1 + rand(3, 8);
@@ -684,7 +679,6 @@ const TASKS = {
       let x4 = x1 - rand(1, 3);
       let y4 = y3;
       
-      // Fläche durch Zerlegung in zwei Dreiecke (vereinfacht)
       let area1 = Math.abs(x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2)) / 2;
       let area2 = Math.abs(x1*(y3 - y4) + x3*(y4 - y1) + x4*(y1 - y3)) / 2;
       let area = area1 + area2;
@@ -708,7 +702,6 @@ const TASKS = {
       };
     }
     
-    // 3️⃣ NEU: dreieck_pythagoras
     if (type === 15) {
       let a = rand(3, 10);
       let b = rand(3, 10);
@@ -728,20 +721,18 @@ const TASKS = {
       };
     }
     
-    // 4️⃣ NEU: rechtwinklig_pruefen
     if (type === 16) {
       let a = rand(3, 12);
       let b = rand(3, 12);
       let c = rand(3, 12);
       
-      // Prüfen ob rechtwinklig (mit Toleranz)
       let a2 = a*a, b2 = b*b, c2 = c*c;
       let isRight = Math.abs(a2 + b2 - c2) < 0.1 || 
                     Math.abs(a2 + c2 - b2) < 0.1 || 
                     Math.abs(b2 + c2 - a2) < 0.1;
       
       return {
-        text: `${opUeberpruefe || "Überprüfe"}: Ist das Dreieck mit den Seiten a = ${a} cm, b = ${b} cm und c = ${c} cm rechtwinklig?`,
+        text: `Überprüfe: Ist das Dreieck mit den Seiten a = ${a} cm, b = ${b} cm und c = ${c} cm rechtwinklig?`,
         sol: isRight ? "Ja" : "Nein",
         steps: generateSteps("geometrie_rechtwinklig_pruefen", {a, b, c, isRight}, isRight ? "Ja" : "Nein"),
         category: "geometrie",
@@ -754,7 +745,6 @@ const TASKS = {
       };
     }
     
-    // 5️⃣ NEU: winkel_berechnen_dreieck
     if (type === 17) {
       let angleA = rand(30, 70);
       let angleB = rand(30, 70);
@@ -774,7 +764,6 @@ const TASKS = {
       };
     }
     
-    // 6️⃣ NEU: zusammengesetzte_flaeche_lform
     if (type === 18) {
       let w1 = rand(5, 15);
       let h1 = rand(5, 15);
@@ -795,7 +784,6 @@ const TASKS = {
       };
     }
     
-    // Fallback
     let r = rand(2, 8);
     let h = rand(3, 12);
     return {
@@ -807,7 +795,6 @@ const TASKS = {
     };
   },
 
-  // 7️⃣ NEU: quader_netz_ergaenzen (eigener Kategorie-Eintrag)
   quader_netz: (level) => {
     const opErgaenze = getOperatorPhraseBasis("ERGAENZE") || "Ergänze";
     
@@ -828,7 +815,6 @@ const TASKS = {
     };
   },
 
-  // 8️⃣ NEU: prisma_netz
   prisma_netz: (level) => {
     const opZeichne = getOperatorPhraseBasis("ZEICHNE");
     
@@ -850,7 +836,6 @@ const TASKS = {
     };
   },
 
-  // 9️⃣ NEU: zylinder_oberflaeche_skizze (in Geometrie integriert, aber hier als separate Funktion)
   zylinder_skizze: (level) => {
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
@@ -871,7 +856,6 @@ const TASKS = {
     };
   },
 
-  // 🔟 NEU: werkstueck_volumen
   werkstueck: (level) => {
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
@@ -879,7 +863,7 @@ const TASKS = {
     let b = rand(3, 8);
     let c = rand(2, 6);
     let d = rand(1, 3);
-    let extraVol = a * d * d; // Einfacher Aufsatz (z.B. kleiner Würfel)
+    let extraVol = a * d * d;
     
     return {
       text: `${opBerechne}: Das Werkstück besteht aus einem Quader (${a} cm × ${b} cm × ${c} cm) und einem aufgesetzten Würfel mit Kantenlänge ${d} cm. Berechne das Gesamtvolumen.`,
@@ -895,7 +879,6 @@ const TASKS = {
     };
   },
 
-  // 1️⃣1️⃣ NEU: transport_kartons_laderaum
   transport_kartons: (level) => {
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
@@ -924,7 +907,6 @@ const TASKS = {
     };
   },
 
-  // 1️⃣2️⃣ NEU: rampe_volumen
   rampe_volumen: (level) => {
     const opBerechne = getOperatorPhraseBasis("BERECHNE");
     
@@ -1239,21 +1221,21 @@ const TASKS = {
 };
 
 /* =========================================================
-   EXPORT
+   NEUE getTask Funktion (für 10.1.html und 5.7.html)
 ========================================================= */
 function getTask(config) {
   // Standard-Konfiguration
-  const mode = config.mode || "trainer";
-  const level = config.level || "bbr";
-  const useStars = config.stars || false;
-  const index = config.index || 0;
+  const mode = config?.mode || "trainer";
+  const level = config?.level || "bbr";
+  const useStars = config?.stars || false;
+  const index = config?.index || 0;
   
   // Kategorie zufällig auswählen
   let cat = pickCategoryWeighted();
   
   // Für die neuen Kategorien auch zufällig auswählen können
   const newCategories = ["quader_netz", "prisma_netz", "zylinder_skizze", "werkstueck", "transport_kartons", "rampe_volumen"];
-  if (Math.random() < 0.2 && config.includeNewDiagrams !== false) {
+  if (Math.random() < 0.2 && config?.includeNewDiagrams !== false) {
     cat = newCategories[rand(0, newCategories.length - 1)];
   }
   
