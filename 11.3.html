@@ -8,6 +8,11 @@
 
 <title>Mathe Prüfung – Niveau 11.3 ⭐</title>
 
+<!-- ZENTRALER AUFGABENPOOL + DIAGRAMM-SKRIPTE -->
+<script src="pool.js"></script>
+<script src="staticDiagrams.js"></script>
+<script src="diagramRenderer.js"></script>
+
 <style>
 html, body {
   overflow: hidden;
@@ -59,10 +64,24 @@ button:disabled {
   border-radius: 12px;
   max-width: 900px;
   margin: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 150px);
 }
-#task {
+#taskContainer {
   font-size: clamp(1.1rem, 4vw, 1.4rem);
   margin-bottom: 14px;
+}
+/* Diagramm-Container */
+.diagram-container {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  text-align: center;
+}
+.diagram-container svg {
+  max-width: 100%;
+  height: auto;
 }
 #answerArea {
   display: flex;
@@ -102,7 +121,7 @@ input {
 </div>
 
 <div id="card">
-  <div id="task">Noch keine Prüfung gestartet.</div>
+  <div id="taskContainer">Noch keine Prüfung gestartet.</div>
 
   <div id="answerArea" class="hidden">
     <input type="text" id="answer"
@@ -128,31 +147,25 @@ import POOL_113 from "./pool_113.js";
    TASKPOOL AUS DEM MODUL ERZEUGEN
 ============================================ */
 function buildTaskpoolFromModule(mod) {
-
   const tp = {};
   const raw = mod.pool;
 
   Object.keys(raw).forEach(key => {
-
     if (key === "meta") return;
-
     tp[key] = raw[key].map(taskObj => {
-
       return function() {
-
+        // Aufgabe mit Diagramm-Unterstützung
         return {
-          task:
-            taskObj.prompt.trim() + "<br><br><b>" +
-            taskObj.question.trim() + "</b>",
-
+          task: taskObj.prompt.trim() + "<br><br><b>" +
+                taskObj.question.trim() + "</b>",
           answer: extractAnswer(taskObj.solution),
-
-          solution: taskObj.steps || ""
+          solution: taskObj.steps || "",
+          diagram: taskObj.diagram || null,
+          category: key,
+          taskObj: taskObj // Für mögliche Erweiterungen
         };
       };
-
     });
-
   });
 
   return tp;
@@ -165,6 +178,35 @@ function extractAnswer(sol) {
 }
 
 window.TASKPOOL = buildTaskpoolFromModule(POOL_113);
+
+/* ============================================
+   DIAGRAMM-RENDERING
+============================================ */
+function renderTaskDiagram(diagramData, container) {
+  if (!diagramData || !container) return;
+  
+  // Vorhandenes Diagramm entfernen
+  const existingDiagram = container.querySelector('.diagram-container');
+  if (existingDiagram) existingDiagram.remove();
+  
+  // Neues Diagramm-Container erstellen
+  const diagramContainer = document.createElement('div');
+  diagramContainer.className = 'diagram-container';
+  
+  try {
+    // Diagramm rendern
+    renderDiagram(diagramData, diagramContainer);
+    // Nach dem Aufgaben-Text einfügen
+    const taskText = container.querySelector('.task-text');
+    if (taskText) {
+      taskText.after(diagramContainer);
+    } else {
+      container.appendChild(diagramContainer);
+    }
+  } catch (e) {
+    console.error('Fehler beim Rendern des Diagramms:', e);
+  }
+}
 
 /* ============================================
    PRÜFUNGSLOGIK (wie 12.2 StartRound)
@@ -180,13 +222,14 @@ let roundActive = false;
 let taskNumber = 0;
 let points = 0;
 let currentAnswer = null;
+let currentTask = null;
 let timeLeft = 0;
 let timerInt = null;
 
 const startBtnEl  = document.getElementById("startBtn");
 const timerEl     = document.getElementById("timer");
-const taskEl      = document.getElementById("task");
-const answerAreaEl= document.getElementById("answerArea");
+const taskContainer = document.getElementById("taskContainer");
+const answerAreaEl = document.getElementById("answerArea");
 const answerEl    = document.getElementById("answer");
 const nextBtnEl   = document.getElementById("nextBtn");
 const finishBtnEl = document.getElementById("finishBtn");
@@ -197,11 +240,11 @@ function rand(min,max){
 }
 
 function startRound(){
-
   points = 0;
   taskNumber = 0;
   roundActive = true;
   timeLeft = EXAM_TIME;
+  currentTask = null;
 
   resultEl.innerHTML = "";
   startBtnEl.disabled = true;
@@ -215,7 +258,6 @@ function startRound(){
 }
 
 function nextTaskRandom(){
-
   if(taskNumber >= TASKS_TOTAL){
     finishRound();
     return;
@@ -230,18 +272,28 @@ function nextTaskRandom(){
   const t = gen();
 
   currentAnswer = t.answer;
+  currentTask = t;
 
-  taskEl.innerHTML =
-    `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}</b><br>` + t.task;
+  // Task-Container leeren und neu aufbauen
+  taskContainer.innerHTML = '';
+  
+  // Aufgaben-Text
+  const taskTextDiv = document.createElement('div');
+  taskTextDiv.className = 'task-text';
+  taskTextDiv.innerHTML = `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}</b><br>${t.task}`;
+  taskContainer.appendChild(taskTextDiv);
+  
+  // Diagramm rendern falls vorhanden
+  if (t.diagram) {
+    renderTaskDiagram(t.diagram, taskContainer);
+  }
 
   answerEl.value="";
   answerEl.focus();
 }
 
 function checkAndScore(){
-
   const val = parseFloat(answerEl.value.replace(",","."));
-
   if(!isNaN(val) && Math.abs(val-currentAnswer)<0.05){
     points += POINTS_PER_TASK;
   }
@@ -254,7 +306,6 @@ function saveAndNext(){
 }
 
 function finishRound(){
-
   checkAndScore();
 
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
@@ -273,7 +324,7 @@ function finishRound(){
   resultEl.innerHTML =
     `Punkte: <b>${points}/${TASKS_TOTAL*POINTS_PER_TASK}</b><br>${res}`;
 
-  taskEl.innerHTML="Prüfung beendet.";
+  taskContainer.innerHTML = "Prüfung beendet.";
 }
 
 function updateTimer(){
