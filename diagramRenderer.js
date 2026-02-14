@@ -1,700 +1,1370 @@
 /* =========================================================
-   diagramRenderer.js  (PRODUKTIONSVERSION)
-   - Hybrid: statisch + dynamisch
-   - SVG-only (perfekt für Print/PDF)
-   - Cache mit stable stringify
-   - Unterstützt ALLE 21 Diagrammtypen aus deiner Liste
+   diagramRenderer.js - Professioneller Diagramm-Renderer
+   VOLLSTÄNDIG mit allen benötigten Diagrammtypen für pool.js
 ========================================================= */
 
-/* global STATIC_DIAGRAMS, STATIC_ALIASES */
+(function() {
+  "use strict";
 
-const DiagramCache = new Map();
+  /* =========================================================
+     PRÜFUNG AUF STATIC_DIAGRAMS
+  ========================================================= */
+  if (typeof STATIC_DIAGRAMS === "undefined") {
+    console.warn(
+      "⚠️ STATIC_DIAGRAMS wurde nicht geladen. " +
+      "Bitte stellen Sie sicher, dass staticDiagrams.js vor diagramRenderer.js eingebunden wird."
+    );
+  }
 
-/* -------------------------
-   Stable Stringify (für Cache-Key)
-------------------------- */
-function stableStringify(obj) {
-  const seen = new WeakSet();
-  const sorter = (x) => {
-    if (x === null || typeof x !== "object") return x;
-    if (seen.has(x)) return "[Circular]";
-    seen.add(x);
-    if (Array.isArray(x)) return x.map(sorter);
-    const keys = Object.keys(x).sort();
-    const out = {};
-    for (const k of keys) out[k] = sorter(x[k]);
-    return out;
+  /* =========================================================
+     KONFIGURATION & KONSTANTEN
+  ========================================================= */
+  const CONFIG = {
+    sizes: {
+      screen: { width: 400, height: 300 },
+      print: { width: 600, height: 450 },
+      thumbnail: { width: 200, height: 150 }
+    },
+    padding: 40,
+    colors: {
+      primary: '#1976d2',
+      secondary: '#2e7d32',
+      accent: '#d32f2f',
+      warning: '#ff9800',
+      background: '#f9f9f9',
+      grid: '#ddd',
+      axis: '#333',
+      text: '#000',
+      lightBlue: '#e3f2fd',
+      lightGreen: '#e8f5e8',
+      lightRed: '#ffcdd2',
+      lightOrange: '#ffcc80'
+    },
+    responsive: {
+      enableViewBox: true,
+      preserveAspectRatio: 'xMidYMid meet'
+    }
   };
-  return JSON.stringify(sorter(obj));
-}
 
-/* -------------------------
-   SVG Helpers
-------------------------- */
-function svgWrap(inner, w = 360, h = 240, viewBox = null) {
-  const vb = viewBox || `0 0 ${w} ${h}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${vb}">${inner}</svg>`;
-}
+  /* =========================================================
+     ZENTRALE SKALIERUNGSFUNKTIONEN
+  ========================================================= */
+  const Scaler = {
+    linear: (value, min, max, start, end) => {
+      return start + ((value - min) / (max - min)) * (end - start);
+    },
+    calculateScale: (data, availableSpace, maxDataValue) => {
+      const maxVal = maxDataValue || Math.max(...data);
+      return availableSpace / maxVal;
+    },
+    findAxisBounds: (points, padding = 2) => {
+      if (!points || points.length === 0) return { x: [0, 10], y: [0, 10] };
+      
+      const allX = points.flatMap(p => Array.isArray(p) ? p[0] : p.x);
+      const allY = points.flatMap(p => Array.isArray(p) ? p[1] : p.y);
+      
+      const minX = Math.min(...allX) - padding;
+      const maxX = Math.max(...allX) + padding;
+      const minY = Math.min(...allY) - padding;
+      const maxY = Math.max(...allY) + padding;
+      
+      return {
+        x: [minX < 0 ? minX : 0, maxX],
+        y: [minY < 0 ? minY : 0, maxY]
+      };
+    },
+    getOptimalSize: (forPrint = false) => {
+      return forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    }
+  };
 
-function esc(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
+  /* =========================================================
+     SVG-HILFSFUNKTIONEN
+  ========================================================= */
+  const SVG = {
+    create: (width, height, forPrint = false) => {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      
+      if (CONFIG.responsive.enableViewBox) {
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        svg.setAttribute("preserveAspectRatio", CONFIG.responsive.preserveAspectRatio);
+        svg.setAttribute("width", "100%");
+        svg.setAttribute("height", "auto");
+        if (forPrint) svg.setAttribute("data-print-optimized", "true");
+      } else {
+        svg.setAttribute("width", width);
+        svg.setAttribute("height", height);
+      }
+      
+      svg.style.display = "block";
+      svg.style.margin = "0 auto";
+      svg.style.maxWidth = "100%";
+      svg.style.height = "auto";
+      
+      return svg;
+    },
+    rect: (x, y, width, height, fill, stroke, strokeWidth = 1) => {
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", x);
+      rect.setAttribute("y", y);
+      rect.setAttribute("width", width);
+      rect.setAttribute("height", height);
+      rect.setAttribute("fill", fill);
+      if (stroke) rect.setAttribute("stroke", stroke);
+      rect.setAttribute("stroke-width", strokeWidth);
+      return rect;
+    },
+    line: (x1, y1, x2, y2, stroke, strokeWidth = 1, dasharray = null) => {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", x1);
+      line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2);
+      line.setAttribute("y2", y2);
+      line.setAttribute("stroke", stroke);
+      line.setAttribute("stroke-width", strokeWidth);
+      if (dasharray) line.setAttribute("stroke-dasharray", dasharray);
+      return line;
+    },
+    circle: (cx, cy, r, fill, stroke = null, strokeWidth = 1) => {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", cx);
+      circle.setAttribute("cy", cy);
+      circle.setAttribute("r", r);
+      circle.setAttribute("fill", fill);
+      if (stroke) circle.setAttribute("stroke", stroke);
+      circle.setAttribute("stroke-width", strokeWidth);
+      return circle;
+    },
+    text: (x, y, text, fontSize = '12px', fill = CONFIG.colors.text, anchor = 'start', fontWeight = 'normal') => {
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", x);
+      txt.setAttribute("y", y);
+      txt.setAttribute("font-size", fontSize);
+      txt.setAttribute("fill", fill);
+      txt.setAttribute("text-anchor", anchor);
+      if (fontWeight !== 'normal') txt.setAttribute("font-weight", fontWeight);
+      txt.textContent = text;
+      return txt;
+    },
+    polygon: (points, fill, stroke, strokeWidth = 1) => {
+      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      polygon.setAttribute("points", points.map(p => p.join(',')).join(' '));
+      polygon.setAttribute("fill", fill);
+      polygon.setAttribute("stroke", stroke);
+      polygon.setAttribute("stroke-width", strokeWidth);
+      return polygon;
+    },
+    path: (d, fill, stroke, strokeWidth = 1) => {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill", fill);
+      path.setAttribute("stroke", stroke);
+      path.setAttribute("stroke-width", strokeWidth);
+      return path;
+    },
+    group: () => document.createElementNS("http://www.w3.org/2000/svg", "g"),
+    ellipse: (cx, cy, rx, ry, fill, stroke, strokeWidth = 1) => {
+      const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      ellipse.setAttribute("cx", cx);
+      ellipse.setAttribute("cy", cy);
+      ellipse.setAttribute("rx", rx);
+      ellipse.setAttribute("ry", ry);
+      ellipse.setAttribute("fill", fill);
+      ellipse.setAttribute("stroke", stroke);
+      ellipse.setAttribute("stroke-width", strokeWidth);
+      return ellipse;
+    }
+  };
 
-function line(x1,y1,x2,y2, opt={}) {
-  const { stroke="black", strokeWidth=2, dash=null } = opt;
-  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr}/>`;
-}
+  /* =========================================================
+     DIAGRAMM-REGISTRY
+  ========================================================= */
+  const DiagramRegistry = new Map();
 
-function rect(x,y,w,h,opt={}) {
-  const { stroke="black", strokeWidth=2, fill="none", dash=null, rx=0 } = opt;
-  const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
-  const rxAttr = rx ? ` rx="${rx}" ry="${rx}"` : "";
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"${dashAttr}${rxAttr}/>`;
-}
-
-function poly(points,opt={}) {
-  const { stroke="black", strokeWidth=2, fill="none" } = opt;
-  const p = points.map(pt => pt.join(",")).join(" ");
-  return `<polygon points="${p}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
-}
-
-function text(x,y,t,opt={}) {
-  const { size=12, anchor="start" } = opt;
-  return `<text x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}">${esc(t)}</text>`;
-}
-
-function rightAngleMarker(x,y, size=14) {
-  // kleines L am Punkt (x,y)
-  return `<path d="M${x} ${y} l${size} 0 l0 ${size}" fill="none" stroke="black" stroke-width="2"/>`;
-}
-
-/* -------------------------
-   Render Entry
-   diagram Objekt (Standard):
-   {
-     type: "dreieck_pythagoras",
-     dynamic: true/false,
-     params: {...}
-   }
-------------------------- */
-function renderDiagram(diagram, container, opts = {}) {
-  const wrap = document.createElement("div");
-  wrap.className = opts.className || "diagram";
-
-  // Alias-Auflösung
-  const resolvedType = (STATIC_ALIASES && STATIC_ALIASES[diagram.type]) || diagram.type;
-
-  // statisch?
-  if (diagram.dynamic === false || STATIC_DIAGRAMS[resolvedType]) {
-    const svg = STATIC_DIAGRAMS[resolvedType] || STATIC_DIAGRAMS[diagram.type];
-    wrap.innerHTML = svg || `<div style="color:#a00">[Fehlendes statisches Diagramm: ${esc(diagram.type)}]</div>`;
-    container.appendChild(wrap);
-    return;
+  function registerDiagram(type, renderer) {
+    if (typeof renderer !== 'function') {
+      console.error(`Renderer für '${type}' muss eine Funktion sein`);
+      return;
+    }
+    DiagramRegistry.set(type, renderer);
   }
 
-  // dynamisch -> Cache
-  const cacheKey = `${resolvedType}::${stableStringify(diagram.params || {})}`;
-  if (DiagramCache.has(cacheKey)) {
-    wrap.innerHTML = DiagramCache.get(cacheKey);
-    container.appendChild(wrap);
-    return;
+  function validateDiagramData(diagramData) {
+    if (!diagramData) throw new Error('Keine Diagrammdaten übergeben');
+    if (!diagramData.type) throw new Error('Diagrammtyp fehlt');
+    return true;
   }
 
-  const svg = generateDynamicDiagram(resolvedType, diagram.params || {});
-  DiagramCache.set(cacheKey, svg);
-  wrap.innerHTML = svg;
-  container.appendChild(wrap);
-}
-
-/* =========================================================
-   21 Diagrammtypen (1:1 zu deiner Liste)
-========================================================= */
-
-function generateDynamicDiagram(type, p) {
-  switch (type) {
-
-    // 1) flaeche_dreieck_koordinaten
-    case "flaeche_dreieck_koordinaten":
-      return drawCoordinateShape({
-        points: p.points || [[2,3],[6,3],[4,7]],
-        labels: p.labels || ["A","B","C"],
-        title: "Koordinatensystem: Dreieck"
-      });
-
-    // 2) viereck_koordinaten
-    case "viereck_koordinaten":
-      return drawCoordinateShape({
-        points: p.points || [[-2,4],[3,4],[4,1],[-1,0]],
-        labels: p.labels || ["A","B","C","D"],
-        title: "Koordinatensystem: Viereck"
-      });
-
-    // 3) dreieck_pythagoras
-    case "dreieck_pythagoras":
-      return drawRightTriangle({
-        a: p.a ?? 6,
-        b: p.b ?? 8,
-        c: p.c ?? null,
-        showRightAngle: true,
-        showLabels: true,
-        title: "Rechtwinkliges Dreieck"
-      });
-
-    // 4) rechtwinklig_pruefen (3 Seitenlängen)
-    case "rechtwinklig_pruefen":
-      return drawTriangleBySides({
-        a: p.a ?? 6,
-        b: p.b ?? 8,
-        c: p.c ?? 10,
-        title: "Dreieck (Seitenlängen gegeben)"
-      });
-
-    // 5) winkel_berechnen_dreieck
-    case "winkel_berechnen_dreieck":
-      return drawAngleTriangle({
-        angleA: p.angleA ?? 52,
-        angleB: p.angleB ?? null,
-        angleC: p.angleC ?? null,
-        title: "Dreieck mit Winkeln"
-      });
-
-    // 6) zusammengesetzte_flaeche_lform
-    case "zusammengesetzte_flaeche_lform":
-      return drawLShape({
-        w1: p.w1 ?? 10, h1: p.h1 ?? 8,
-        w2: p.w2 ?? 6,  h2: p.h2 ?? 5,
-        title: "L-Form (zusammengesetzte Fläche)"
-      });
-
-    // 7) quader_netz_ergaenzen -> statisch (sollte nie hier landen)
-    case "quader_netz_ergaenzen":
-      return STATIC_DIAGRAMS.quader_netz_ergaenzen;
-
-    // 8) prisma_netz -> statisch
-    case "prisma_netz":
-      return STATIC_DIAGRAMS.prisma_netz;
-
-    // 9) zylinder_oberflaeche_skizze
-    case "zylinder_oberflaeche_skizze":
-      return drawCylinder({
-        r: p.r ?? 3.7,
-        h: p.h ?? 10,
-        title: "Zylinder"
-      });
-
-    // 10) werkstueck_volumen (zusammengesetzter Körper)
-    case "werkstueck_volumen":
-      return drawCompositeWorkpiece({
-        a: p.a ?? 46, b: p.b ?? 42, c: p.c ?? 24, d: p.d ?? 12,
-        title: "Werkstück (zusammengesetzt)"
-      });
-
-    // 11) transport_kartons_laderaum
-    case "transport_kartons_laderaum":
-      return drawTruckPacking({
-        truckL: p.truckL ?? 210, truckB: p.truckB ?? 125,
-        boxL: p.boxL ?? 40, boxB: p.boxB ?? 40,
-        title: "Ladefläche & Kartons (Skizze)"
-      });
-
-    // 12) rampe_volumen
-    case "rampe_volumen":
-      return drawRamp({
-        baseL: p.baseL ?? 300,
-        baseH: p.baseH ?? 120,
-        topL:  p.topL  ?? 80,
-        title: "Rampe (Quader + Dreieck)"
-      });
-
-    // 13) dreiseitiges_prisma
-    case "dreiseitiges_prisma":
-      return drawTriangularPrism({
-        base: p.base ?? 8,
-        side: p.side ?? 3,
-        height: p.height ?? 2.5,
-        title: "Dreiseitiges Prisma (Schrägbild)"
-      });
-
-    // 14) dachgeschoss_prisma
-    case "dachgeschoss_prisma":
-      return drawAtticPrism({
-        width: p.width ?? 8,
-        roofHeight: p.roofHeight ?? 3,
-        prismDepth: p.prismDepth ?? 10,
-        title: "Dachgeschoss (Prisma)"
-      });
-
-    // 15) zelt_prisma -> statisch
-    case "zelt_prisma":
-      return STATIC_DIAGRAMS.zelt_prisma;
-
-    // 16) keksverpackung
-    case "keksverpackung":
-      return drawCookiePackage({
-        a: p.a ?? 8,
-        b: p.b ?? 15,
-        title: "Keksverpackung (Skizze)"
-      });
-
-    // 17) holztisch
-    case "holztisch":
-      return drawTableSketch({
-        diameter: p.diameter ?? 76,
-        thickness: p.thickness ?? 1.5,
-        height: p.height ?? 80,
-        legOffset: p.legOffset ?? 42,
-        title: "Holztisch (Skizze)"
-      });
-
-    // 18) skateboardrampe (hochwertige Variante)
-    case "skateboardrampe":
-      return drawRamp({
-        baseL: p.baseL ?? 320,
-        baseH: p.baseH ?? 140,
-        topL:  p.topL  ?? 90,
-        title: "Skateboard-Rampe"
-      });
-
-    // 19) weideland_viereck
-    case "weideland_viereck":
-      return drawWeideland({
-        a: p.a ?? 172,
-        b: p.b ?? 165,
-        c: p.c ?? 180,
-        d: p.d ?? 130,
-        title: "Weideland (Viereck)"
-      });
-
-    // 20) flaechenberechnung_garten
-    case "flaechenberechnung_garten":
-      return drawGarden({
-        outerW: p.outerW ?? 10,
-        outerH: p.outerH ?? 8,
-        cutW: p.cutW ?? 6,
-        cutH: p.cutH ?? 5,
-        title: "Garten (Rasen/Beet)"
-      });
-
-    // 21) rechte_winkel_argumentation -> statisch
-    case "rechte_winkel_argumentation":
-      return STATIC_DIAGRAMS.rechte_winkel_argumentation;
-
-    default:
-      return svgWrap(text(20,30,`Unbekannter Diagrammtyp: ${type}`,{size:14}), 420, 80);
-  }
-}
-
-/* =========================================================
-   Implementierungen der Diagramm-Generatoren
-========================================================= */
-
-function drawCoordinateShape({points, labels, title}) {
-  // Koordinatensystem -10..10 (skalierbar)
-  const w = 360, h = 280;
-  const margin = 40;
-  const scale = 10; // 1 Einheit = 10 px
-  const cx = w/2, cy = h/2;
-
-  let g = "";
-  // Achsen
-  g += line(margin, cy, w-margin, cy, {strokeWidth:2});
-  g += line(cx, margin, cx, h-margin, {strokeWidth:2});
-  // Ticks
-  for (let i=-10;i<=10;i+=2) {
-    const x = cx + i*scale;
-    const y = cy - i*scale;
-    g += line(x, cy-4, x, cy+4, {strokeWidth:1});
-    g += line(cx-4, y, cx+4, y, {strokeWidth:1});
-  }
-
-  // Punkte in SVG-Koordinaten
-  const pts = points.map(([x,y]) => [cx + x*scale, cy - y*scale]);
-
-  // Polygon/Polyline
-  g += `<polyline points="${pts.map(p=>p.join(",")).join(" ")} ${pts[0].join(",")}" fill="none" stroke="black" stroke-width="2"/>`;
-
-  // Punkte + Labels
-  pts.forEach((pt, idx) => {
-    g += `<circle cx="${pt[0]}" cy="${pt[1]}" r="4" fill="black"/>`;
-    g += text(pt[0]+8, pt[1]-8, labels[idx] || String.fromCharCode(65+idx), {size:12});
-  });
-
-  // Titel
-  g += text(margin, margin-12, title || "Koordinatensystem", {size:13});
-
-  return svgWrap(g, w, h);
-}
-
-function drawRightTriangle({a,b,c, showRightAngle, showLabels, title}) {
-  const w=360,h=240;
-  const margin=40;
-  const scale = 18;
-
-  const A = [margin, h-margin];               // rechter Winkel unten links
-  const B = [margin + a*scale, h-margin];     // entlang a
-  const C = [margin, h-margin - b*scale];     // entlang b
-
-  let g = "";
-  g += line(A[0],A[1],B[0],B[1]);
-  g += line(A[0],A[1],C[0],C[1]);
-  g += line(C[0],C[1],B[0],B[1]);
-
-  if (showRightAngle) g += rightAngleMarker(A[0], A[1]-14, 14);
-
-  if (showLabels) {
-    g += text((A[0]+B[0])/2, A[1]+20, `a=${a}`, {anchor:"middle"});
-    g += text(A[0]-15, (A[1]+C[1])/2, `b=${b}`, {anchor:"end"});
-    if (c != null) g += text((C[0]+B[0])/2, (C[1]+B[1])/2 - 8, `c=${c}`, {anchor:"middle"});
-  }
-
-  g += text(margin, 18, title || "Dreieck", {size:13});
-
-  return svgWrap(g,w,h);
-}
-
-function drawTriangleBySides({a,b,c,title}) {
-  // Schematisches Dreieck + Beschriftung (nicht maßstabsgerecht)
-  const w=360,h=240;
-  const A=[60,170], B=[280,170];
-  const C=[150,60];
-
-  let g="";
-  g+=line(A[0],A[1],B[0],B[1]);
-  g+=line(B[0],B[1],C[0],C[1]);
-  g+=line(C[0],C[1],A[0],A[1]);
-
-  g+=text((A[0]+B[0])/2, A[1]+20, `c=${c}`, {anchor:"middle"});
-  g+=text((B[0]+C[0])/2+10, (B[1]+C[1])/2, `a=${a}`);
-  g+=text((A[0]+C[0])/2-10, (A[1]+C[1])/2, `b=${b}`, {anchor:"end"});
-  g+=text(40,18,title||"Dreieck (Seiten)",{size:13});
-
-  return svgWrap(g,w,h);
-}
-
-function drawAngleTriangle({angleA, angleB, angleC, title}) {
-  const w=360,h=240;
-  const A=[70,170], B=[290,170], C=[160,60];
-  let g="";
-  g+=line(A[0],A[1],B[0],B[1]);
-  g+=line(B[0],B[1],C[0],C[1]);
-  g+=line(C[0],C[1],A[0],A[1]);
-
-  g+=text(A[0]-10,A[1]+18,`α=${angleA}°`,{anchor:"end"});
-  if (angleB!=null) g+=text(B[0]+10,B[1]+18,`β=${angleB}°`);
-  if (angleC!=null) g+=text(C[0],C[1]-10,`γ=${angleC}°`,{anchor:"middle"});
-
-  g+=text(40,18,title||"Winkel im Dreieck",{size:13});
-  return svgWrap(g,w,h);
-}
-
-function drawLShape({w1,h1,w2,h2,title}) {
-  // Außen-Rechteck w1×h1, Innenausschnitt w2×h2 rechts oben (klassische L-Form)
-  const w=360,h=240;
-  const x=60,y=40;
-  const scale=12;
-  const W=w1*scale, H=h1*scale;
-  const cutW=w2*scale, cutH=h2*scale;
-
-  let g="";
-  // L-Polygon
-  const pts = [
-    [x, y+H],
-    [x+W, y+H],
-    [x+W, y+H-cutH],
-    [x+W-cutW, y+H-cutH],
-    [x+W-cutW, y],
-    [x, y]
-  ];
-  g+=poly(pts,{strokeWidth:2});
-
-  // Maße (schematisch)
-  g+=text(x+W/2, y+H+18, `${w1} m`, {anchor:"middle"});
-  g+=text(x-10, y+H/2, `${h1} m`, {anchor:"end"});
-  g+=text(x+W-cutW/2, y+H-cutH-6, `${w2} m`, {anchor:"middle", size:11});
-  g+=text(x+W+10, y+H-cutH/2, `${h2} m`, {size:11});
-
-  g+=text(40,18,title||"L-Form",{size:13});
-  return svgWrap(g,w,h);
-}
-
-function drawCylinder({r,h,title}) {
-  const w=360, H=240;
-  const cx=180, topY=60, botY=170;
-  const rx=70, ry=22;
-
-  let g="";
-  // Ellipsen
-  g += `<ellipse cx="${cx}" cy="${topY}" rx="${rx}" ry="${ry}" fill="none" stroke="black" stroke-width="2"/>`;
-  g += `<ellipse cx="${cx}" cy="${botY}" rx="${rx}" ry="${ry}" fill="none" stroke="black" stroke-width="2"/>`;
-  // Seiten
-  g += line(cx-rx, topY, cx-rx, botY);
-  g += line(cx+rx, topY, cx+rx, botY);
-
-  // Maße
-  g += line(cx+rx+25, topY, cx+rx+25, botY, {strokeWidth:2});
-  g += text(cx+rx+30, (topY+botY)/2, `h=${h}`, {size:12});
-  g += line(cx, topY, cx+rx, topY, {strokeWidth:2, dash:"6 4"});
-  g += text(cx+rx/2, topY-10, `r=${r}`, {anchor:"middle"});
-
-  g += text(40,18,title||"Zylinder",{size:13});
-  return svgWrap(g,w,H);
-}
-
-function drawCompositeWorkpiece({a,b,c,d,title}) {
-  // Schematische Stufenform (quader+prisma-ähnlich) als 2D-Seitenansicht
-  const w=420,h=240;
-  const x=60,y=60, scale=2;
-
-  const A=a*scale, B=b*scale, C=c*scale, D=d*scale;
-
-  let g="";
-  // Stufenprofil
-  const pts = [
-    [x, y+150],
-    [x+A, y+150],
-    [x+A, y+150-D],
-    [x+C, y+150-D],
-    [x+C, y],
-    [x, y]
-  ];
-  g += poly(pts,{strokeWidth:2});
-
-  // Maße
-  g += text(x+A/2, y+175, `${a} mm`, {anchor:"middle"});
-  g += text(x+C/2, y+150-D-8, `${c} mm`, {anchor:"middle", size:11});
-  g += text(x-10, y+75, `${b} mm`, {anchor:"end"});
-  g += text(x+A+10, y+150-D/2, `${d} mm`, {size:11});
-
-  g += text(40,18,title||"Werkstück",{size:13});
-  return svgWrap(g,w,h);
-}
-
-function drawTruckPacking({truckL, truckB, boxL, boxB, title}) {
-  // Draufsicht: Ladefläche (truckL x truckB) + Raster mit Boxen
-  const w=420,h=260;
-  const margin=40;
-  const scale=1; // wir skalieren automatisch in die Fläche
-  const maxW = w - 2*margin;
-  const maxH = h - 2*margin;
-
-  // Ziel: truckL -> maxW, truckB -> maxH
-  const s = Math.min(maxW/truckL, maxH/truckB);
-
-  const L = truckL*s;
-  const B = truckB*s;
-
-  const x = margin;
-  const y = margin;
-
-  let g="";
-  g += rect(x,y,L,B,{strokeWidth:2});
-  g += text(x, y-10, title||"Ladefläche", {size:13});
-
-  // Anzahl Boxen (ohne Stapeln) – reine Illustration
-  const nx = Math.floor(truckL/boxL);
-  const ny = Math.floor(truckB/boxB);
-
-  for (let i=0;i<nx;i++){
-    for (let j=0;j<ny;j++){
-      g += rect(x+i*boxL*s, y+j*boxB*s, boxL*s, boxB*s, {strokeWidth:1});
+  /* =========================================================
+     HAUPTFUNKTION
+  ========================================================= */
+  function renderDiagram(diagramData, container, options = {}) {
+    if (!container) {
+      console.error('Kein Container-Element übergeben');
+      return;
+    }
+
+    const opts = {
+      forPrint: options.forPrint || false,
+      size: options.size || (options.forPrint ? 'print' : 'screen'),
+      ...options
+    };
+
+    container.innerHTML = '';
+    container.classList.add('diagram-container');
+    
+    if (opts.forPrint) {
+      container.style.pageBreakInside = 'avoid';
+      container.style.breakInside = 'avoid';
+    }
+
+    try {
+      validateDiagramData(diagramData);
+
+      if (diagramData.params?.title) {
+        const title = document.createElement('h3');
+        title.textContent = diagramData.params.title;
+        title.style.margin = '0 0 10px 0';
+        title.style.fontSize = '16px';
+        title.style.textAlign = 'center';
+        container.appendChild(title);
+      }
+
+      const renderer = DiagramRegistry.get(diagramData.type);
+      
+      if (!renderer) {
+        handleStaticDiagramFallback(diagramData, container, opts);
+        return;
+      }
+
+      const svg = renderer(diagramData.params || {}, opts);
+
+      if (svg) {
+        container.appendChild(svg);
+      } else {
+        throw new Error(`Renderer für '${diagramData.type}' lieferte kein SVG`);
+      }
+
+    } catch (error) {
+      console.error('Fehler beim Rendern des Diagramms:', error);
+      renderError(container, error.message);
     }
   }
 
-  g += text(x+L+10, y+15, `${truckL}×${truckB} cm`, {size:11});
-  g += text(x+L+10, y+35, `Karton ${boxL}×${boxB} cm`, {size:11});
-  g += text(x+L+10, y+55, `Raster: ${nx}×${ny}`, {size:11});
+  function handleStaticDiagramFallback(diagramData, container, opts) {
+    if (typeof STATIC_DIAGRAMS !== "undefined" && STATIC_DIAGRAMS[diagramData.type]) {
+      console.log(`Verwende STATIC_DIAGRAMS für Typ: ${diagramData.type}`);
+      const staticDiagram = STATIC_DIAGRAMS[diagramData.type];
+      const renderer = DiagramRegistry.get(staticDiagram.type);
+      
+      if (renderer) {
+        const params = { ...staticDiagram.params, ...diagramData.params };
+        const svg = renderer(params, opts);
+        if (svg) container.appendChild(svg);
+        else renderPlaceholder(container, `Statisches Diagramm: ${diagramData.type}`);
+      } else {
+        renderPlaceholder(container, `Kein Renderer für ${diagramData.type}`);
+      }
+    } else {
+      renderPlaceholder(container, `Unbekannter Diagrammtyp: ${diagramData.type}`);
+    }
+  }
 
-  return svgWrap(g,w,h);
-}
+  function renderError(container, message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.padding = '20px';
+    errorDiv.style.backgroundColor = '#ffebee';
+    errorDiv.style.color = '#c62828';
+    errorDiv.style.border = '1px solid #ef9a9a';
+    errorDiv.style.borderRadius = '4px';
+    errorDiv.style.textAlign = 'center';
+    errorDiv.style.margin = '10px 0';
+    errorDiv.innerHTML = `❌ Diagramm-Fehler: ${message}`;
+    container.appendChild(errorDiv);
+  }
 
-function drawRamp({baseL, baseH, topL, title}) {
-  // Seitenansicht: Quader (topL) + Dreieck (rest)
-  const w=420,h=240;
-  const margin=50;
-  const maxW = w-2*margin;
-  const maxH = h-2*margin;
+  function renderPlaceholder(container, message = 'Diagramm nicht verfügbar') {
+    const size = CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height);
+    
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, '#f5f5f5', '#ccc', 1));
+    svg.appendChild(SVG.text(size.width/2, size.height/2 - 10, '📊', '24px Arial', '#999', 'middle'));
+    svg.appendChild(SVG.text(size.width/2, size.height/2 + 20, message, '12px Arial', '#999', 'middle'));
+    
+    container.appendChild(svg);
+    return svg;
+  }
 
-  const s = Math.min(maxW/baseL, maxH/baseH);
-  const L = baseL*s;
-  const H = baseH*s;
-  const t = Math.max(0, Math.min(topL, baseL))*s;
+  /* =========================================================
+     KOORDINATENSYSTEM-BASIS
+  ========================================================= */
+  function createCoordinateSystem(params, drawCallback, forPrint = false) {
+    const {
+      width = CONFIG.sizes.screen.width,
+      height = CONFIG.sizes.screen.height,
+      bounds,
+      grid = true,
+      axes = true,
+      padding = CONFIG.padding
+    } = params;
 
-  const x=margin, y=h-margin;
+    const svg = SVG.create(width, height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, width, height, CONFIG.colors.background, '#ddd', 1));
 
-  let g="";
-  // Grundlinie
-  g += line(x,y,x+L,y);
+    if (!bounds) return svg;
 
-  // Rampe: Dreieck + Deckfläche
-  // Dreieck: von (x,y) nach (x+L-t,y) nach (x+L-t,y-H)
-  g += line(x,y, x+L-t, y);
-  g += line(x+L-t, y, x+L-t, y-H);
-  g += line(x, y, x+L-t, y-H); // schräge
-  // Top-Quader: von (x+L-t,y-H) nach (x+L,y-H) nach (x+L,y)
-  g += line(x+L-t, y-H, x+L, y-H);
-  g += line(x+L, y-H, x+L, y);
+    const { x: [xMin, xMax], y: [yMin, yMax] } = bounds;
+    const plotWidth = width - 2 * padding;
+    const plotHeight = height - 2 * padding;
 
-  // Maße
-  g += text(x+L/2, y+18, `${baseL}`, {anchor:"middle"});
-  g += text(x-10, y-H/2, `${baseH}`, {anchor:"end"});
-  g += text(x+L-t/2, y-H-8, `${topL}`, {anchor:"middle", size:11});
+    const toX = (x) => padding + ((x - xMin) / (xMax - xMin)) * plotWidth;
+    const toY = (y) => height - padding - ((y - yMin) / (yMax - yMin)) * plotHeight;
 
-  g += text(40,18,title||"Rampe",{size:13});
-  return svgWrap(g,w,h);
-}
+    if (grid) {
+      const steps = 10;
+      for (let i = 0; i <= steps; i++) {
+        const x = padding + (i / steps) * plotWidth;
+        const y = padding + (i / steps) * plotHeight;
+        svg.appendChild(SVG.line(x, padding, x, height - padding, CONFIG.colors.grid, 1));
+        svg.appendChild(SVG.line(padding, y, width - padding, y, CONFIG.colors.grid, 1));
+      }
+    }
 
-function drawTriangularPrism({base, side, height, title}) {
-  // Schrägbild schematisch
-  const w=420,h=240;
-  const A=[90,160], B=[160,80], C=[230,160];
-  const dx=130, dy=25;
+    if (axes) {
+      svg.appendChild(SVG.line(padding, height - padding, width - padding, height - padding, CONFIG.colors.axis, 2));
+      svg.appendChild(SVG.line(padding, height - padding, padding, padding, CONFIG.colors.axis, 2));
+      svg.appendChild(SVG.text(width - 20, height - 20, 'x', '14px Arial', CONFIG.colors.axis, 'end'));
+      svg.appendChild(SVG.text(25, 20, 'y', '14px Arial', CONFIG.colors.axis));
+    }
 
-  let g="";
-  // Vorderdreieck
-  g += line(A[0],A[1],B[0],B[1]);
-  g += line(B[0],B[1],C[0],C[1]);
-  g += line(C[0],C[1],A[0],A[1]);
+    if (drawCallback) {
+      const ctx = { svg, toX, toY, padding, plotWidth, plotHeight, bounds };
+      drawCallback(ctx);
+    }
 
-  // Hinterdreieck
-  const A2=[A[0]+dx,A[1]+dy], B2=[B[0]+dx,B[1]+dy], C2=[C[0]+dx,C[1]+dy];
-  g += line(A2[0],A2[1],B2[0],B2[1]);
-  g += line(B2[0],B2[1],C2[0],C2[1]);
-  g += line(C2[0],C2[1],A2[0],A2[1]);
+    return svg;
+  }
 
-  // Verbinder
-  g += line(A[0],A[1],A2[0],A2[1]);
-  g += line(B[0],B[1],B2[0],B2[1]);
-  g += line(C[0],C[1],C2[0],C2[1]);
+  /* =========================================================
+     ALLE RENDERER-FUNKTIONEN (VOLLSTÄNDIG)
+  ========================================================= */
 
-  // Labels
-  g += text((A[0]+C[0])/2, A[1]+18, `Basis=${base}`, {anchor:"middle"});
-  g += text(B[0]-10,(B[1]+A[1])/2, `Seite=${side}`, {anchor:"end", size:11});
-  g += text((A2[0]+A[0])/2+10, (A2[1]+A[1])/2, `H=${height}`, {size:11});
-  g += text(40,18,title||"Dreiseitiges Prisma",{size:13});
+  // 1. KOORDINATENSYSTEM
+  registerDiagram('koordinatensystem', (params, opts) => {
+    const { points = [], lines = [], bounds } = params;
+    const calculatedBounds = bounds || Scaler.findAxisBounds([...points, ...lines.flatMap(l => [l.from, l.to])]);
+    const forPrint = opts?.forPrint || false;
 
-  return svgWrap(g,w,h);
-}
+    return createCoordinateSystem({ ...params, bounds: calculatedBounds }, (ctx) => {
+      const { svg, toX, toY } = ctx;
 
-function drawAtticPrism({width, roofHeight, prismDepth, title}) {
-  // Vorderseite (Dreieck) + Tiefe als Prisma
-  const w=420,h=240;
-  const baseY=175;
-  const leftX=90, rightX=250, topX=170, topY=70;
-  const dx=130, dy=25;
+      lines.forEach(line => {
+        const [x1, y1] = line.from;
+        const [x2, y2] = line.to;
+        svg.appendChild(SVG.line(
+          toX(x1), toY(y1),
+          toX(x2), toY(y2),
+          line.stroke || CONFIG.colors.primary,
+          line.strokeWidth || 2
+        ));
+      });
 
-  let g="";
-  // Vorderdreieck
-  g += line(leftX,baseY,rightX,baseY);
-  g += line(leftX,baseY,topX,topY);
-  g += line(rightX,baseY,topX,topY);
+      points.forEach(point => {
+        const x = toX(point.x);
+        const y = toY(point.y);
+        svg.appendChild(SVG.circle(x, y, 5, CONFIG.colors.primary, '#fff', 2));
+        if (point.label) {
+          svg.appendChild(SVG.text(x + 10, y - 10, point.label, '12px Arial', CONFIG.colors.text));
+        }
+      });
+    }, forPrint);
+  });
 
-  // Hinterdreieck
-  g += line(leftX+dx,baseY+dy,rightX+dx,baseY+dy);
-  g += line(leftX+dx,baseY+dy,topX+dx,topY+dy);
-  g += line(rightX+dx,baseY+dy,topX+dx,topY+dy);
+  // 2. FLÄCHE DREIECK KOORDINATEN (AUS POOL.JS)
+  registerDiagram('flaeche_dreieck_koordinaten', (params, opts) => {
+    const { points = [[2,2], [7,3], [4,8]], labels = ["A", "B", "C"] } = params;
+    const bounds = Scaler.findAxisBounds(points);
+    const forPrint = opts?.forPrint || false;
 
-  // Verbinder
-  g += line(leftX,baseY,leftX+dx,baseY+dy);
-  g += line(rightX,baseY,rightX+dx,baseY+dy);
-  g += line(topX,topY,topX+dx,topY+dy);
+    return createCoordinateSystem({ bounds }, (ctx) => {
+      const { svg, toX, toY } = ctx;
 
-  // Labels
-  g += text((leftX+rightX)/2, baseY+18, `Breite=${width}`, {anchor:"middle"});
-  g += text(topX, topY-10, `H=${roofHeight}`, {anchor:"middle", size:11});
-  g += text(leftX+dx/2+5, baseY+dy/2, `Tiefe=${prismDepth}`, {size:11});
-  g += text(40,18,title||"Dachgeschoss (Prisma)",{size:13});
+      const trianglePoints = points.map(p => [toX(p[0]), toY(p[1])]);
+      svg.appendChild(SVG.polygon(trianglePoints, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
 
-  return svgWrap(g,w,h);
-}
+      points.forEach((p, i) => {
+        const x = toX(p[0]);
+        const y = toY(p[1]);
+        svg.appendChild(SVG.circle(x, y, 5, CONFIG.colors.primary, '#fff', 2));
+        svg.appendChild(SVG.text(x + 10, y - 10, labels[i], '12px Arial', CONFIG.colors.text));
+      });
+    }, forPrint);
+  });
 
-function drawCookiePackage({a,b,title}) {
-  // Schematische Verpackung: Quader + "Keks"-Markierung
-  const w=420,h=240;
-  const x=90,y=70, dx=120, dy=25, W=140, H=110;
+  // 3. VIERECK KOORDINATEN (AUS POOL.JS)
+  registerDiagram('viereck_koordinaten', (params, opts) => {
+    const { points = [[2,2], [8,2], [6,7], [3,7]], labels = ["A", "B", "C", "D"] } = params;
+    const bounds = Scaler.findAxisBounds(points);
+    const forPrint = opts?.forPrint || false;
 
-  let g="";
-  // Vorderrechteck
-  g += rect(x,y,W,H,{strokeWidth:2});
-  // Hinterrechteck (schräg)
-  g += rect(x+dx,y+dy,W,H,{strokeWidth:2});
-  // Verbinder
-  g += line(x,y,x+dx,y+dy);
-  g += line(x+W,y,x+dx+W,y+dy);
-  g += line(x,y+H,x+dx,y+dy+H);
-  g += line(x+W,y+H,x+dx+W,y+dy+H);
+    return createCoordinateSystem({ bounds }, (ctx) => {
+      const { svg, toX, toY } = ctx;
 
-  // Maße
-  g += text(x+W/2,y+H+20,`${b} cm`,{anchor:"middle"});
-  g += text(x-10,y+H/2,`${a} cm`,{anchor:"end"});
+      const quadPoints = points.map(p => [toX(p[0]), toY(p[1])]);
+      svg.appendChild(SVG.polygon(quadPoints, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 2));
 
-  g += text(40,18,title||"Keksverpackung",{size:13});
-  return svgWrap(g,w,h);
-}
+      points.forEach((p, i) => {
+        const x = toX(p[0]);
+        const y = toY(p[1]);
+        svg.appendChild(SVG.circle(x, y, 5, CONFIG.colors.secondary, '#fff', 2));
+        svg.appendChild(SVG.text(x + 10, y - 10, labels[i], '12px Arial', CONFIG.colors.text));
+      });
+    }, forPrint);
+  });
 
-function drawTableSketch({diameter, thickness, height, legOffset, title}) {
-  // Seitenansicht: Platte (Zylinder) + Beine (Quader)
-  const w=420,h=260;
-  const baseY=220;
+  // 4. RECHTWINKLIGES DREIECK (PYTHAGORAS)
+  registerDiagram('dreieck_pythagoras', (params, opts) => {
+    const { a = 6, b = 8, c = null, labels = true } = params;
+    const cValue = c || Math.sqrt(a*a + b*b);
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min((size.height - 100) / Math.max(a, b), (size.width - 100) / Math.max(a, b));
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
 
-  let g="";
-  // Tischplatte
-  g += rect(120, baseY-height, 180, 12, {strokeWidth:2});
-  g += text(210, baseY-height-10, `d=${diameter} cm`, {anchor:"middle", size:11});
-  g += text(310, baseY-height+10, `h=${thickness} cm`, {size:11});
+    const startX = 50;
+    const startY = size.height - 50;
+    const points = [
+      [startX, startY],
+      [startX + a * scale, startY],
+      [startX, startY - b * scale]
+    ];
 
-  // Beine
-  g += rect(150, baseY-height+12, 18, height-12, {strokeWidth:2});
-  g += rect(250, baseY-height+12, 18, height-12, {strokeWidth:2});
-  g += text(40, 18, title || "Holztisch", {size:13});
-  g += text(320, baseY-height/2, `H=${height} cm`, {size:11});
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
 
-  // Versatz
-  g += text(210, baseY-10, `Skizze (schematisch)`, {anchor:"middle", size:11});
+    const markerSize = 20;
+    svg.appendChild(SVG.line(points[0][0] + markerSize, points[0][1], points[0][0] + markerSize, points[0][1] - markerSize, CONFIG.colors.accent, 2));
+    svg.appendChild(SVG.line(points[0][0] + markerSize, points[0][1] - markerSize, points[0][0], points[0][1] - markerSize, CONFIG.colors.accent, 2));
 
-  return svgWrap(g,w,h);
-}
+    if (labels) {
+      svg.appendChild(SVG.text(points[0][0] - 15, points[0][1] - 5, 'A', '12px Arial'));
+      svg.appendChild(SVG.text(points[1][0] + 5, points[1][1] - 5, 'B', '12px Arial'));
+      svg.appendChild(SVG.text(points[2][0] - 15, points[2][1] + 5, 'C', '12px Arial'));
+      
+      svg.appendChild(SVG.text(startX + a * scale / 2, startY - 20, `${a} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX - 30, startY - b * scale / 2, `${b} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX + a * scale / 2 + 15, startY - b * scale / 2 - 10, `${cValue.toFixed(1)} cm`, '11px Arial', CONFIG.colors.accent));
+    }
 
-function drawWeideland({a,b,c,d,title}) {
-  // Unregelmäßiges Viereck schematisch + Seitenlängen
-  const w=420,h=260;
-  const P1=[90,70], P2=[310,90], P3=[280,210], P4=[110,190];
-  let g="";
-  g+=poly([P1,P2,P3,P4],{strokeWidth:2});
-  g+=text((P1[0]+P2[0])/2, (P1[1]+P2[1])/2-8, `${a} m`, {anchor:"middle"});
-  g+=text((P2[0]+P3[0])/2+8, (P2[1]+P3[1])/2, `${c} m`, {size:11});
-  g+=text((P3[0]+P4[0])/2, (P3[1]+P4[1])/2+16, `${b} m`, {anchor:"middle"});
-  g+=text((P4[0]+P1[0])/2-8, (P4[1]+P1[1])/2, `${d} m`, {anchor:"end", size:11});
-  g+=text(40,18,title||"Weideland",{size:13});
-  return svgWrap(g,w,h);
-}
+    return svg;
+  });
 
-function drawGarden({outerW, outerH, cutW, cutH, title}) {
-  // Außenrechteck minus Innenrechteck (Beet) -> zeigt typische Gartenaufteilung
-  const w=420,h=260;
-  const margin=60;
-  const maxW = w-2*margin;
-  const maxH = h-2*margin;
-  const s = Math.min(maxW/outerW, maxH/outerH);
+  // 5. RECHTWINKLIG PRÜFEN (AUS POOL.JS)
+  registerDiagram('rechtwinklig_pruefen', (params, opts) => {
+    const { a = 5, b = 6, c = 7, labels = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
 
-  const W=outerW*s, H=outerH*s;
-  const cw=cutW*s, ch=cutH*s;
+    const points = [
+      [70, size.height - 50],
+      [70 + a * 12, size.height - 50],
+      [70 + (a * 12) / 2, size.height - 50 - b * 10]
+    ];
 
-  const x=margin, y=50;
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 2));
 
-  let g="";
-  g += rect(x,y,W,H,{strokeWidth:2});
-  // Beet innen (rechts unten oder beliebig – schematisch)
-  g += rect(x+W-cw, y+H-ch, cw, ch, {strokeWidth:2, dash:"6 4"});
-  g += text(x, y-10, title||"Garten", {size:13});
-  g += text(x+W/2, y+H+18, `${outerW} m`, {anchor:"middle"});
-  g += text(x-10, y+H/2, `${outerH} m`, {anchor:"end"});
-  g += text(x+W-cw/2, y+H-ch-8, `${cutW} m`, {anchor:"middle", size:11});
-  g += text(x+W+10, y+H-ch/2, `${cutH} m`, {size:11});
+    if (labels) {
+      svg.appendChild(SVG.text(points[0][0] - 20, points[0][1] - 5, 'A', '14px Arial'));
+      svg.appendChild(SVG.text(points[1][0] + 10, points[1][1] - 5, 'B', '14px Arial'));
+      svg.appendChild(SVG.text(points[2][0] - 5, points[2][1] - 15, 'C', '14px Arial'));
+      
+      const a2 = a*a, b2 = b*b, c2 = c*c;
+      const isRight = Math.abs(a2 + b2 - c2) < 0.1;
+      svg.appendChild(SVG.text(size.width/2, 40, `Prüfung: ${isRight ? '✓ rechtwinklig' : '✗ nicht rechtwinklig'}`, '14px Arial', isRight ? CONFIG.colors.secondary : CONFIG.colors.accent, 'middle'));
+    }
 
-  return svgWrap(g,w,h);
-}
+    return svg;
+  });
+
+  // 6. WINKEL BERECHNEN DREIECK (AUS POOL.JS)
+  registerDiagram('winkel_berechnen_dreieck', (params, opts) => {
+    const { angleA = 50, angleB = 60, angleC = 70, labels = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const points = [
+      [70, size.height - 50],
+      [70 + 80, size.height - 50],
+      [70 + 40, size.height - 50 - 70]
+    ];
+
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+
+    if (labels) {
+      svg.appendChild(SVG.text(points[0][0] - 20, points[0][1] - 5, `A (${angleA}°)`, '12px Arial'));
+      svg.appendChild(SVG.text(points[1][0] + 10, points[1][1] - 5, `B (${angleB}°)`, '12px Arial'));
+      svg.appendChild(SVG.text(points[2][0] - 5, points[2][1] - 15, `C (${angleC}°)`, '12px Arial'));
+      
+      svg.appendChild(SVG.text(size.width/2, 40, `Winkelsumme: ${angleA + angleB + angleC}° (soll 180°)`, '14px Arial', CONFIG.colors.accent, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 7. ZUSAMMENGESETZTE FLÄCHE L-FORM (AUS POOL.JS)
+  registerDiagram('zusammengesetzte_flaeche_lform', (params, opts) => {
+    const { w1 = 8, h1 = 12, w2 = 5, h2 = 6, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(8, (size.width - 100) / Math.max(w1, w2));
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const startX = 50;
+    const startY = 50;
+
+    svg.appendChild(SVG.rect(startX, startY + h1 * scale, w1 * scale, h2 * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+    svg.appendChild(SVG.rect(startX, startY, w2 * scale, h1 * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(startX + w1 * scale/2 - 15, startY + h1 * scale + 25, `${w1} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX - 35, startY + h1 * scale/2, `${h1} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX + w2 * scale/2 - 15, startY - 10, `${w2} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX + w1 * scale + 10, startY + h1 * scale + h2 * scale/2, `${h2} cm`, '11px Arial'));
+      
+      const totalArea = w1 * h1 + w2 * h2;
+      svg.appendChild(SVG.text(size.width/2, size.height - 20, `Gesamtfläche: ${totalArea} cm²`, '12px Arial', CONFIG.colors.accent, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 8. QUADER NETZ ERGÄNZEN (AUS POOL.JS)
+  registerDiagram('quader_netz_ergaenzen', (params, opts) => {
+    const { a = 5, b = 3, c = 2, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(15, (size.width - 100) / (a + b + 10));
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    const startX = 70;
+    const startY = 50;
+
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    svg.appendChild(SVG.rect(startX, startY + a * scale, b * scale, a * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 1.5));
+    svg.appendChild(SVG.rect(startX + b * scale + 10, startY, b * scale, a * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 1.5));
+    svg.appendChild(SVG.rect(startX - b * scale - 10, startY + a * scale, b * scale, c * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 1.5));
+    svg.appendChild(SVG.rect(startX + b * scale, startY + a * scale, b * scale, c * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 1.5));
+    svg.appendChild(SVG.rect(startX + 2 * b * scale + 10, startY + a * scale, b * scale, c * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 1.5));
+
+    svg.appendChild(SVG.rect(startX + b * scale, startY + a * scale + c * scale + 5, b * scale, a * scale, CONFIG.colors.lightRed, CONFIG.colors.accent, 2));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(20, size.height - 50, `Maße: ${a} × ${b} × ${c} cm`, '12px Arial'));
+      svg.appendChild(SVG.text(20, size.height - 30, 'Rot: fehlende Seite ergänzen', '11px Arial', CONFIG.colors.accent));
+    }
+
+    return svg;
+  });
+
+  // 9. PRISMA NETZ (AUS POOL.JS)
+  registerDiagram('prisma_netz', (params, opts) => {
+    const { base1 = 4, base2 = 5, base3 = 6, height = 7, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+    svg.appendChild(SVG.text(size.width/2, 40, 'Prisma-Netz', '16px Arial', CONFIG.colors.primary, 'middle'));
+
+    const trianglePoints = [
+      [size.width/2 - 50, size.height/2 + 30],
+      [size.width/2 + 50, size.height/2 + 30],
+      [size.width/2, size.height/2 - 30]
+    ];
+    svg.appendChild(SVG.polygon(trianglePoints, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+
+    svg.appendChild(SVG.rect(size.width/2 + 60, size.height/2 - 20, 80, 40, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 1.5));
+    svg.appendChild(SVG.rect(size.width/2 - 140, size.height/2 - 20, 80, 40, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 1.5));
+    svg.appendChild(SVG.rect(size.width/2 - 40, size.height/2 + 40, 80, 40, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 1.5));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(size.width/2, size.height - 60, `Seiten: ${base1}, ${base2}, ${base3} cm · Höhe: ${height} cm`, '11px Arial', CONFIG.colors.text, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 10. ZYLINDER OBERFLÄCHE SKIZZE (AUS POOL.JS)
+  registerDiagram('zylinder_oberflaeche_skizze', (params, opts) => {
+    const { r = 4, h = 8, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const radius = r * (size.width / 50);
+    const centerX = size.width / 2;
+    const topY = size.height / 3;
+    const bottomY = size.height * 2/3;
+
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    svg.appendChild(SVG.ellipse(centerX, topY, radius, radius/3, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+    svg.appendChild(SVG.ellipse(centerX, bottomY, radius, radius/3, '#bbdefb', CONFIG.colors.primary, 2));
+
+    svg.appendChild(SVG.line(centerX - radius, topY + radius/3, centerX - radius, bottomY - radius/3, CONFIG.colors.primary, 2));
+    svg.appendChild(SVG.line(centerX + radius, topY + radius/3, centerX + radius, bottomY - radius/3, CONFIG.colors.primary, 2));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(centerX - radius - 20, bottomY, `r = ${r} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(centerX + radius + 10, (topY + bottomY)/2, `h = ${h} cm`, '11px Arial'));
+      
+      const surface = 2 * 3.14 * r * r + 2 * 3.14 * r * h;
+      svg.appendChild(SVG.text(size.width/2, size.height - 20, `Oberfläche ≈ ${surface.toFixed(0)} cm²`, '11px Arial', CONFIG.colors.accent, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 11. WERKSTÜCK VOLUMEN (AUS POOL.JS)
+  registerDiagram('werkstueck_volumen', (params, opts) => {
+    const { a = 6, b = 4, c = 3, d = 2, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(8, (size.width - 100) / Math.max(a, d));
+
+    const svg = SVG.create(size.width, size.height, forPrint);
+    const startX = 70;
+    const startY = size.height - 100;
+
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    svg.appendChild(SVG.rect(startX, startY - c * scale, a * scale, c * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+    svg.appendChild(SVG.rect(startX, startY, a * scale, b * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+
+    const cubeX = startX + (a * scale) / 2 - (d * scale) / 2;
+    const cubeY = startY - c * scale - d * scale;
+    svg.appendChild(SVG.rect(cubeX, cubeY, d * scale, d * scale, CONFIG.colors.lightOrange, CONFIG.colors.warning, 2));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(20, size.height - 40, `Quader: ${a}×${b}×${c} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(20, size.height - 20, `Würfel: ${d} cm`, '11px Arial', CONFIG.colors.warning));
+      
+      const volume = a * b * c + d * d * d;
+      svg.appendChild(SVG.text(size.width/2, 40, `Gesamtvolumen: ${volume} cm³`, '12px Arial', CONFIG.colors.accent, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 12. TRANSPORT KARTONS LADERAUM (AUS POOL.JS)
+  registerDiagram('transport_kartons_laderaum', (params, opts) => {
+    const { truckL = 210, truckB = 125, boxL = 40, boxB = 30, grid = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    const startX = 50;
+    const startY = 50;
+    const width = size.width - 100;
+    const height = size.height - 120;
+
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+    svg.appendChild(SVG.rect(startX, startY, width, height, '#fff', CONFIG.colors.primary, 2));
+
+    if (grid) {
+      const cols = Math.min(5, Math.floor(truckL / boxL));
+      const rows = Math.min(4, Math.floor(truckB / boxB));
+      const boxWidth = (boxL / truckL) * width;
+      const boxHeight = (boxB / truckB) * height;
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          svg.appendChild(SVG.rect(
+            startX + i * boxWidth + 2,
+            startY + j * boxHeight + 2,
+            boxWidth - 4,
+            boxHeight - 4,
+            'transparent',
+            '#aaa',
+            1
+          ));
+        }
+      }
+    }
+
+    const maxBoxes = Math.floor(truckL / boxL) * Math.floor(truckB / boxB);
+    svg.appendChild(SVG.text(size.width/2, size.height - 40, 
+      `Laderaum: ${truckL}×${truckB} cm · Kartons: ${boxL}×${boxB} cm · Max: ${maxBoxes}`, 
+      '11px Arial', CONFIG.colors.text, 'middle'));
+
+    return svg;
+  });
+
+  // 13. RAMPE VOLUMEN (AUS POOL.JS)
+  registerDiagram('rampe_volumen', (params, opts) => {
+    const { baseL = 50, baseH = 20, topL = 25, width = 30, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(3, (size.width - 100) / baseL);
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const startX = 50;
+    const startY = size.height - 50;
+    const points = [
+      [startX, startY],
+      [startX + baseL * scale, startY],
+      [startX + (baseL - topL) * scale + topL * scale, startY - baseH * scale],
+      [startX + (baseL - topL) * scale, startY - baseH * scale]
+    ];
+
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 2));
+
+    if (dimensions) {
+      const volume = ((baseL + topL) * baseH / 2 * width);
+      svg.appendChild(SVG.text(size.width/2, 50, 
+        `Volumen = ${volume.toFixed(0)} cm³`, 
+        '12px Arial', CONFIG.colors.accent, 'middle'));
+      svg.appendChild(SVG.text(size.width/2, 70, 
+        `Breite: ${width} cm`, 
+        '11px Arial', CONFIG.colors.text, 'middle'));
+    }
+
+    return svg;
+  });
+
+  // 14. WEITERE STANDARD-DIAGRAMME
+  registerDiagram('dreieck_allgemein', (params, opts) => {
+    const { a = 5, b = 6, c = 7, labels = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const points = [
+      [70, size.height - 50],
+      [70 + a * 12, size.height - 50],
+      [70 + (a * 12) / 2, size.height - 50 - b * 10]
+    ];
+
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 2));
+
+    if (labels) {
+      svg.appendChild(SVG.text(points[0][0] - 20, points[0][1] - 5, 'A', '14px Arial'));
+      svg.appendChild(SVG.text(points[1][0] + 10, points[1][1] - 5, 'B', '14px Arial'));
+      svg.appendChild(SVG.text(points[2][0] - 5, points[2][1] - 15, 'C', '14px Arial'));
+    }
+
+    return svg;
+  });
+
+  registerDiagram('lform', (params, opts) => {
+    const { w1 = 8, h1 = 12, w2 = 5, h2 = 6, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(8, (size.width - 100) / Math.max(w1, w2));
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const startX = 50;
+    const startY = 50;
+
+    svg.appendChild(SVG.rect(startX, startY + h1 * scale, w1 * scale, h2 * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+    svg.appendChild(SVG.rect(startX, startY, w2 * scale, h1 * scale, CONFIG.colors.lightBlue, CONFIG.colors.primary, 2));
+
+    if (dimensions) {
+      svg.appendChild(SVG.text(startX + w1 * scale/2 - 15, startY + h1 * scale + 25, `${w1} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX - 35, startY + h1 * scale/2, `${h1} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX + w2 * scale/2 - 15, startY - 10, `${w2} cm`, '11px Arial'));
+      svg.appendChild(SVG.text(startX + w1 * scale + 10, startY + h1 * scale + h2 * scale/2, `${h2} cm`, '11px Arial'));
+    }
+
+    return svg;
+  });
+
+  registerDiagram('laderaum', (params, opts) => {
+    const { truckL = 210, truckB = 125, boxL = 40, boxB = 30, grid = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    const startX = 50;
+    const startY = 50;
+    const width = size.width - 100;
+    const height = size.height - 120;
+
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+    svg.appendChild(SVG.rect(startX, startY, width, height, '#fff', CONFIG.colors.primary, 2));
+
+    if (grid) {
+      const cols = Math.min(5, Math.floor(truckL / boxL));
+      const rows = Math.min(4, Math.floor(truckB / boxB));
+      const boxWidth = (boxL / truckL) * width;
+      const boxHeight = (boxB / truckB) * height;
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          svg.appendChild(SVG.rect(
+            startX + i * boxWidth + 2,
+            startY + j * boxHeight + 2,
+            boxWidth - 4,
+            boxHeight - 4,
+            'transparent',
+            '#aaa',
+            1
+          ));
+        }
+      }
+    }
+
+    svg.appendChild(SVG.text(size.width/2, size.height - 40, 
+      `Laderaum: ${truckL}×${truckB} cm · Kartons: ${boxL}×${boxB} cm`, 
+      '12px Arial', CONFIG.colors.text, 'middle'));
+
+    return svg;
+  });
+
+  registerDiagram('rampe', (params, opts) => {
+    const { baseL = 50, baseH = 20, topL = 25, width = 30, dimensions = true } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const scale = Math.min(3, (size.width - 100) / baseL);
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const startX = 50;
+    const startY = size.height - 50;
+    const points = [
+      [startX, startY],
+      [startX + baseL * scale, startY],
+      [startX + (baseL - topL) * scale + topL * scale, startY - baseH * scale],
+      [startX + (baseL - topL) * scale, startY - baseH * scale]
+    ];
+
+    svg.appendChild(SVG.polygon(points, CONFIG.colors.lightGreen, CONFIG.colors.secondary, 2));
+
+    if (dimensions) {
+      const volume = ((baseL + topL) * baseH / 2 * width);
+      svg.appendChild(SVG.text(size.width/2, 70, 
+        `Volumen = ${volume.toFixed(0)} cm³ · Breite: ${width} cm`, 
+        '12px Arial', CONFIG.colors.accent, 'middle'));
+    }
+
+    return svg;
+  });
+
+  registerDiagram('balkendiagramm', (params, opts) => {
+    const { data = [45, 30, 60, 25, 50], labels = ['A', 'B', 'C', 'D', 'E'], color = CONFIG.colors.primary } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const padding = 50;
+    const width = size.width - 2 * padding;
+    const height = size.height - 2 * padding;
+
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+    svg.appendChild(SVG.line(padding, size.height - padding, padding + width, size.height - padding, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(padding, size.height - padding, padding, size.height - padding - height, CONFIG.colors.axis, 2));
+
+    const maxVal = Math.max(...data);
+    const barWidth = width / data.length - 10;
+
+    data.forEach((val, i) => {
+      const barHeight = (val / maxVal) * height;
+      const x = padding + i * (barWidth + 10) + 10;
+      const y = size.height - padding - barHeight;
+
+      svg.appendChild(SVG.rect(x, y, barWidth, barHeight, color, color, 1));
+      svg.appendChild(SVG.text(x + barWidth/2, y - 5, val.toString(), '10px Arial', CONFIG.colors.text, 'middle'));
+
+      if (labels[i]) {
+        svg.appendChild(SVG.text(x + barWidth/2, size.height - padding + 15, labels[i], '11px Arial', CONFIG.colors.text, 'middle'));
+      }
+    });
+
+    return svg;
+  });
+
+  registerDiagram('kreisdiagramm', (params, opts) => {
+    const { data = [30, 20, 25, 15, 10], labels = [], colors = ['#1976d2', '#4caf50', '#ff9800', '#f44336', '#9c27b0'] } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    const centerX = size.width / 3;
+    const centerY = size.height / 2;
+    const radius = Math.min(centerX, centerY) - 20;
+
+    const total = data.reduce((a, b) => a + b, 0);
+    let startAngle = 0;
+
+    data.forEach((val, i) => {
+      const angle = (val / total) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+
+      const x1 = centerX + radius * Math.sin(startAngle);
+      const y1 = centerY - radius * Math.cos(startAngle);
+      const x2 = centerX + radius * Math.sin(endAngle);
+      const y2 = centerY - radius * Math.cos(endAngle);
+
+      const largeArcFlag = angle > Math.PI ? 1 : 0;
+      const pathData = [
+        `M ${centerX} ${centerY}`,
+        `L ${x1} ${y1}`,
+        `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+        `Z`
+      ].join(' ');
+
+      svg.appendChild(SVG.path(pathData, colors[i % colors.length], '#fff', 1));
+
+      startAngle = endAngle;
+    });
+
+    if (labels.length) {
+      labels.slice(0, 5).forEach((label, i) => {
+        const y = size.height/2 - 50 + i * 20;
+        svg.appendChild(SVG.rect(size.width - 100, y, 15, 10, colors[i % colors.length], colors[i % colors.length], 0));
+        svg.appendChild(SVG.text(size.width - 80, y + 10, label, '10px Arial', CONFIG.colors.text));
+      });
+    }
+
+    return svg;
+  });
+
+  registerDiagram('zahlengerade', (params, opts) => {
+    const { from = -5, to = 10, marks = [-3, 0, 2, 5, 8], labels = [] } = params;
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    const startX = 50;
+    const endX = size.width - 50;
+    const y = size.height / 2;
+
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, CONFIG.colors.background, '#ddd', 1));
+
+    svg.appendChild(SVG.line(startX, y, endX, y, CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.line(endX, y, endX - 10, y - 5, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(endX, y, endX - 10, y + 5, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(startX, y, startX + 10, y - 5, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(startX, y, startX + 10, y + 5, CONFIG.colors.axis, 2));
+
+    const range = to - from;
+    marks.forEach((mark, i) => {
+      if (mark >= from && mark <= to) {
+        const x = startX + ((mark - from) / range) * (endX - startX);
+        svg.appendChild(SVG.line(x, y - 5, x, y + 5, CONFIG.colors.axis, 2));
+
+        const label = labels[i] !== undefined ? labels[i] : mark.toString();
+        svg.appendChild(SVG.text(x - 8, y - 15, label, '11px Arial', CONFIG.colors.text));
+      }
+    });
+
+    return svg;
+  });
+
+  registerDiagram('tabelle', (params, opts) => {
+    const { headers = [], rows = [], caption = '' } = params;
+
+    const table = document.createElement('table');
+    table.style.borderCollapse = 'collapse';
+    table.style.width = '100%';
+    table.style.margin = '10px 0';
+    table.style.border = '1px solid #ddd';
+
+    if (caption) {
+      const cap = document.createElement('caption');
+      cap.textContent = caption;
+      cap.style.fontWeight = 'bold';
+      cap.style.marginBottom = '8px';
+      cap.style.padding = '8px';
+      table.appendChild(cap);
+    }
+
+    if (headers.length) {
+      const thead = document.createElement('thead');
+      const tr = document.createElement('tr');
+      headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        th.style.border = '1px solid #ddd';
+        th.style.padding = '8px';
+        th.style.backgroundColor = CONFIG.colors.primary;
+        th.style.color = 'white';
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+      table.appendChild(thead);
+    }
+
+    if (rows.length) {
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          td.style.border = '1px solid #ddd';
+          td.style.padding = '8px';
+          td.style.textAlign = 'center';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(table);
+    return wrapper.firstChild;
+  });
+
+  /* =========================================================
+     ERWEITERUNG: Diagrammtypen aus pool_113.js (Note 2–1 / 11.3 / 12.2)
+     (Abwärtskompatibel – ergänzt nur neue Typen)
+  ========================================================= */
+
+  registerDiagram('holztisch', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const d = Number(params.diameter ?? 100);
+    const t = Number(params.thickness ?? 3);
+    const h = Number(params.height ?? 75);
+    const legD = Number(params.legDiameter ?? 6);
+    const legOffset = Number(params.legOffset ?? 30);
+
+    const cx = size.width / 2;
+    const topY = 70;
+    const rx = Math.min(160, size.width * 0.38);
+    const ry = Math.min(38, size.height * 0.10);
+
+    svg.appendChild(SVG.ellipse(cx, topY, rx, ry, CONFIG.colors.lightOrange, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.ellipse(cx, topY + 18, rx, ry, "rgba(0,0,0,0.03)", CONFIG.colors.axis, 1));
+
+    const legY = topY + 35;
+    const legH = Math.min(170, size.height * 0.55);
+    const legW = 14;
+
+    const legXs = [
+      cx - legOffset,
+      cx + legOffset,
+      cx - legOffset + 40,
+      cx + legOffset - 40
+    ];
+
+    legXs.forEach(x => {
+      svg.appendChild(SVG.rect(x - legW/2, legY, legW, legH, CONFIG.colors.secondary, CONFIG.colors.axis, 1));
+    });
+
+    svg.appendChild(SVG.text(cx, 20, `Holztisch (Skizze)`, CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text(15, size.height - 12, `Ø Platte: ${d} cm | Dicke: ${t} cm | Bein: Ø ${legD} cm, h=${h} cm`, CONFIG.colors.text, 12, "start"));
+
+    return svg;
+  });
+
+  registerDiagram('skateboardrampe', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const baseL = Number(params.baseL ?? 180);
+    const topL  = Number(params.topL  ?? 60);
+    const baseH = Number(params.baseH ?? 40);
+
+    const x0 = 70, y0 = size.height - 70;
+    const x1 = size.width - 70;
+    const yTop = 90;
+
+    const p = [
+      [x0, y0],
+      [x1, y0],
+      [x1 - 80, yTop + 40],
+      [x0 + 60, yTop + 40]
+    ];
+
+    svg.appendChild(SVG.polygon(p, CONFIG.colors.lightBlue, CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Skateboardrampe (Trapez-Prisma) – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text(x0, y0 + 24, `unten: ${baseL} cm`, CONFIG.colors.text, 12, "start"));
+    svg.appendChild(SVG.text(x0 + 60, yTop + 32, `oben: ${topL} cm`, CONFIG.colors.text, 12, "start"));
+    svg.appendChild(SVG.text(x1 - 80, (y0+yTop)/2, `H: ${baseH} cm`, CONFIG.colors.text, 12, "start"));
+
+    return svg;
+  });
+
+  registerDiagram('weideland_viereck', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const a = Number(params.a ?? 50), b = Number(params.b ?? 40), c = Number(params.c ?? 50), d = Number(params.d ?? 40);
+    const diag = Number(params.diag ?? 60);
+
+    const p = [
+      [90, 90],
+      [size.width - 90, 120],
+      [size.width - 120, size.height - 90],
+      [110, size.height - 120]
+    ];
+
+    svg.appendChild(SVG.polygon(p, CONFIG.colors.lightGreen, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(p[0][0], p[0][1], p[2][0], p[2][1], CONFIG.colors.accent, 2, "6,4"));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Weideland (Viereck mit Diagonale) – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text(p[0][0]-10, p[0][1]-8, `a=${a}m`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text(p[1][0]+10, p[1][1]-8, `b=${b}m`, CONFIG.colors.text, 12, "start"));
+    svg.appendChild(SVG.text(p[2][0]+10, p[2][1]+18, `c=${c}m`, CONFIG.colors.text, 12, "start"));
+    svg.appendChild(SVG.text(p[3][0]-10, p[3][1]+18, `d=${d}m`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text((p[0][0]+p[2][0])/2, (p[0][1]+p[2][1])/2 - 10, `diag=${diag}m`, CONFIG.colors.accent, 12, "middle"));
+
+    return svg;
+  });
+
+  registerDiagram('flaechenberechnung_garten', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const outerW = Number(params.outerW ?? 25);
+    const outerH = Number(params.outerH ?? 20);
+    const cutW   = Number(params.cutW ?? 8);
+    const cutH   = Number(params.cutH ?? 6);
+
+    const x = 70, y = 70, w = size.width - 140, h = size.height - 160;
+
+    svg.appendChild(SVG.rect(x, y, w, h, CONFIG.colors.lightGreen, CONFIG.colors.axis, 2));
+
+    const cx = x + w*0.55, cy = y + h*0.35;
+    const cw = w*0.28, ch = h*0.22;
+    svg.appendChild(SVG.rect(cx, cy, cw, ch, CONFIG.colors.lightOrange, CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Garten – Fläche (Skizze)", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text(x, y-10, `Außen: ${outerW}m × ${outerH}m`, CONFIG.colors.text, 12, "start"));
+    svg.appendChild(SVG.text(cx, cy-10, `Beet: ${cutW}m × ${cutH}m`, CONFIG.colors.text, 12, "start"));
+
+    return svg;
+  });
+
+  registerDiagram('rechte_winkel_argumentation', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const a = Number(params.a ?? 3), b = Number(params.b ?? 4), c = Number(params.c ?? 5);
+
+    const pA = [110, size.height - 90];
+    const pB = [size.width - 130, size.height - 90];
+    const pC = [110, 110];
+
+    svg.appendChild(SVG.polygon([pA,pB,pC], CONFIG.colors.lightBlue, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.rect(pA[0], pA[1]-30, 30, 30, "rgba(0,0,0,0)", CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Rechtwinklig? – Argumentation (Skizze)", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text((pA[0]+pB[0])/2, pA[1]+24, `b=${b}`, CONFIG.colors.text, 12, "middle"));
+    svg.appendChild(SVG.text(pA[0]-20, (pA[1]+pC[1])/2, `a=${a}`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text((pB[0]+pC[0])/2+10, (pB[1]+pC[1])/2, `c=${c}`, CONFIG.colors.text, 12, "start"));
+
+    return svg;
+  });
+
+  registerDiagram('dreiseitiges_prisma', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const base = Number(params.base ?? 3);
+    const side = Number(params.side ?? 4);
+    const height = Number(params.height ?? 10);
+
+    const A = [130, size.height - 110];
+    const B = [size.width/2 - 40, size.height - 110];
+    const C = [170, 120];
+
+    const dx = 170, dy = -40;
+    const A2 = [A[0]+dx, A[1]+dy];
+    const B2 = [B[0]+dx, B[1]+dy];
+    const C2 = [C[0]+dx, C[1]+dy];
+
+    svg.appendChild(SVG.polygon([A,B,C], CONFIG.colors.lightBlue, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.polygon([A2,B2,C2], "rgba(0,0,0,0.02)", CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.line(A[0],A[1],A2[0],A2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(B[0],B[1],B2[0],B2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(C[0],C[1],C2[0],C2[1], CONFIG.colors.axis,2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Dreiseitiges Prisma – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text((A[0]+B[0])/2, A[1]+24, `g=${base} cm`, CONFIG.colors.text, 12, "middle"));
+    svg.appendChild(SVG.text(A[0]-10, (A[1]+C[1])/2, `h≈${side} cm`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text(size.width-120, size.height-30, `Prisma-Länge: ${height} cm`, CONFIG.colors.text, 12, "end"));
+
+    return svg;
+  });
+
+  registerDiagram('zelt_prisma', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const g = Number(params.g ?? 3);
+    const h = Number(params.h ?? 2);
+    const length = Number(params.length ?? 4);
+
+    const A = [130, size.height - 110];
+    const B = [size.width/2 - 40, size.height - 110];
+    const C = [180, 120];
+
+    const dx = 180, dy = -35;
+    const A2 = [A[0]+dx, A[1]+dy];
+    const B2 = [B[0]+dx, B[1]+dy];
+    const C2 = [C[0]+dx, C[1]+dy];
+
+    svg.appendChild(SVG.polygon([A,B,C], CONFIG.colors.lightOrange, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.polygon([A2,B2,C2], "rgba(255,152,0,0.08)", CONFIG.colors.axis, 2));
+
+    svg.appendChild(SVG.line(A[0],A[1],A2[0],A2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(B[0],B[1],B2[0],B2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(C[0],C[1],C2[0],C2[1], CONFIG.colors.axis,2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Zelt (Dreiecksprisma) – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text((A[0]+B[0])/2, A[1]+24, `g=${g} m`, CONFIG.colors.text, 12, "middle"));
+    svg.appendChild(SVG.text(A[0]-10, (A[1]+C[1])/2, `h=${h} m`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text(size.width-120, size.height-30, `Länge=${length} m`, CONFIG.colors.text, 12, "end"));
+
+    return svg;
+  });
+
+  registerDiagram('dachgeschoss_prisma', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const width = Number(params.width ?? 10);
+    const roofHeight = Number(params.roofHeight ?? 4);
+    const prismDepth = Number(params.prismDepth ?? 8);
+
+    const baseY = size.height - 90;
+    const leftX = 130, rightX = size.width/2 + 60;
+    const midX = (leftX + rightX) / 2;
+    const roofY = 120;
+
+    const tri = [[leftX, baseY], [rightX, baseY], [midX, roofY]];
+    const dx = 180, dy = -40;
+    const tri2 = tri.map(([x,y]) => [x+dx, y+dy]);
+
+    svg.appendChild(SVG.polygon(tri, CONFIG.colors.lightBlue, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.polygon(tri2, "rgba(0,0,0,0.02)", CONFIG.colors.axis, 2));
+
+    for (let i=0;i<3;i++){
+      svg.appendChild(SVG.line(tri[i][0], tri[i][1], tri2[i][0], tri2[i][1], CONFIG.colors.axis, 2));
+    }
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Dachgeschoss (Prisma) – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text((leftX+rightX)/2, baseY+24, `Breite=${width} m`, CONFIG.colors.text, 12, "middle"));
+    svg.appendChild(SVG.text(midX-10, (baseY+roofY)/2, `H=${roofHeight} m`, CONFIG.colors.text, 12, "end"));
+    svg.appendChild(SVG.text(size.width-120, size.height-30, `Tiefe=${prismDepth} m`, CONFIG.colors.text, 12, "end"));
+
+    return svg;
+  });
+
+  registerDiagram('keksverpackung', (params = {}, opts = {}) => {
+    const forPrint = !!opts.forPrint;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const svg = SVG.create(size.width, size.height, forPrint);
+
+    const a = Number(params.a ?? 6);
+    const b = Number(params.b ?? 7);
+
+    const A = [140, size.height - 110];
+    const B = [size.width/2 - 60, size.height - 110];
+    const C = [200, 140];
+
+    const dx = 170, dy = -35;
+    const A2 = [A[0]+dx, A[1]+dy];
+    const B2 = [B[0]+dx, B[1]+dy];
+    const C2 = [C[0]+dx, C[1]+dy];
+
+    svg.appendChild(SVG.polygon([A,B,C], CONFIG.colors.lightGreen, CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.polygon([A2,B2,C2], "rgba(0,0,0,0.02)", CONFIG.colors.axis, 2));
+    svg.appendChild(SVG.line(A[0],A[1],A2[0],A2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(B[0],B[1],B2[0],B2[1], CONFIG.colors.axis,2));
+    svg.appendChild(SVG.line(C[0],C[1],C2[0],C2[1], CONFIG.colors.axis,2));
+
+    svg.appendChild(SVG.text(size.width/2, 24, "Keksverpackung (Prisma) – Skizze", CONFIG.colors.text, 14, "middle"));
+    svg.appendChild(SVG.text((A[0]+B[0])/2, A[1]+24, `Seiten: a≈${a} cm, b≈${b} cm`, CONFIG.colors.text, 12, "middle"));
+
+    return svg;
+  });
+
+
+  registerDiagram('placeholder', (params, opts) => {
+    const forPrint = opts?.forPrint || false;
+    const size = forPrint ? CONFIG.sizes.print : CONFIG.sizes.screen;
+    const message = params?.message || 'Diagramm nicht verfügbar';
+    
+    const svg = SVG.create(size.width, size.height, forPrint);
+    svg.appendChild(SVG.rect(0, 0, size.width, size.height, '#f5f5f5', '#ccc', 1));
+    svg.appendChild(SVG.text(size.width/2, size.height/2 - 10, '📊', '24px Arial', '#999', 'middle'));
+    svg.appendChild(SVG.text(size.width/2, size.height/2 + 20, message, '12px Arial', '#999', 'middle'));
+    
+    return svg;
+  });
+
+  /* =========================================================
+     HILFSFUNKTIONEN
+  ========================================================= */
+  const renderDiagramHelpers = {
+    getRenderer: (type) => DiagramRegistry.get(type) || DiagramRegistry.get('placeholder'),
+    listRegisteredTypes: () => Array.from(DiagramRegistry.keys()),
+    validate: validateDiagramData,
+    scaler: Scaler,
+    svg: SVG,
+    config: CONFIG
+  };
+
+  /* =========================================================
+     GLOBALE EXPORTE
+  ========================================================= */
+  if (typeof window !== "undefined") {
+    window.renderDiagram = renderDiagram;
+    window.DiagramRegistry = DiagramRegistry;
+    window.__diagramHelpers = renderDiagramHelpers;
+    
+    window.renderDiagramForPrint = (diagramData, container) => {
+      return renderDiagram(diagramData, container, { forPrint: true });
+    };
+  }
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+      renderDiagram,
+      DiagramRegistry,
+      helpers: renderDiagramHelpers
+    };
+  }
+
+  if (typeof window !== "undefined" && window.location.search.includes('debug')) {
+    console.log('✅ diagramRenderer.js geladen mit Typen:', renderDiagramHelpers.listRegisteredTypes());
+    if (typeof STATIC_DIAGRAMS !== "undefined") {
+      console.log('✅ STATIC_DIAGRAMS gefunden mit Typen:', Object.keys(STATIC_DIAGRAMS));
+    }
+  }
+
+})();
