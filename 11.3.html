@@ -6,9 +6,12 @@
 <meta name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>Mathe Prüfung – Niveau 11.3 ⭐</title>
+<title>Mathe Prüfung – Niveau 11.3 ⭐ (Note 1–2)</title>
 
-<!-- KEINE globalen Skripte mehr - nur Diagramm-Renderer wird im Modul geladen -->
+<!-- Diagramm-Skripte und Aufgabenpool -->
+<script src="staticDiagrams.js"></script>
+<script src="diagramRenderer.js"></script>
+<script src="pool_113.js"></script>
 
 <style>
 html, body {
@@ -35,8 +38,9 @@ h1 {
   justify-content: center;
   gap: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-button {
+button, select {
   font-size: 1rem;
   padding: 12px 14px;
   border-radius: 8px;
@@ -44,6 +48,11 @@ button {
   background: #1976d2;
   color: white;
   cursor: pointer;
+}
+select {
+  background: white;
+  color: #333;
+  border: 1px solid #1976d2;
 }
 button:disabled {
   background: #cccccc;
@@ -105,6 +114,9 @@ input {
   margin-top: 15px;
   text-align: center;
 }
+#categorySelect {
+  min-width: 200px;
+}
 </style>
 </head>
 
@@ -113,6 +125,9 @@ input {
 <h1>📝 Mathematik – Prüfungsmodus 11.3 (Note 1–2)</h1>
 
 <div id="topbar">
+  <select id="categorySelect">
+    <option value="all">Alle Kategorien</option>
+  </select>
   <button id="startBtn">Prüfung starten</button>
   <div id="timer" class="hidden"></div>
 </div>
@@ -133,119 +148,24 @@ input {
   <div id="result"></div>
 </div>
 
-<!-- =========================
-     ES-MODUL LÖSUNG mit Diagramm-Unterstützung
-========================= -->
-<script type="module">
+<script>
+/* =========================================================
+   11.3.html - Prüfungsmodus für Note 1-2
+   Verwendet pool_113.js für anspruchsvolle Aufgaben
+========================================================= */
 
-// Diagramm-Skripte dynamisch laden
-async function loadDiagramScripts() {
-  // Prüfen ob bereits geladen
-  if (typeof window.renderDiagram !== 'undefined') return;
-  
-  // Skripte nacheinander laden
-  await import('./staticDiagrams.js');
-  await import('./diagramRenderer.js');
-}
-
-// POOL_113 importieren
-//import POOL_113 from "./pool_113.js";
-// RICHTIG - verwende das globale TASKPOOL_113:
-window.TASKPOOL = {};
-
-// Direkt das globale Objekt verwenden:
-if (typeof window.TASKPOOL_113 !== 'undefined') {
-  window.TASKPOOL = window.TASKPOOL_113;
-} else {
-  console.error('TASKPOOL_113 nicht geladen!');
-}
-      
-/* ============================================
-   TASKPOOL AUS DEM MODUL ERZEUGEN
-============================================ */
-function buildTaskpoolFromModule(mod) {
-  const tp = {};
-  const raw = mod.pool;
-
-  Object.keys(raw).forEach(key => {
-    if (key === "meta") return;
-    tp[key] = raw[key].map(taskObj => {
-      return function() {
-        // Aufgabe mit Diagramm-Unterstützung
-        return {
-          task: taskObj.prompt.trim() + "<br><br><b>" +
-                taskObj.question.trim() + "</b>",
-          answer: extractAnswer(taskObj.solution),
-          solution: taskObj.steps || "",
-          diagram: taskObj.diagram || null,
-          category: key,
-          taskObj: taskObj
-        };
-      };
-    });
-  });
-
-  return tp;
-}
-
-function extractAnswer(sol) {
-  const match = sol.match(/[-+]?[0-9]*[.,]?[0-9]+/);
-  if (!match) return sol;
-  return parseFloat(match[0].replace(",", "."));
-}
-
-window.TASKPOOL = buildTaskpoolFromModule(POOL_113);
-
-/* ============================================
-   DIAGRAMM-RENDERING (mit dynamischem Laden)
-============================================ */
-async function renderTaskDiagram(diagramData, container) {
-  if (!diagramData || !container) return;
-  
-  // Sicherstellen, dass Diagramm-Skripte geladen sind
-  await loadDiagramScripts();
-  
-  // Vorhandenes Diagramm entfernen
-  const existingDiagram = container.querySelector('.diagram-container');
-  if (existingDiagram) existingDiagram.remove();
-  
-  // Neues Diagramm-Container erstellen
-  const diagramContainer = document.createElement('div');
-  diagramContainer.className = 'diagram-container';
-  
-  try {
-    // Diagramm rendern (jetzt sollte renderDiagram global verfügbar sein)
-    if (typeof window.renderDiagram === 'function') {
-      window.renderDiagram(diagramData, diagramContainer);
-    } else {
-      console.warn('renderDiagram nicht verfügbar');
-      diagramContainer.innerHTML = '<p style="color:#999;">[Diagramm konnte nicht geladen werden]</p>';
-    }
-    
-    // Nach dem Aufgaben-Text einfügen
-    const taskText = container.querySelector('.task-text');
-    if (taskText) {
-      taskText.after(diagramContainer);
-    } else {
-      container.appendChild(diagramContainer);
-    }
-  } catch (e) {
-    console.error('Fehler beim Rendern des Diagramms:', e);
-    diagramContainer.innerHTML = '<p style="color:#999;">[Diagramm-Fehler]</p>';
-    container.appendChild(diagramContainer);
-  }
-}
-
-/* ============================================
-   PRÜFUNGSLOGIK
-============================================ */
-
-const EXAM_TIME = 90 * 60;
+/* =========================================================
+   KONFIGURATION
+========================================================= */
+const EXAM_TIME = 90 * 60;        // 90 Minuten
 const TASKS_TOTAL = 10;
 const POINTS_PER_TASK = 3;
-const PASS_POINTS = 24;
-const TEACHER_PIN = "1234";
+const PASS_POINTS = 24;           // 80% für Note 1-2
+const TEACHER_PIN = "1234";       // Demo-PIN
 
+/* =========================================================
+   STATE
+========================================================= */
 let roundActive = false;
 let taskNumber = 0;
 let points = 0;
@@ -254,125 +174,313 @@ let currentTask = null;
 let timeLeft = 0;
 let timerInt = null;
 
-const startBtnEl  = document.getElementById("startBtn");
-const timerEl     = document.getElementById("timer");
+// Aufgaben-Array für die Prüfung
+let examTasks = [];
+let currentTaskIndex = 0;
+
+// Verfügbare Kategorien
+let availableCategories = [];
+
+/* =========================================================
+   DOM-ELEMENTE
+========================================================= */
+const startBtnEl = document.getElementById("startBtn");
+const timerEl = document.getElementById("timer");
 const taskContainer = document.getElementById("taskContainer");
 const answerAreaEl = document.getElementById("answerArea");
-const answerEl    = document.getElementById("answer");
-const nextBtnEl   = document.getElementById("nextBtn");
+const answerEl = document.getElementById("answer");
+const nextBtnEl = document.getElementById("nextBtn");
 const finishBtnEl = document.getElementById("finishBtn");
-const resultEl    = document.getElementById("result");
+const resultEl = document.getElementById("result");
+const categorySelect = document.getElementById("categorySelect");
 
-function rand(min,max){
-  return Math.floor(Math.random()*(max-min+1))+min;
+/* =========================================================
+   HILFSFUNKTIONEN
+========================================================= */
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function startRound(){
+function fmt(n) {
+  if (typeof n === "number") {
+    if (Number.isInteger(n)) return String(n);
+    return (Math.round(n * 100) / 100).toString().replace(".", ",");
+  }
+  return String(n);
+}
+
+function formatSteps(stepLines, result) {
+  if (!stepLines) return "Keine Schritt-für-Schritt-Lösung verfügbar.";
+  
+  let html = "";
+  if (Array.isArray(stepLines)) {
+    stepLines.forEach((line, i) => {
+      html += `${i + 1}. ${line}<br>`;
+    });
+  } else {
+    html += stepLines + "<br>";
+  }
+  html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
+  return html;
+}
+
+/* Diagramm rendern */
+function renderTaskDiagram(diagramData, container) {
+  if (!diagramData || !container) return;
+  
+  const existingDiagram = container.querySelector('.diagram-container');
+  if (existingDiagram) existingDiagram.remove();
+  
+  const diagramContainer = document.createElement('div');
+  diagramContainer.className = 'diagram-container';
+  
+  try {
+    if (typeof window.renderDiagram === 'function') {
+      window.renderDiagram(diagramData, diagramContainer);
+    }
+    container.appendChild(diagramContainer);
+  } catch (e) {
+    console.error('Fehler beim Rendern des Diagramms:', e);
+  }
+}
+
+/* =========================================================
+   TASKPOOL AUS POOL_113.JS LADEN
+========================================================= */
+function initTaskPool() {
+  if (typeof window.TASKPOOL_113 === 'undefined') {
+    console.error('TASKPOOL_113 nicht gefunden! pool_113.js wurde nicht korrekt geladen.');
+    alert('Fehler: Aufgabenpool konnte nicht geladen werden!');
+    return false;
+  }
+  
+  availableCategories = Object.keys(window.TASKPOOL_113);
+  console.log('Geladene Kategorien:', availableCategories);
+  
+  // Kategorie-Auswahl füllen
+  updateCategorySelect();
+  
+  return true;
+}
+
+function updateCategorySelect() {
+  // Bestehende Optionen löschen (außer "Alle")
+  while (categorySelect.options.length > 1) {
+    categorySelect.remove(1);
+  }
+  
+  // Neue Optionen hinzufügen
+  availableCategories.forEach(cat => {
+    const option = document.createElement('option');
+    option.value = cat;
+    
+    // Kategorie-Namen formatieren
+    let displayName = cat
+      .replace(/_/g, ' ')
+      .replace(/prozent/g, 'Prozent')
+      .replace(/zuordnung/g, 'Zuordnung')
+      .replace(/pythagoras/g, 'Pythagoras')
+      .replace(/koerper/g, 'Körper')
+      .replace(/statistik/g, 'Statistik')
+      .replace(/gleichungen/g, 'Gleichungen')
+      .replace(/flaeche2d/g, 'Flächen')
+      .replace(/wahrscheinlichkeit/g, 'Wahrscheinlichkeit')
+      .replace(/wachstum/g, 'Wachstum');
+    
+    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    
+    option.textContent = displayName;
+    categorySelect.appendChild(option);
+  });
+}
+
+function getRandomTask() {
+  let category = categorySelect.value;
+  
+  if (category === 'all' && availableCategories.length > 0) {
+    category = availableCategories[rand(0, availableCategories.length - 1)];
+  }
+  
+  if (!window.TASKPOOL_113[category] || window.TASKPOOL_113[category].length === 0) {
+    console.error('Kategorie nicht verfügbar:', category);
+    return null;
+  }
+  
+  const taskList = window.TASKPOOL_113[category];
+  const genIndex = rand(0, taskList.length - 1);
+  const taskGen = taskList[genIndex];
+  
+  const task = taskGen();
+  task.category = category;
+  task.genIndex = genIndex;
+  
+  return task;
+}
+
+/* =========================================================
+   PRÜFUNGSLOGIK
+========================================================= */
+
+function startExam() {
+  // Prüfung zurücksetzen
   points = 0;
   taskNumber = 0;
+  currentTaskIndex = 0;
+  examTasks = [];
   roundActive = true;
   timeLeft = EXAM_TIME;
-  currentTask = null;
+
+  // 10 Aufgaben für die Prüfung generieren
+  for (let i = 0; i < TASKS_TOTAL; i++) {
+    const task = getRandomTask();
+    if (task) {
+      examTasks.push(task);
+    } else {
+      // Fallback, falls keine Aufgabe generiert werden konnte
+      examTasks.push({
+        task: "Fehler: Keine Aufgabe verfügbar",
+        answer: 0,
+        category: "error"
+      });
+    }
+  }
 
   resultEl.innerHTML = "";
   startBtnEl.disabled = true;
+  categorySelect.disabled = true;
   answerAreaEl.classList.remove("hidden");
   timerEl.classList.remove("hidden");
 
   clearInterval(timerInt);
-  timerInt = setInterval(updateTimer,1000);
+  timerInt = setInterval(updateTimer, 1000);
 
-  nextTaskRandom();
+  showCurrentTask();
 }
 
-async function nextTaskRandom(){
-  if(taskNumber >= TASKS_TOTAL){
-    finishRound();
-    return;
-  }
-
-  taskNumber++;
-
-  const cats = Object.keys(window.TASKPOOL);
-  const cat = cats[rand(0,cats.length-1)];
-  const list = window.TASKPOOL[cat];
-  const gen = list[rand(0,list.length-1)];
-  const t = gen();
-
-  currentAnswer = t.answer;
-  currentTask = t;
+function showCurrentTask() {
+  if (!roundActive || !examTasks[currentTaskIndex]) return;
+  
+  const task = examTasks[currentTaskIndex];
+  currentAnswer = task.answer;
+  currentTask = task;
 
   // Task-Container leeren und neu aufbauen
   taskContainer.innerHTML = '';
   
-  // Aufgaben-Text
   const taskTextDiv = document.createElement('div');
   taskTextDiv.className = 'task-text';
-  taskTextDiv.innerHTML = `<b>Aufgabe ${taskNumber}/${TASKS_TOTAL}</b><br>${t.task}`;
+  taskTextDiv.innerHTML = `<b>Aufgabe ${currentTaskIndex + 1}/${TASKS_TOTAL} (${task.category})</b><br>${task.task}`;
   taskContainer.appendChild(taskTextDiv);
   
-  // Diagramm rendern falls vorhanden (async)
-  if (t.diagram) {
-    await renderTaskDiagram(t.diagram, taskContainer);
+  if (task.diagram) {
+    renderTaskDiagram(task.diagram, taskContainer);
   }
 
-  answerEl.value="";
+  answerEl.value = "";
   answerEl.focus();
 }
 
-function checkAndScore(){
-  const val = parseFloat(answerEl.value.replace(",","."));
-  if(!isNaN(val) && Math.abs(val-currentAnswer)<0.05){
+function checkAndScore() {
+  const input = answerEl.value.trim().replace(",", ".");
+  
+  if (typeof currentAnswer === "string") {
+    if (input.toLowerCase() === currentAnswer.toLowerCase()) {
+      points += POINTS_PER_TASK;
+    }
+    return;
+  }
+  
+  const val = parseFloat(input);
+  if (!isNaN(val) && Math.abs(val - currentAnswer) < 0.05) {
     points += POINTS_PER_TASK;
   }
 }
 
-function saveAndNext(){
-  if(!roundActive) return;
+function saveAndNext() {
+  if (!roundActive) return;
+  
   checkAndScore();
-  nextTaskRandom();
+  currentTaskIndex++;
+  taskNumber++;
+
+  if (currentTaskIndex < TASKS_TOTAL) {
+    showCurrentTask();
+  } else {
+    finishExam();
+  }
 }
 
-function finishRound(){
-  checkAndScore();
+function finishExam() {
+  // Letzte Aufgabe auswerten, falls noch nicht geschehen
+  if (currentTaskIndex < TASKS_TOTAL) {
+    checkAndScore();
+  }
 
   const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
-  if(pin!==TEACHER_PIN) return;
+  if (pin !== TEACHER_PIN) {
+    alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
+    return;
+  }
 
-  roundActive=false;
+  roundActive = false;
   clearInterval(timerInt);
 
   answerAreaEl.classList.add("hidden");
   timerEl.classList.add("hidden");
-  startBtnEl.disabled=false;
+  startBtnEl.disabled = false;
+  categorySelect.disabled = false;
 
-  const res = points>=PASS_POINTS?
-    "✅ BESTANDEN":"❌ NICHT BESTANDEN";
-
-  resultEl.innerHTML =
-    `Punkte: <b>${points}/${TASKS_TOTAL*POINTS_PER_TASK}</b><br>${res}`;
-
-  taskContainer.innerHTML = "Prüfung beendet.";
+  const res = points >= PASS_POINTS ? "✅ BESTANDEN" : "❌ NICHT BESTANDEN";
+  resultEl.innerHTML = `Punkte: <b>${points} / ${TASKS_TOTAL * POINTS_PER_TASK}</b><br>${res}`;
+  taskContainer.innerHTML = "Prüfung beendet. Neustart möglich.";
 }
 
-function updateTimer(){
+function updateTimer() {
   timeLeft--;
-  const m=Math.floor(timeLeft/60);
-  const s=(timeLeft%60).toString().padStart(2,"0");
-  timerEl.innerText=`⏱ ${m}:${s}`;
-  if(timeLeft<=0) finishRound();
+  const m = Math.floor(timeLeft / 60);
+  const s = (timeLeft % 60).toString().padStart(2, "0");
+  timerEl.innerText = `⏱ ${m}:${s}`;
+  
+  if (timeLeft <= 0) {
+    finishExam();
+  }
 }
 
-startBtnEl.addEventListener("click",startRound);
-nextBtnEl.addEventListener("click",saveAndNext);
-finishBtnEl.addEventListener("click",finishRound);
-
-answerEl.addEventListener("keypress",e=>{
-  if(e.key==="Enter") saveAndNext();
+/* =========================================================
+   VERLASSEN-WARNUNG
+========================================================= */
+window.addEventListener("beforeunload", function (e) {
+  if (roundActive) {
+    e.preventDefault();
+    e.returnValue = "Die Prüfung läuft noch. Bitte zuerst abgeben.";
+  }
 });
 
+/* =========================================================
+   EVENT LISTENER
+========================================================= */
+startBtnEl.addEventListener("click", startExam);
+nextBtnEl.addEventListener("click", saveAndNext);
+finishBtnEl.addEventListener("click", finishExam);
+
+answerEl.addEventListener("keypress", function(e) {
+  if (e.key === "Enter" && roundActive) {
+    e.preventDefault();
+    saveAndNext();
+  }
+});
+
+/* =========================================================
+   INITIALISIERUNG
+========================================================= */
+document.addEventListener('DOMContentLoaded', function() {
+  if (initTaskPool()) {
+    console.log('11.3.html erfolgreich initialisiert');
+  } else {
+    alert('Fehler beim Laden des Aufgabenpools!');
+  }
+});
 </script>
 
 </body>
 </html>
-
