@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mathe Trainer – BOA / BBR (Note 2 bis 1)</title>
 
-<!-- ZENTRALER AUFGABENPOOL + DIAGRAMM-SKRIPTE -->
-<script src="pool.js"></script>
+<!-- ZENTRALER AUFGABENPOOL FÜR NOTE 2-1 -->
+<script src="pool_113.js"></script>
 <script src="staticDiagrams.js"></script>
 <script src="diagramRenderer.js"></script>
 
@@ -92,9 +92,17 @@
     <option value="cards">Karteikartenmodus</option>
   </select>
 
-  <select id="level" onchange="onLevelChange()">
-    <option value="boa">BOA (reduziert)</option>
-    <option value="bbr">BBR (höheres Niveau)</option>
+  <select id="category" onchange="onCategoryChange()">
+    <option value="all">Alle Kategorien</option>
+    <option value="prozent_modellierung">Prozentrechnung</option>
+    <option value="zuordnung_transfer">Zuordnungen</option>
+    <option value="pythagoras_sachkontext">Pythagoras</option>
+    <option value="koerper_mehrschritt">Körperberechnung</option>
+    <option value="statistik_begruendung">Statistik</option>
+    <option value="gleichungen_modellierung">Gleichungen</option>
+    <option value="flaeche2d_modellierung">Flächenberechnung</option>
+    <option value="wahrscheinlichkeit_mehrstufig">Wahrscheinlichkeit</option>
+    <option value="wachstum_vergleich">Wachstum</option>
   </select>
 
   <button onclick="startRound()">🎲 Zufallsrunde starten</button>
@@ -130,9 +138,15 @@
 
 <script>
 /* =========================================================
+   12.2.html - Mathe Trainer für Note 2-1
+   Verwendet pool_113.js für anspruchsvolle Aufgaben
+========================================================= */
+
+/* =========================================================
    STATE
 ========================================================= */
 let currentAnswer = null;
+let currentTask = null;
 let points = 0;
 
 let roundActive = false;
@@ -140,8 +154,7 @@ let taskNumber = 0;
 let totalTasks = 10;
 
 let solvedCurrent = false;
-
-let lastCat = null;
+let lastCategory = null;
 let lastGenIndex = null;
 
 let revealed = false;
@@ -149,23 +162,18 @@ let revealed = false;
 // Gespeicherte Aufgaben für Export
 let exportedTasks = [];
 
-const weightedCategories = [
-  "rechnen", "rechnen",
-  "einheiten", "einheiten",
-  "geometrie", "geometrie",
-  "sach", "sach",
-  "prozent", "prozent",
-  "zuordnung",
-  "gleichung",
-  "wsk",
-  "diagramm"
-];
+// Verfügbare Kategorien aus pool_113.js
+let availableCategories = [];
+
 /* =========================================================
-   UTIL
+   HILFSFUNKTIONEN
 ========================================================= */
-function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function getLevel() { return document.getElementById("level").value; }
+function rand(min, max) { 
+  return Math.floor(Math.random() * (max - min + 1)) + min; 
+}
+
 function getMode() { return document.getElementById("mode").value; }
+function getSelectedCategory() { return document.getElementById("category").value; }
 
 function fmt(n) {
   if (typeof n === "number") {
@@ -175,40 +183,32 @@ function fmt(n) {
   return String(n);
 }
 
-function steps(lines, result) {
+function formatSteps(stepLines, result) {
+  if (!stepLines) return "Keine Schritt-für-Schritt-Lösung verfügbar.";
+  
   let html = "";
-  lines.forEach((line, i) => html += `Schritt ${i + 1}: ${line}<br>`);
+  if (Array.isArray(stepLines)) {
+    stepLines.forEach((line, i) => {
+      html += `${i + 1}. ${line}<br>`;
+    });
+  } else {
+    html += stepLines + "<br>";
+  }
   html += `<br><b>Ergebnis: ${fmt(result)}</b>`;
   return html;
-}
-
-function genTask(taskHtml, answer, stepLines, diagram = null) {
-  return { 
-    task: taskHtml, 
-    answer, 
-    solution: steps(stepLines, answer),
-    diagram: diagram ? JSON.parse(JSON.stringify(diagram)) : null
-  };
-}
-
-function round2(x) {
-  return Math.round(x * 100) / 100;
 }
 
 /* Diagramm rendern */
 function renderTaskDiagram(diagramData, container) {
   if (!diagramData || !container) return;
   
-  // Vorhandenes Diagramm entfernen
   const existingDiagram = container.querySelector('.diagram-container');
   if (existingDiagram) existingDiagram.remove();
   
-  // Neues Diagramm-Container erstellen
   const diagramContainer = document.createElement('div');
   diagramContainer.className = 'diagram-container';
   
   try {
-    // Diagramm rendern
     renderDiagram(diagramData, diagramContainer);
     container.appendChild(diagramContainer);
   } catch (e) {
@@ -217,111 +217,116 @@ function renderTaskDiagram(diagramData, container) {
 }
 
 /* =========================================================
-   PRÜFUNGS-REALISTISCHE GEWICHTUNG
+   TASKPOOL AUS POOL_113.JS LADEN
 ========================================================= */
-const weightedCategories = [
-  "rechnen","rechnen","rechnen","rechnen","rechnen",
-  "sach","sach","sach","sach","sach",
-  "prozent","prozent","prozent","prozent",
-  "geometrie","geometrie","geometrie","geometrie"
-];
-
-/* =========================================================
-   TASKPOOL (höheres Niveau für Note 2-1)
-   Hinweis: Hier müssten die Aufgaben um diagram-Eigenschaften ergänzt werden
-   Für dieses Beispiel bleiben die Aufgaben wie gehabt, aber die Struktur
-   unterstützt diagram-Eigenschaften
-========================================================= */
-const TASKPOOL = {
-  rechnen: [
-    () => {
-      const x = rand(-3, 8);
-      const ans = 2 * (3 * x - 4) - (x - 5);
-      return genTask(
-        `Berechne den Wert des Terms für x = ${x}:<br>
-         <b>2·(3x − 4) − (x − 5)</b>`,
-        ans,
-        [
-          `Klammern auflösen: 2·3x − 2·4 = 6x − 8`,
-          `Minusklammer: − (x − 5) = −x + 5`,
-          `Zusammenfassen: 6x − 8 − x + 5 = 5x − 3`,
-          `Einsetzen von x = ${x}: 5·${x} − 3 = ${5*x} − 3`
-        ]
-      );
-    },
-    // ... weitere Aufgaben (gekürzt der Übersicht halber)
-  ],
-  // ... andere Kategorien
-};
-
-/* =========================================================
-   MODE/UI
-========================================================= */
-function switchMode() {
-  const mode = getMode();
-  const answerArea = document.getElementById("answerArea");
-  const status = document.getElementById("status");
-  const btn = document.getElementById("solutionBtn");
-
-  if (mode === "cards") {
-    answerArea.style.display = "none";
-    status.style.display = "none";
-    btn.textContent = "📌 Lösung aufdecken";
-  } else {
-    answerArea.style.display = "block";
-    status.style.display = "block";
-    btn.textContent = "📌 Lösung anzeigen";
+function initTaskPool() {
+  // Prüfen ob TASKPOOL_113 verfügbar ist
+  if (typeof window.TASKPOOL_113 === 'undefined') {
+    console.error('TASKPOOL_113 nicht gefunden! pool_113.js wurde nicht korrekt geladen.');
+    alert('Fehler: Aufgabenpool konnte nicht geladen werden!');
+    return false;
   }
-
-  revealed = false;
-  document.getElementById("solution").style.display = "none";
+  
+  // Verfügbare Kategorien ermitteln
+  availableCategories = Object.keys(window.TASKPOOL_113);
+  console.log('Geladene Kategorien:', availableCategories);
+  
+  // Kategorie-Auswahl füllen
+  updateCategorySelect();
+  
+  return true;
 }
 
-function onLevelChange() {
-  revealed = false;
-  document.getElementById("solution").style.display = "none";
-  document.getElementById("feedback").innerHTML = "";
+function updateCategorySelect() {
+  const select = document.getElementById('category');
+  const currentValue = select.value;
+  
+  // Bestehende Optionen löschen (außer "Alle")
+  while (select.options.length > 1) {
+    select.remove(1);
+  }
+  
+  // Neue Optionen hinzufügen
+  availableCategories.forEach(cat => {
+    const option = document.createElement('option');
+    option.value = cat;
+    
+    // Kategorie-Namen formatieren
+    let displayName = cat
+      .replace(/_/g, ' ')
+      .replace(/prozent/g, 'Prozent')
+      .replace(/zuordnung/g, 'Zuordnung')
+      .replace(/pythagoras/g, 'Pythagoras')
+      .replace(/koerper/g, 'Körper')
+      .replace(/statistik/g, 'Statistik')
+      .replace(/gleichungen/g, 'Gleichungen')
+      .replace(/flaeche2d/g, 'Flächen')
+      .replace(/wahrscheinlichkeit/g, 'Wahrscheinlichkeit')
+      .replace(/wachstum/g, 'Wachstum');
+    
+    // Ersten Buchstaben groß
+    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+    
+    option.textContent = displayName;
+    select.appendChild(option);
+  });
+  
+  // Vorherigen Wert wiederherstellen, falls möglich
+  if (currentValue !== 'all') {
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === currentValue) {
+        select.selectedIndex = i;
+        break;
+      }
+    }
+  }
 }
 
 /* =========================================================
-   ROUND
+   TASK AUS POOL HOLEN
 ========================================================= */
-function updateStatus() {
-  document.getElementById("status").innerHTML = `Punkte: ${points}`;
-}
-
-function startRound() {
-  points = 0;
-  taskNumber = 0;
-  roundActive = true;
-  solvedCurrent = false;
-  exportedTasks = [];
-  updateStatus();
-  nextTaskRandom();
-}
-
-function finishRound() {
-  roundActive = false;
-  document.getElementById("taskContainer").innerHTML = `🏁 Runde beendet!`;
-  document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
+function getRandomTask() {
+  let category = getSelectedCategory();
+  
+  // Wenn "Alle Kategorien" ausgewählt, zufällige Kategorie wählen
+  if (category === 'all' && availableCategories.length > 0) {
+    category = availableCategories[rand(0, availableCategories.length - 1)];
+  }
+  
+  // Prüfen ob Kategorie existiert
+  if (!window.TASKPOOL_113[category] || window.TASKPOOL_113[category].length === 0) {
+    console.error('Kategorie nicht verfügbar:', category);
+    return null;
+  }
+  
+  // Zufälligen Index wählen
+  const taskList = window.TASKPOOL_113[category];
+  const genIndex = rand(0, taskList.length - 1);
+  const taskGen = taskList[genIndex];
+  
+  // Aufgabe generieren
+  const task = taskGen();
+  
+  // Metadaten speichern
+  task.category = category;
+  task.genIndex = genIndex;
+  
+  return task;
 }
 
 /* =========================================================
-   TASK PICKING
+   TASK ANZEIGEN
 ========================================================= */
-function pickCategoryWeighted() {
-  return weightedCategories[rand(0, weightedCategories.length - 1)];
-}
-
-function drawTask(cat, genIndex) {
-  const list = TASKPOOL[cat];
-  const gen = list[genIndex];
-  const t = gen();
-
-  lastCat = cat;
-  lastGenIndex = genIndex;
-
-  currentAnswer = t.answer;
+function drawTask(task) {
+  if (!task) {
+    alert('Keine Aufgabe verfügbar!');
+    return;
+  }
+  
+  currentAnswer = task.answer;
+  currentTask = task;
+  lastCategory = task.category;
+  lastGenIndex = task.genIndex;
 
   solvedCurrent = false;
   revealed = false;
@@ -329,25 +334,34 @@ function drawTask(cat, genIndex) {
   document.getElementById("feedback").innerHTML = "";
   document.getElementById("userAnswer").value = "";
   document.getElementById("solution").style.display = "none";
-  document.getElementById("solution").innerHTML =
-    "<b>Lösung Schritt-für-Schritt:</b><br><br>" + (t.solution || "—");
-
-  // Task-Container leeren und neu aufbauen
+  
+  // Lösung vorbereiten
+  let solutionHtml = "<b>Lösung Schritt-für-Schritt:</b><br><br>";
+  if (task.solution) {
+    solutionHtml += task.solution;
+  } else if (task.steps) {
+    solutionHtml += formatSteps(task.steps, task.answer);
+  } else {
+    solutionHtml += `Ergebnis: ${fmt(task.answer)}`;
+  }
+  document.getElementById("solution").innerHTML = solutionHtml;
+  
+  // Task-Container leeren und neu befüllen
   const taskContainer = document.getElementById("taskContainer");
-  taskContainer.innerHTML = `<b>(${cat})</b> ${t.task}`;
+  taskContainer.innerHTML = `<b>(${task.category})</b> ${task.task}`;
   
   // Diagramm rendern falls vorhanden
-  if (t.diagram) {
-    renderTaskDiagram(t.diagram, taskContainer);
+  if (task.diagram) {
+    renderTaskDiagram(task.diagram, taskContainer);
   }
   
   // Aufgabe für Export speichern
   exportedTasks.push({
-    cat: cat,
-    task: t.task,
-    answer: t.answer,
-    solution: t.solution,
-    diagram: t.diagram ? JSON.parse(JSON.stringify(t.diagram)) : null
+    category: task.category,
+    task: task.task,
+    answer: task.answer,
+    solution: task.solution || formatSteps(task.steps, task.answer),
+    diagram: task.diagram ? JSON.parse(JSON.stringify(task.diagram)) : null
   });
   
   // Aufgaben im Container rendern
@@ -363,14 +377,13 @@ function renderTasksInContainer() {
     aufgabeDiv.className = "aufgabe";
     aufgabeDiv.id = `export_aufgabe_${index}`;
     
-    // Diagramm-Platzhalter
     let diagramHtml = '';
     if (task.diagram) {
       diagramHtml = '<div class="diagram-placeholder" style="background:#f0f0f0; padding:10px; margin:10px 0; text-align:center; border:1px dashed #999;">[Diagramm]</div>';
     }
     
     const aufgabeHtml = `
-      <strong>Aufgabe ${index + 1} (${task.cat}):</strong>
+      <strong>Aufgabe ${index + 1} (${task.category}):</strong>
       <div style="margin-top: 8px;">${task.task}</div>
       ${diagramHtml}
       <div class="loesung" style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-left: 3px solid #2e7d32;">
@@ -384,6 +397,33 @@ function renderTasksInContainer() {
   });
 }
 
+/* =========================================================
+   RUNDEN-FUNKTIONEN
+========================================================= */
+function updateStatus() {
+  document.getElementById("status").innerHTML = `Punkte: ${points}`;
+}
+
+function startRound() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = true;
+  solvedCurrent = false;
+  lastCategory = null;
+  lastGenIndex = null;
+  exportedTasks = [];
+  
+  document.getElementById("aufgabenContainer").innerHTML = "";
+  updateStatus();
+  nextTaskRandom();
+}
+
+function finishRound() {
+  roundActive = false;
+  document.getElementById("taskContainer").innerHTML = `🏁 Runde beendet!`;
+  document.getElementById("progress").innerHTML = `Endpunktzahl: ${points} Punkte`;
+}
+
 function nextTaskRandom() {
   if (!roundActive) {
     alert("Bitte zuerst eine Zufallsrunde starten!");
@@ -395,10 +435,8 @@ function nextTaskRandom() {
   }
   taskNumber++;
 
-  const cat = pickCategoryWeighted();
-  const genIndex = rand(0, TASKPOOL[cat].length - 1);
-
-  drawTask(cat, genIndex);
+  const task = getRandomTask();
+  drawTask(task);
 
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks}`;
@@ -413,18 +451,29 @@ function nextTaskSameType() {
     finishRound();
     return;
   }
-  if (lastCat === null || lastGenIndex === null) {
+  if (lastCategory === null || lastGenIndex === null) {
     nextTaskRandom();
     return;
   }
 
-  drawTask(lastCat, lastGenIndex);
+  // Gleiche Kategorie und Index verwenden
+  const taskList = window.TASKPOOL_113[lastCategory];
+  if (taskList && taskList[lastGenIndex]) {
+    const task = taskList[lastGenIndex]();
+    task.category = lastCategory;
+    task.genIndex = lastGenIndex;
+    drawTask(task);
+  } else {
+    nextTaskRandom();
+    return;
+  }
+
   document.getElementById("progress").innerHTML =
     `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
 }
 
 /* =========================================================
-   CHECK ANSWER
+   ANTWORT PRÜFEN
 ========================================================= */
 function normalize(val) {
   return parseFloat(String(val).trim().replace(",", "."));
@@ -440,7 +489,7 @@ function checkAnswer() {
   const input = document.getElementById("userAnswer").value.trim();
 
   if (typeof currentAnswer === "string") {
-    const ok = input === currentAnswer;
+    const ok = input.toLowerCase() === currentAnswer.toLowerCase();
     document.getElementById("feedback").innerHTML = ok
       ? "✔ Richtig! +3 Punkte"
       : `✘ Falsch. Richtige Lösung: ${currentAnswer}`;
@@ -456,7 +505,9 @@ function checkAnswer() {
     return;
   }
 
-  if (Math.abs(userVal - currentAnswer) < 0.05) {
+  // Toleranz für gerundete Ergebnisse
+  const tolerance = 0.05;
+  if (Math.abs(userVal - currentAnswer) < tolerance) {
     points += 3;
     document.getElementById("feedback").innerHTML = "✔ Richtig! +3 Punkte";
   } else {
@@ -484,6 +535,35 @@ function toggleSolution() {
 }
 
 /* =========================================================
+   MODE/UI
+========================================================= */
+function switchMode() {
+  const mode = getMode();
+  const answerArea = document.getElementById("answerArea");
+  const status = document.getElementById("status");
+  const btn = document.getElementById("solutionBtn");
+
+  if (mode === "cards") {
+    answerArea.style.display = "none";
+    status.style.display = "none";
+    btn.textContent = "📌 Lösung aufdecken";
+  } else {
+    answerArea.style.display = "block";
+    status.style.display = "block";
+    btn.textContent = "📌 Lösung anzeigen";
+  }
+
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+}
+
+function onCategoryChange() {
+  revealed = false;
+  document.getElementById("solution").style.display = "none";
+  document.getElementById("feedback").innerHTML = "";
+}
+
+/* =========================================================
    RESET
 ========================================================= */
 function resetTrainer() {
@@ -491,7 +571,7 @@ function resetTrainer() {
   taskNumber = 0;
   roundActive = false;
   solvedCurrent = false;
-  lastCat = null;
+  lastCategory = null;
   lastGenIndex = null;
   revealed = false;
   exportedTasks = [];
@@ -507,7 +587,7 @@ function resetTrainer() {
 }
 
 /* =========================================================
-   EXPORT-FUNKTIONEN (BBR/BOA Prüfungslayout)
+   EXPORT-FUNKTIONEN
 ========================================================= */
 function exportiereBBRPruefung() {
   exportierePruefungMitLevel("BBR");
@@ -518,107 +598,37 @@ function exportiereBOAPruefung() {
 }
 
 function exportierePruefungMitLevel(level) {
-  const container = document.getElementById("aufgabenContainer");
-
-  if (!container || container.innerHTML.trim() === "" || exportedTasks.length === 0) {
+  if (exportedTasks.length === 0) {
     alert("Keine Aufgaben vorhanden. Bitte zuerst eine Zufallsrunde starten.");
     return;
   }
 
-  const clone = container.cloneNode(true);
-
-  // Lösungen entfernen
-  clone.querySelectorAll(".loesung").forEach(el => el.remove());
-
-  // Buttons entfernen
-  clone.querySelectorAll("button").forEach(btn => btn.remove());
-
   const win = window.open("", "_blank");
   const titel = level === "BBR" 
-    ? "Vergleichende Arbeit – Mathematik (BBR)" 
-    : "Vergleichende Arbeit – Mathematik (BOA)";
+    ? "Vergleichende Arbeit – Mathematik (BBR) - Anspruchsvolles Niveau" 
+    : "Vergleichende Arbeit – Mathematik (BOA) - Erweitertes Niveau";
   const farbe = level === "BBR" ? "#1976d2" : "#2e7d32";
   const punkteProAufgabe = level === "BBR" ? 3 : 2;
+  const dateStr = new Date().toLocaleDateString("de-DE");
 
   win.document.write(`
     <html>
     <head>
       <title>${level}-Prüfung Mathematik</title>
-      <script src="pool.js"></script>
       <script src="staticDiagrams.js"></script>
       <script src="diagramRenderer.js"></script>
       <style>
-        @media print {
-          body { margin: 0; }
-        }
-        body {
-          font-family: Arial, sans-serif;
-          padding: 40px;
-          line-height: 1.6;
-        }
-        h1 {
-          text-align: center;
-          margin-bottom: 5px;
-          color: ${farbe};
-        }
-        .kopf {
-          margin-bottom: 30px;
-          border-bottom: 3px solid ${farbe};
-          padding-bottom: 10px;
-        }
-        .infofeld {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 20px;
-          flex-wrap: wrap;
-        }
-        .linie {
-          border-bottom: 1px solid black;
-          width: 200px;
-          display: inline-block;
-          margin-left: 8px;
-        }
-        .aufgabe {
-          margin-top: 30px;
-          page-break-inside: avoid;
-          border-left: 4px solid ${farbe};
-          padding-left: 15px;
-        }
-        .diagram-container {
-          margin: 15px 0;
-          padding: 10px;
-          background: #f9f9f9;
-          border-radius: 5px;
-          text-align: center;
-        }
-        .diagram-container svg {
-          max-width: 100%;
-          height: auto;
-        }
-        .loesungsraum {
-          height: ${level === "BBR" ? "80px" : "60px"};
-          border-bottom: 1px dashed #aaa;
-          margin-top: 15px;
-          margin-bottom: 15px;
-        }
-        .footer {
-          margin-top: 50px;
-          text-align: center;
-          font-size: 12px;
-          color: #666;
-        }
-        .punkte {
-          float: right;
-          font-weight: bold;
-          color: ${farbe};
-        }
-        .hinweis {
-          background: #fff3e0;
-          padding: 8px;
-          margin-top: 10px;
-          font-size: 12px;
-          border-left: 3px solid #ff9800;
-        }
+        body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; }
+        h1 { text-align: center; margin-bottom: 5px; color: ${farbe}; }
+        .kopf { margin-bottom: 30px; border-bottom: 3px solid ${farbe}; padding-bottom: 10px; }
+        .infofeld { display: flex; justify-content: space-between; margin-top: 20px; }
+        .linie { border-bottom: 1px solid black; width: 200px; display: inline-block; margin-left: 8px; }
+        .aufgabe { margin-top: 30px; page-break-inside: avoid; border-left: 4px solid ${farbe}; padding-left: 15px; }
+        .diagram-container { margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 5px; text-align: center; }
+        .diagram-container svg { max-width: 100%; height: auto; }
+        .loesungsraum { height: ${level === "BBR" ? "80px" : "60px"}; border-bottom: 1px dashed #aaa; margin-top: 15px; }
+        .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
+        .punkte { float: right; font-weight: bold; color: ${farbe}; }
       </style>
     </head>
     <body>
@@ -633,33 +643,15 @@ function exportierePruefungMitLevel(level) {
           <div>Datum: <span class="linie"></span></div>
         </div>
         <div style="margin-top:10px;">
-          Lerngruppe: <span class="linie"></span>
           <span style="float: right;">Punkte: ___ / ${exportedTasks.length * punkteProAufgabe}</span>
         </div>
-        ${level === "BOA" ? '<div class="hinweis">Hinweis: Hilfsmittel wie Taschenrechner und Formelsammlung erlaubt.</div>' : ''}
       </div>
 
       ${formatiereAufgabenFuerPruefung(exportedTasks, level, punkteProAufgabe)}
 
       <div class="footer">
-        Erstellt am ${new Date().toLocaleDateString('de-DE')} – ${level}-Prüfungssimulation
+        Erstellt am ${dateStr} – ${level}-Prüfungssimulation (Note 1–2)
       </div>
-      
-      <script>
-        // Diagramme nach dem Laden rendern
-        window.onload = function() {
-          if (typeof renderDiagram !== 'undefined') {
-            document.querySelectorAll('.diagram-container[data-diagram]').forEach(function(container) {
-              try {
-                const diagramData = JSON.parse(container.dataset.diagram);
-                renderDiagram(diagramData, container);
-              } catch(e) {
-                console.error('Fehler beim Rendern:', e);
-              }
-            });
-          }
-        };
-      <\/script>
     </body>
     </html>
   `);
@@ -673,7 +665,6 @@ function formatiereAufgabenFuerPruefung(tasks, level = "BBR", punkte = 3) {
   let html = "";
 
   tasks.forEach(task => {
-    // Diagramm-HTML vorbereiten
     let diagramHtml = '';
     if (task.diagram) {
       diagramHtml = `<div class="diagram-container" data-diagram='${JSON.stringify(task.diagram).replace(/'/g, "&apos;")}'></div>`;
@@ -690,7 +681,6 @@ function formatiereAufgabenFuerPruefung(tasks, level = "BBR", punkte = 3) {
         </div>
         ${diagramHtml}
         <div class="loesungsraum"></div>
-        ${level === "BBR" ? '<div class="loesungsraum"></div>' : ''}
       </div>
     `;
     nummer++;
@@ -699,11 +689,19 @@ function formatiereAufgabenFuerPruefung(tasks, level = "BBR", punkte = 3) {
   return html;
 }
 
-/* INIT */
-switchMode();
-updateStatus();
+/* =========================================================
+   INITIALISIERUNG
+========================================================= */
+document.addEventListener('DOMContentLoaded', function() {
+  if (initTaskPool()) {
+    switchMode();
+    updateStatus();
+    console.log('12.2.html erfolgreich initialisiert');
+  } else {
+    alert('Fehler beim Laden des Aufgabenpools!');
+  }
+});
 </script>
 
 </body>
 </html>
-
