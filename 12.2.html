@@ -92,17 +92,8 @@
     <option value="cards">Karteikartenmodus</option>
   </select>
 
-  <select id="category" onchange="onCategoryChange()">
+  <select id="categorySelect" onchange="onCategoryChange()">
     <option value="all">Alle Kategorien</option>
-    <option value="prozent_modellierung">Prozentrechnung</option>
-    <option value="zuordnung_transfer">Zuordnungen</option>
-    <option value="pythagoras_sachkontext">Pythagoras</option>
-    <option value="koerper_mehrschritt">Körperberechnung</option>
-    <option value="statistik_begruendung">Statistik</option>
-    <option value="gleichungen_modellierung">Gleichungen</option>
-    <option value="flaeche2d_modellierung">Flächenberechnung</option>
-    <option value="wahrscheinlichkeit_mehrstufig">Wahrscheinlichkeit</option>
-    <option value="wachstum_vergleich">Wachstum</option>
   </select>
 
   <button onclick="startRound()">🎲 Zufallsrunde starten</button>
@@ -173,7 +164,7 @@ function rand(min, max) {
 }
 
 function getMode() { return document.getElementById("mode").value; }
-function getSelectedCategory() { return document.getElementById("category").value; }
+function getSelectedCategory() { return document.getElementById("categorySelect").value; }
 
 function fmt(n) {
   if (typeof n === "number") {
@@ -209,7 +200,9 @@ function renderTaskDiagram(diagramData, container) {
   diagramContainer.className = 'diagram-container';
   
   try {
-    renderDiagram(diagramData, diagramContainer);
+    if (typeof window.renderDiagram === 'function') {
+      window.renderDiagram(diagramData, diagramContainer);
+    }
     container.appendChild(diagramContainer);
   } catch (e) {
     console.error('Fehler beim Rendern des Diagramms:', e);
@@ -238,8 +231,7 @@ function initTaskPool() {
 }
 
 function updateCategorySelect() {
-  const select = document.getElementById('category');
-  const currentValue = select.value;
+  const select = document.getElementById('categorySelect');
   
   // Bestehende Optionen löschen (außer "Alle")
   while (select.options.length > 1) {
@@ -262,7 +254,13 @@ function updateCategorySelect() {
       .replace(/gleichungen/g, 'Gleichungen')
       .replace(/flaeche2d/g, 'Flächen')
       .replace(/wahrscheinlichkeit/g, 'Wahrscheinlichkeit')
-      .replace(/wachstum/g, 'Wachstum');
+      .replace(/wachstum/g, 'Wachstum')
+      .replace(/modellierung/g, '')
+      .replace(/transfer/g, '')
+      .replace(/sachkontext/g, '');
+    
+    // Mehrfache Leerzeichen entfernen und trimmen
+    displayName = displayName.replace(/\s+/g, ' ').trim();
     
     // Ersten Buchstaben groß
     displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
@@ -270,16 +268,6 @@ function updateCategorySelect() {
     option.textContent = displayName;
     select.appendChild(option);
   });
-  
-  // Vorherigen Wert wiederherstellen, falls möglich
-  if (currentValue !== 'all') {
-    for (let i = 0; i < select.options.length; i++) {
-      if (select.options[i].value === currentValue) {
-        select.selectedIndex = i;
-        break;
-      }
-    }
-  }
 }
 
 /* =========================================================
@@ -296,7 +284,12 @@ function getRandomTask() {
   // Prüfen ob Kategorie existiert
   if (!window.TASKPOOL_113[category] || window.TASKPOOL_113[category].length === 0) {
     console.error('Kategorie nicht verfügbar:', category);
-    return null;
+    // Fallback: erste verfügbare Kategorie
+    if (availableCategories.length > 0) {
+      category = availableCategories[0];
+    } else {
+      return null;
+    }
   }
   
   // Zufälligen Index wählen
@@ -436,10 +429,14 @@ function nextTaskRandom() {
   taskNumber++;
 
   const task = getRandomTask();
-  drawTask(task);
-
-  document.getElementById("progress").innerHTML =
-    `Aufgabe ${taskNumber} von ${totalTasks}`;
+  if (task) {
+    drawTask(task);
+    document.getElementById("progress").innerHTML =
+      `Aufgabe ${taskNumber} von ${totalTasks}`;
+  } else {
+    alert("Fehler beim Generieren der Aufgabe!");
+    taskNumber--;
+  }
 }
 
 function nextTaskSameType() {
@@ -462,14 +459,13 @@ function nextTaskSameType() {
     const task = taskList[lastGenIndex]();
     task.category = lastCategory;
     task.genIndex = lastGenIndex;
+    taskNumber++;
     drawTask(task);
+    document.getElementById("progress").innerHTML =
+      `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
   } else {
     nextTaskRandom();
-    return;
   }
-
-  document.getElementById("progress").innerHTML =
-    `Aufgabe ${taskNumber} von ${totalTasks} (gleicher Typ)`;
 }
 
 /* =========================================================
@@ -487,6 +483,10 @@ function checkAnswer() {
   if (solvedCurrent) return;
 
   const input = document.getElementById("userAnswer").value.trim();
+  if (input === "") {
+    document.getElementById("feedback").innerHTML = "⚠ Bitte eine Antwort eingeben.";
+    return;
+  }
 
   if (typeof currentAnswer === "string") {
     const ok = input.toLowerCase() === currentAnswer.toLowerCase();
@@ -626,9 +626,10 @@ function exportierePruefungMitLevel(level) {
         .aufgabe { margin-top: 30px; page-break-inside: avoid; border-left: 4px solid ${farbe}; padding-left: 15px; }
         .diagram-container { margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 5px; text-align: center; }
         .diagram-container svg { max-width: 100%; height: auto; }
-        .loesungsraum { height: ${level === "BBR" ? "80px" : "60px"}; border-bottom: 1px dashed #aaa; margin-top: 15px; }
+        .loesungsraum { height: ${level === "BBR" ? "80px" : "60px"}; border-bottom: 1px dashed #aaa; margin-top: 15px; margin-bottom: 15px; }
         .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
         .punkte { float: right; font-weight: bold; color: ${farbe}; }
+        .hinweis { background: #fff3e0; padding: 8px; margin-top: 10px; font-size: 12px; border-left: 3px solid #ff9800; }
       </style>
     </head>
     <body>
@@ -643,8 +644,10 @@ function exportierePruefungMitLevel(level) {
           <div>Datum: <span class="linie"></span></div>
         </div>
         <div style="margin-top:10px;">
+          Lerngruppe: <span class="linie"></span>
           <span style="float: right;">Punkte: ___ / ${exportedTasks.length * punkteProAufgabe}</span>
         </div>
+        ${level === "BOA" ? '<div class="hinweis">Hinweis: Hilfsmittel wie Taschenrechner und Formelsammlung erlaubt.</div>' : ''}
       </div>
 
       ${formatiereAufgabenFuerPruefung(exportedTasks, level, punkteProAufgabe)}
@@ -652,6 +655,22 @@ function exportierePruefungMitLevel(level) {
       <div class="footer">
         Erstellt am ${dateStr} – ${level}-Prüfungssimulation (Note 1–2)
       </div>
+      
+      <script>
+        // Diagramme nach dem Laden rendern
+        window.onload = function() {
+          if (typeof renderDiagram !== 'undefined') {
+            document.querySelectorAll('.diagram-container[data-diagram]').forEach(function(container) {
+              try {
+                const diagramData = JSON.parse(container.dataset.diagram);
+                renderDiagram(diagramData, container);
+              } catch(e) {
+                console.error('Fehler beim Rendern:', e);
+              }
+            });
+          }
+        };
+      <\/script>
     </body>
     </html>
   `);
@@ -681,6 +700,7 @@ function formatiereAufgabenFuerPruefung(tasks, level = "BBR", punkte = 3) {
         </div>
         ${diagramHtml}
         <div class="loesungsraum"></div>
+        ${level === "BBR" ? '<div class="loesungsraum"></div>' : ''}
       </div>
     `;
     nummer++;
