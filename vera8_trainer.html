@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vera8 Trainer – Karteikartenmodus</title>
+
+<!-- Vera8 Pool + Diagramme (falls benötigt) -->
+<script src="vera8_pool.js"></script>
+<!-- Falls Sie Diagramme auch für Vera8 nutzen wollen:
+<script src="staticDiagrams.js"></script>
+<script src="diagramRenderer.js"></script>
+-->
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
+  padding: 20px;
+  margin: 0;
+}
+
+h1 {
+  text-align: center;
+  font-size: clamp(1.3rem, 4vw, 2rem);
+  color: #2c3e50;
+}
+
+#topbar {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+button, select {
+  padding: 12px 16px;
+  font-size: 1rem;
+  margin: 4px;
+  border-radius: 8px;
+  border: 1px solid #aaa;
+  background: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1976d2;
+  color: white;
+}
+
+#status, #progress {
+  text-align: center;
+  font-weight: bold;
+  margin: 6px;
+  font-size: 1.1rem;
+}
+
+#card {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#task {
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.diagram-container {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.diagram-container svg {
+  width: 100%;
+  height: auto;
+  max-height: 45vh;
+}
+
+#answerArea {
+  margin-top: 20px;
+}
+
+input {
+  padding: 12px;
+  font-size: 1.2rem;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #aaa;
+  margin-bottom: 10px;
+}
+
+#feedback {
+  margin-top: 15px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+#solution {
+  display: none;
+  background: #eef6ff;
+  padding: 20px;
+  border-radius: 6px;
+  margin-top: 15px;
+  border-left: 4px solid #1976d2;
+}
+
+#solution b {
+  color: #1976d2;
+}
+
+#aufgabenContainer {
+  margin-top: 30px;
+  border-top: 3px solid #1976d2;
+  padding-top: 20px;
+}
+
+.aufgabe {
+  background: #f9f9f9;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid #1976d2;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.aufgabe b {
+  color: #1976d2;
+}
+
+.star {
+  color: gold;
+  font-size: 1.2rem;
+  margin-left: 5px;
+}
+
+@media (max-width: 600px) {
+  button, select {
+    width: 100%;
+    margin: 5px 0;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<h1>📚 Vera8 Trainer – Karteikartenmodus</h1>
+
+<div id="topbar">
+<select id="mode">
+  <option value="trainer">Trainingsmodus</option>
+  <option value="cards">Karteikartenmodus</option>
+</select>
+
+<button onclick="startRound()">🎲 Neue Runde starten (10 Aufgaben)</button>
+<button onclick="nextTaskRandom()">➡️ Nächste Aufgabe</button>
+<button onclick="nextTaskSameCategory()">🔄 Gleiche Kategorie</button>
+<button onclick="toggleSolution()">📌 Lösung anzeigen</button>
+<button onclick="exportTasks()">📄 Aufgabenblatt (PDF/Druck)</button>
+<button onclick="resetTrainer()">🔄 Reset</button>
+</div>
+
+<div id="status">⭐ Punkte: 0</div>
+<div id="progress">Noch keine Runde gestartet</div>
+
+<div id="card">
+<div id="task">Starte eine Runde, um die erste Aufgabe zu sehen.</div>
+<div id="diagramArea"></div>
+
+<div id="answerArea">
+Deine Antwort:
+<input type="text" id="userAnswer" placeholder="Zahl eingeben (z.B. 42,5)">
+<button onclick="checkAnswer()">Antwort prüfen</button>
+</div>
+
+<div id="feedback"></div>
+<div id="solution"></div>
+
+<div id="aufgabenContainer"></div>
+</div>
+
+<script>
+// ====================== GLOBALE VARIABLEN ======================
+let currentTask = null;
+let currentAnswer = null;
+let lastCategory = null;
+let points = 0;
+let taskNumber = 0;
+let totalTasks = 10;
+let roundActive = false;
+let exportedTasks = [];
+
+// ====================== HILFSFUNKTIONEN ======================
+function getMode() { return document.getElementById("mode").value; }
+
+function formatNumberForComparison(val) {
+  if (typeof val === 'string') return val.trim().toLowerCase();
+  return val;
+}
+
+function compareAnswers(userVal, correctVal) {
+  // Bei String-Lösungen (z.B. "Ja"/"Nein")
+  if (typeof correctVal === 'string') {
+    return userVal.toLowerCase() === correctVal.toLowerCase();
+  }
+  // Bei Zahlen
+  const userNum = parseFloat(userVal.replace(',', '.'));
+  if (isNaN(userNum)) return false;
+  return Math.abs(userNum - correctVal) < 0.05;
+}
+
+// ====================== RUNDEN-STEUERUNG ======================
+function startRound() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = true;
+  exportedTasks = [];
+  document.getElementById("aufgabenContainer").innerHTML = "";
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("solution").style.display = "none";
+  updateStatus();
+  nextTaskRandom();
+}
+
+function nextTaskRandom() {
+  if (!roundActive) {
+    alert("Bitte zuerst eine Runde starten.");
+    return;
+  }
+  if (taskNumber >= totalTasks) {
+    document.getElementById("progress").innerHTML = "✅ Runde beendet! " + 
+      `Erreichte Punkte: ${points}/${totalTasks*3}`;
+    return;
+  }
+  
+  taskNumber++;
+  
+  // Aufgabe aus dem Vera8-Pool holen
+  const task = window.getTaskVera8();
+  drawTask(task);
+}
+
+function nextTaskSameCategory() {
+  if (!roundActive || !lastCategory) return;
+  if (taskNumber >= totalTasks) return;
+  
+  // Aufgabe aus derselben Kategorie generieren
+  const generator = window.TASK_GENERATORS_VERA8[lastCategory];
+  if (!generator) return;
+  
+  const task = generator();
+  task.category = lastCategory;
+  drawTask(task, true);
+}
+
+// ====================== AUFGABE ANZEIGEN ======================
+function drawTask(task, isSame = false) {
+  currentTask = task;
+  currentAnswer = task.sol;
+  lastCategory = task.category;
+  
+  // Aufgaben-Text anzeigen
+  let taskHtml = `<b>Aufgabe ${taskNumber} von ${totalTasks}</b>`;
+  if (task.category) taskHtml += ` <span style="color:#666;">(${task.category})</span>`;
+  taskHtml += `<br>${task.text}`;
+  if (task.question) taskHtml += `<br><br><i>${task.question}</i>`;
+  document.getElementById("task").innerHTML = taskHtml;
+  
+  // Lösung vorbereiten
+  let solutionHtml = "<b>🔍 Schritt-für-Schritt-Lösung:</b><br>";
+  if (task.steps && Array.isArray(task.steps)) {
+    task.steps.forEach((step, i) => {
+      solutionHtml += `${i+1}. ${step}<br>`;
+    });
+  }
+  solutionHtml += `<br><b>✅ Endergebnis: ${task.fullSolution || task.sol}</b>`;
+  document.getElementById("solution").innerHTML = solutionHtml;
+  document.getElementById("solution").style.display = "none";
+  
+  // Feedback und Eingabe zurücksetzen
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("userAnswer").value = "";
+  
+  // Diagramm rendern (falls vorhanden und Diagramm-Funktionen geladen)
+  renderDiagramIfExists(task);
+  
+  // Aufgabe zum Sammelbehälter für Export hinzufügen
+  addToContainer(task);
+  
+  // Fortschritt aktualisieren
+  let progressText = `Aufgabe ${taskNumber} von ${totalTasks}`;
+  if (isSame) progressText += " (gleiche Kategorie)";
+  document.getElementById("progress").innerHTML = progressText;
+}
+
+// ====================== DIAGRAMM-RENDERING ======================
+function renderDiagramIfExists(task) {
+  const area = document.getElementById("diagramArea");
+  area.innerHTML = "";
+  
+  if (task.diagram && typeof renderDiagram === 'function') {
+    try {
+      const div = document.createElement("div");
+      div.className = "diagram-container";
+      renderDiagram(task.diagram, div);
+      area.appendChild(div);
+    } catch (e) {
+      console.error("Diagramm-Fehler:", e);
+    }
+  }
+}
+
+// ====================== AUFGABEN SAMMELN ======================
+function addToContainer(task) {
+  const container = document.getElementById("aufgabenContainer");
+  const div = document.createElement("div");
+  div.className = "aufgabe";
+  
+  let html = `<b>Aufgabe ${taskNumber} (${task.category}):</b><br>`;
+  html += task.text;
+  if (task.question) html += `<br><i>${task.question}</i>`;
+  html += `<br><br><b>Lösung:</b> ${task.fullSolution || task.sol}`;
+  
+  div.innerHTML = html;
+  container.appendChild(div);
+  
+  // Automatisch zum neuesten Eintrag scrollen
+  div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ====================== ANTWORT PRÜFEN ======================
+function checkAnswer() {
+  if (getMode() === "cards") {
+    document.getElementById("feedback").innerHTML = 
+      "ℹ️ Im Karteikartenmodus gibt es keine Punkte. Sieh dir die Lösung an.";
+    return;
+  }
+  
+  const userVal = document.getElementById("userAnswer").value.trim();
+  if (userVal === "") return;
+  
+  if (compareAnswers(userVal, currentAnswer)) {
+    points += 3;
+    document.getElementById("feedback").innerHTML = "✅ Richtig! +3 Punkte";
+    document.getElementById("feedback").style.color = "green";
+  } else {
+    document.getElementById("feedback").innerHTML = 
+      `❌ Falsch. Richtige Lösung: ${currentAnswer}`;
+    document.getElementById("feedback").style.color = "red";
+  }
+  
+  updateStatus();
+}
+
+function updateStatus() {
+  document.getElementById("status").innerHTML = `⭐ Punkte: ${points}`;
+}
+
+// ====================== LÖSUNG EIN-/AUSBLENDEN ======================
+function toggleSolution() {
+  const sol = document.getElementById("solution");
+  sol.style.display = sol.style.display === "block" ? "none" : "block";
+}
+
+// ====================== ZURÜCKSETZEN ======================
+function resetTrainer() {
+  points = 0;
+  taskNumber = 0;
+  roundActive = false;
+  lastCategory = null;
+  exportedTasks = [];
+  updateStatus();
+  document.getElementById("task").innerHTML = "Starte eine Runde, um die erste Aufgabe zu sehen.";
+  document.getElementById("progress").innerHTML = "Noch keine Runde gestartet";
+  document.getElementById("aufgabenContainer").innerHTML = "";
+  document.getElementById("diagramArea").innerHTML = "";
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("solution").style.display = "none";
+}
+
+// ====================== EXPORT / DRUCKEN ======================
+function exportTasks() {
+  if (exportedTasks.length === 0) {
+    alert("Keine Aufgaben zum Exportieren vorhanden.");
+    return;
+  }
+  
+  const win = window.open("", "_blank");
+  win.document.write(`
+    <html>
+    <head>
+      <title>Vera8 Aufgabenblatt</title>
+      <style>
+        body { font-family: Arial; padding: 20px; }
+        .task { margin-bottom: 30px; page-break-inside: avoid; }
+        h2 { color: #1976d2; border-bottom: 2px solid #1976d2; }
+        .solution { background: #f5f5f5; padding: 10px; margin-top: 10px; }
+      </style>
+    </head>
+    <body>
+    <h1>Vera8 Aufgabenblatt</h1>
+    <p>Erstellt am ${new Date().toLocaleDateString()}</p>
+  `);
+  
+  exportedTasks.forEach((t, i) => {
+    win.document.write(`
+      <div class="task">
+        <h3>Aufgabe ${i+1} (${t.category || 'allgemein'})</h3>
+        <p>${t.text}</p>
+        ${t.question ? `<p><i>${t.question}</i></p>` : ''}
+        <div class="solution">
+          <b>Lösung:</b> ${t.fullSolution || t.sol}<br>
+          <b>Lösungsweg:</b><br>${(t.steps || []).join('<br>')}
+        </div>
+      </div>
+      <hr>
+    `);
+  });
+  
+  win.document.write("</body></html>");
+  win.document.close();
+  win.print();
+}
+</script>
+
+</body>
+</html>

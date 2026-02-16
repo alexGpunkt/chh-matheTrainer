@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vera8 Prüfungsmodus</title>
+
+<!-- Vera8 Pool -->
+<script src="vera8_pool.js"></script>
+<!-- Falls Diagramme benötigt werden:
+<script src="staticDiagrams.js"></script>
+<script src="diagramRenderer.js"></script>
+-->
+
+<style>
+html, body {
+  overflow: hidden;
+  touch-action: manipulation;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  background: #e9e9e9;
+  padding: 12px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  text-align: center;
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  margin: 5px 0;
+  color: #2c3e50;
+}
+
+#topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+select, button {
+  font-size: 1rem;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #999;
+  background: white;
+}
+
+button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:active { background: #0d47a1; }
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+#timer {
+  width: 100%;
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #c0392b;
+  background: #fee;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+#card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#taskContainer {
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.diagram-container {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.diagram-container svg {
+  width: 100%;
+  height: auto;
+  max-height: 40vh;
+}
+
+#answerArea {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+input {
+  font-size: 1.3rem;
+  padding: 15px;
+  border-radius: 8px;
+  border: 2px solid #1976d2;
+  width: 100%;
+}
+
+#navButtons {
+  display: flex;
+  gap: 12px;
+  margin-top: 5px;
+}
+
+#navButtons button {
+  flex: 1;
+  padding: 15px;
+  font-size: 1.2rem;
+}
+
+#result {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-top: 20px;
+  text-align: center;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.hidden { display: none !important; }
+
+.progress-indicator {
+  text-align: center;
+  font-weight: bold;
+  margin: 10px 0;
+  color: #666;
+}
+
+@media (max-width: 480px) {
+  body { padding: 5px; }
+  #card { padding: 15px; }
+  button, input { font-size: 1.1rem; }
+}
+</style>
+</head>
+
+<body>
+
+<h1>📝 Vera8 – Prüfungsmodus</h1>
+
+<div id="topbar">
+  <button id="startBtn">▶️ Prüfung starten</button>
+  <div id="timer" class="hidden"></div>
+</div>
+
+<div id="card">
+  <div id="taskContainer">Noch keine Prüfung gestartet.</div>
+  <div id="progressDisplay" class="progress-indicator hidden"></div>
+
+  <div id="answerArea" class="hidden">
+    <input type="text" id="answer"
+           inputmode="decimal"
+           placeholder="Deine Antwort eingeben">
+    <div id="navButtons">
+      <button id="nextBtn">⏩ Weiter</button>
+      <button id="finishBtn">🏁 Prüfung abgeben</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+// ====================== KONFIGURATION ======================
+const EXAM_TIME = 90 * 60;        // 90 Minuten in Sekunden
+const TASKS_TOTAL = 10;
+const POINTS_PER_TASK = 3;
+const PASS_POINTS = 15;           // 50% zum Bestehen
+// ⚠️ DEMO-PIN - In einer echten Anwendung serverseitig prüfen!
+const TEACHER_PIN = "1234";
+
+// ====================== DOM-ELEMENTE ======================
+const startBtn = document.getElementById("startBtn");
+const timerEl = document.getElementById("timer");
+const taskContainer = document.getElementById("taskContainer");
+const progressDisplay = document.getElementById("progressDisplay");
+const answerArea = document.getElementById("answerArea");
+const answerInput = document.getElementById("answer");
+const nextBtn = document.getElementById("nextBtn");
+const finishBtn = document.getElementById("finishBtn");
+const resultEl = document.getElementById("result");
+
+// ====================== STATE ======================
+let timeLeft = EXAM_TIME;
+let timerInterval = null;
+let tasks = [];
+let currentIndex = 0;
+let points = 0;
+let examRunning = false;
+
+// ====================== HILFSFUNKTIONEN ======================
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function compareAnswers(user, correct) {
+  if (typeof correct === 'string') {
+    return user.trim().toLowerCase() === correct.toLowerCase();
+  }
+  const userNum = parseFloat(user.replace(',', '.'));
+  if (isNaN(userNum)) return false;
+  return Math.abs(userNum - correct) < 0.05;
+}
+
+// ====================== PRÜFUNG STARTEN ======================
+function startExam() {
+  // State zurücksetzen
+  tasks = [];
+  currentIndex = 0;
+  points = 0;
+  timeLeft = EXAM_TIME;
+  examRunning = true;
+  
+  // 10 Aufgaben generieren
+  for (let i = 0; i < TASKS_TOTAL; i++) {
+    const task = window.getTaskVera8();
+    tasks.push({
+      text: task.text,
+      question: task.question || null,
+      sol: task.sol,
+      fullSolution: task.fullSolution || task.sol,
+      steps: task.steps || [],
+      category: task.category || "allgemein",
+      diagram: task.diagram ? JSON.parse(JSON.stringify(task.diagram)) : null
+    });
+  }
+  
+  // UI aktualisieren
+  startBtn.disabled = true;
+  timerEl.classList.remove("hidden");
+  answerArea.classList.remove("hidden");
+  progressDisplay.classList.remove("hidden");
+  resultEl.innerHTML = "";
+  
+  // Timer starten
+  clearInterval(timerInterval);
+  timerInterval = setInterval(updateTimer, 1000);
+  
+  // Erste Aufgabe anzeigen
+  showTask();
+}
+
+// ====================== AUFGABE ANZEIGEN ======================
+function showTask() {
+  if (!examRunning || !tasks[currentIndex]) return;
+  
+  const task = tasks[currentIndex];
+  
+  // Aufgaben-Text aufbereiten
+  let html = `<b>Aufgabe ${currentIndex + 1} von ${TASKS_TOTAL}</b>`;
+  html += ` <span style="color:#666;">(${task.category})</span><br>`;
+  html += task.text;
+  if (task.question) html += `<br><br><i>${task.question}</i>`;
+  
+  taskContainer.innerHTML = html;
+  
+  // Diagramm rendern (falls vorhanden)
+  renderDiagramIfExists(task);
+  
+  // Fortschritt anzeigen
+  progressDisplay.innerHTML = `Aufgabe ${currentIndex + 1}/${TASKS_TOTAL}`;
+  
+  // Eingabefeld leeren und Fokus setzen
+  answerInput.value = "";
+  answerInput.focus();
+}
+
+// ====================== DIAGRAMM RENDERN ======================
+function renderDiagramIfExists(task) {
+  // Vorhandenes Diagramm entfernen
+  const oldDiag = document.querySelector('.diagram-container');
+  if (oldDiag) oldDiag.remove();
+  
+  if (task.diagram && typeof renderDiagram === 'function') {
+    try {
+      const diagDiv = document.createElement('div');
+      diagDiv.className = 'diagram-container';
+      renderDiagram(task.diagram, diagDiv);
+      taskContainer.appendChild(diagDiv);
+    } catch (e) {
+      console.error("Diagramm-Fehler:", e);
+    }
+  }
+}
+
+// ====================== ANTWORT SPEICHERN & WEITER ======================
+function saveCurrentAnswer() {
+  if (!examRunning || !tasks[currentIndex]) return;
+  
+  const userAnswer = answerInput.value.trim();
+  if (userAnswer === "") return;
+  
+  if (compareAnswers(userAnswer, tasks[currentIndex].sol)) {
+    points += POINTS_PER_TASK;
+  }
+}
+
+function nextTask() {
+  if (!examRunning) return;
+  
+  saveCurrentAnswer();
+  currentIndex++;
+  
+  if (currentIndex < TASKS_TOTAL) {
+    showTask();
+  } else {
+    finishExam();
+  }
+}
+
+// ====================== PRÜFUNG BEENDEN ======================
+function finishExam() {
+  if (!examRunning) return;
+  
+  // Letzte Aufgabe auswerten
+  if (currentIndex < TASKS_TOTAL) {
+    saveCurrentAnswer();
+  }
+  
+  // PIN abfragen (Lehrer-Funktion)
+  const pin = prompt("Lehrer-PIN eingeben (Demo: 1234):");
+  if (pin !== TEACHER_PIN) {
+    alert("Falsche PIN - Prüfung kann nicht abgeschlossen werden.");
+    return;
+  }
+  
+  // Timer stoppen
+  clearInterval(timerInterval);
+  timerInterval = null;
+  
+  examRunning = false;
+  
+  // UI zurücksetzen
+  answerArea.classList.add("hidden");
+  progressDisplay.classList.add("hidden");
+  timerEl.classList.add("hidden");
+  startBtn.disabled = false;
+  
+  // Ergebnis anzeigen
+  const maxPoints = TASKS_TOTAL * POINTS_PER_TASK;
+  const passed = points >= PASS_POINTS;
+  
+  resultEl.innerHTML = `
+    <div style="background: ${passed ? '#d4edda' : '#f8d7da'}; padding: 20px; border-radius: 8px;">
+      <h2 style="color: ${passed ? '#155724' : '#721c24'}; margin-top: 0;">
+        ${passed ? '✅ BESTANDEN' : '❌ NICHT BESTANDEN'}
+      </h2>
+      <p style="font-size: 1.5rem;">Punkte: <b>${points}</b> / ${maxPoints}</p>
+      <p>Zum Bestehen nötig: ${PASS_POINTS} Punkte</p>
+    </div>
+  `;
+  
+  taskContainer.innerHTML = "Prüfung beendet. Klicke auf 'Prüfung starten' für einen neuen Durchlauf.";
+}
+
+// ====================== TIMER ======================
+function updateTimer() {
+  if (!examRunning) return;
+  
+  timeLeft--;
+  timerEl.innerText = `⏱ ${formatTime(timeLeft)}`;
+  
+  if (timeLeft <= 0) {
+    finishExam();
+  }
+}
+
+// ====================== EVENT LISTENER ======================
+startBtn.addEventListener("click", startExam);
+nextBtn.addEventListener("click", nextTask);
+finishBtn.addEventListener("click", finishExam);
+
+// Enter-Taste im Eingabefeld
+answerInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter" && examRunning) {
+    e.preventDefault();
+    nextTask();
+  }
+});
+
+// Warnung beim Verlassen während der Prüfung
+window.addEventListener("beforeunload", (e) => {
+  if (examRunning) {
+    e.preventDefault();
+    e.returnValue = "Die Prüfung läuft noch! Wirklich abbrechen?";
+  }
+});
+
+// Initialer Hinweis
+taskContainer.innerHTML = "Klicke auf 'Prüfung starten', um zu beginnen.";
+</script>
+
+</body>
+</html>
