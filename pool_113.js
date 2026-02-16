@@ -2,6 +2,7 @@
    pool_113.js
    Anspruchsvolles Niveau (Note 1–2)
    VOLLSTÄNDIG ÜBERARBEITET: Dynamische Parameter + Lösungsschritte
+   + VERBESSERT: Konkretere Aufgabenstellungen
 ========================================================= */
 
 (function () {
@@ -544,6 +545,7 @@
 
   /* =========================================================
      DYNAMISCHE AUFGABENGENERIERUNG (analog pool.js)
+     VERBESSERT: Konkretere Aufgabenstellungen
   ========================================================= */
   const TASK_GENERATORS_113 = {
 
@@ -563,8 +565,8 @@
           const gesamtRabatt = (preis - endpreis) / preis * 100;
           
           return {
-            text: `${op} Sie: Ein Artikel kostet ${preis} €. Er wird zuerst um ${rabatt1}% reduziert, dann nochmals um ${rabatt2}%.`,
-            question: `Berechne den Endpreis und den Gesamtrabatt in Prozent.`,
+            text: `${op} Sie: Ein Artikel kostet ursprünglich ${preis} €. Er wird zuerst um ${rabatt1}% reduziert, dann nochmals um ${rabatt2}% auf den reduzierten Preis.`,
+            question: `Berechne den Endpreis nach beiden Rabatten in € sowie den gesamten Rabatt in Prozent (bezogen auf den ursprünglichen Preis). Runde auf zwei Dezimalstellen.`,
             sol: round2(endpreis),
             fullSolution: `Endpreis: ${round2(endpreis)} €, Gesamtrabatt: ${round2(gesamtRabatt)}%`,
             steps: generateSteps("prozent_rabattkette", {preis, rabatt1, rabatt2, endpreis}, round2(endpreis)),
@@ -576,8 +578,8 @@
           const preis = rand(500, 5000);
           const prozent = rand(10, 30);
           return {
-            text: `${op} Sie: Ein Produkt kostet ${preis} €. Es wird eine Anzahlung von ${prozent}% verlangt.`,
-            question: `Berechne den Anzahlungsbetrag.`,
+            text: `${op} Sie: Ein Auto kostet ${preis} €. Beim Kauf wird eine Anzahlung von ${prozent}% verlangt.`,
+            question: `Berechne den Anzahlungsbetrag in €.`,
             sol: round2(preis * prozent / 100),
             steps: generateSteps("prozent_anzahlung", {preis, prozent}, round2(preis * prozent / 100)),
             category: "prozent_modellierung",
@@ -588,8 +590,8 @@
           const netto = rand(50, 800);
           const mwst = 19;
           return {
-            text: `${op} Sie: Ein Produkt kostet netto ${netto} €. Die Mehrwertsteuer beträgt ${mwst}%.`,
-            question: `Berechne den Bruttopreis.`,
+            text: `${op} Sie: Ein Laptop kostet netto ${netto} €. Die Mehrwertsteuer beträgt ${mwst}%.`,
+            question: `Berechne den Bruttopreis (inkl. MwSt) in €.`,
             sol: round2(netto * (1 + mwst/100)),
             steps: generateSteps("prozent_mwst", {netto, mwst}, round2(netto * (1 + mwst/100))),
             category: "prozent_modellierung",
@@ -601,7 +603,7 @@
           const mwst = 19;
           return {
             text: `${op} Sie: Ein Fernseher kostet brutto ${brutto} € (inkl. ${mwst}% MwSt).`,
-            question: `Berechne den Nettopreis.`,
+            question: `Berechne den Nettopreis (ohne MwSt) in €.`,
             sol: round2(brutto / (1 + mwst/100)),
             steps: generateSteps("prozent_mwst_rueckwaerts", {brutto, mwst}, round2(brutto / (1 + mwst/100))),
             category: "prozent_modellierung",
@@ -615,8 +617,8 @@
           const nach1 = kaufpreis * (100 - verlust1) / 100;
           const restwert = nach1 * (100 - verlust2) / 100;
           return {
-            text: `${op} Sie: Ein Neuwagen kostet ${kaufpreis} €. Er verliert im ersten Jahr ${verlust1}% an Wert, im zweiten Jahr weitere ${verlust2}% (vom Restwert).`,
-            question: `Berechne den Restwert nach zwei Jahren und den Anteil am ursprünglichen Preis.`,
+            text: `${op} Sie: Ein Neuwagen kostet ${kaufpreis} €. Er verliert im ersten Jahr ${verlust1}% an Wert, im zweiten Jahr weitere ${verlust2}% (vom Restwert des ersten Jahres).`,
+            question: `Berechne den Restwert nach zwei Jahren in € und den prozentualen Anteil am ursprünglichen Preis.`,
             sol: round2(restwert),
             fullSolution: `Restwert: ${round2(restwert)} €, Anteil: ${round2(restwert / kaufpreis * 100)}%`,
             steps: generateSteps("prozent_wertverlust", {kaufpreis, verlust1, verlust2, restwert}, round2(restwert)),
@@ -629,7 +631,7 @@
           const skonto = rand(2, 5);
           return {
             text: `${op} Sie: Eine Rechnung über ${betrag} € wird unter Abzug von ${skonto}% Skonto bezahlt.`,
-            question: `Berechne den Zahlungsbetrag.`,
+            question: `Berechne den Zahlungsbetrag nach Skontoabzug in €.`,
             sol: round2(betrag * (1 - skonto/100)),
             steps: generateSteps("prozent_skonto", {betrag, skonto}, round2(betrag * (1 - skonto/100))),
             category: "prozent_modellierung",
@@ -641,7 +643,7 @@
           const neupreis = rand(100, 300);
           return {
             text: `${op} Sie: Nach einer Preiserhöhung um ${erhoehung}% kostet ein Produkt nun ${neupreis} €.`,
-            question: `Berechne den ursprünglichen Preis.`,
+            question: `Berechne den ursprünglichen Preis vor der Erhöhung in €.`,
             sol: round2(neupreis / (1 + erhoehung/100)),
             steps: generateSteps("prozent_rueckwaerts", {erhoehung, neupreis}, round2(neupreis / (1 + erhoehung/100))),
             category: "prozent_modellierung",
@@ -653,8 +655,8 @@
           const zins = rand(1, 4);
           const monate = rand(3, 11);
           return {
-            text: `${op} Sie: Ein Kapital von ${kapital} € wird zu ${zins}% p.a. angelegt.`,
-            question: `Berechne die Zinsen nach ${monate} Monaten.`,
+            text: `${op} Sie: Ein Kapital von ${kapital} € wird zu ${zins}% pro Jahr angelegt.`,
+            question: `Berechne die Zinsen nach ${monate} Monaten (einfache Verzinsung) in €.`,
             sol: round2(kapital * zins/100 * monate/12),
             steps: generateSteps("zins_zeit", {kapital, zins, monate}, round2(kapital * zins/100 * monate/12)),
             category: "prozent_modellierung",
@@ -665,7 +667,7 @@
           const alt = rand(20, 100);
           const neu = alt - rand(5, 30);
           return {
-            text: `${op} Sie: Ein Produkt kostete ${alt} € und wird jetzt für ${neu} € angeboten.`,
+            text: `${op} Sie: Ein Produkt kostete ursprünglich ${alt} € und wird jetzt für ${neu} € angeboten.`,
             question: `Berechne den Rabatt in Prozent.`,
             sol: round2((alt - neu) / alt * 100),
             steps: generateSteps("prozent_rabatt_prozentsatz", {alt, neu}, round2((alt - neu) / alt * 100)),
@@ -678,7 +680,7 @@
           const zinsen = rand(50, 300);
           return {
             text: `${op} Sie: Ein Kredit von ${kapital} € kostet nach einem Jahr ${zinsen} € Zinsen.`,
-            question: `Berechne den Zinssatz.`,
+            question: `Berechne den Zinssatz in Prozent.`,
             sol: round2(zinsen / kapital * 100),
             steps: generateSteps("zins_zinssatz", {kapital, zinsen}, round2(zinsen / kapital * 100)),
             category: "prozent_modellierung",
@@ -700,8 +702,8 @@
           const strecke1 = 100;
           const tank = rand(40, 70);
           return {
-            text: `${op} Sie: Ein Auto verbraucht auf ${strecke1} km ${verbrauch} Liter Benzin.`,
-            question: `Berechne die Reichweite mit einem ${tank} Liter Tank.`,
+            text: `${op} Sie: Ein Auto verbraucht auf ${strecke1} km genau ${verbrauch} Liter Benzin.`,
+            question: `Berechne die Reichweite in km, wenn der Tank ${tank} Liter fasst. (proportionale Zuordnung)`,
             sol: round2(tank / (verbrauch / strecke1)),
             steps: generateSteps("zuordnung_proportional_verbrauch", {verbrauch, strecke1, tank}, round2(tank / (verbrauch / strecke1))),
             category: "zuordnung_transfer",
@@ -714,7 +716,7 @@
           const anzahl2 = rand(5, 15);
           return {
             text: `${op} Sie: ${anzahl1} Brötchen kosten ${preis.toFixed(2)} €.`,
-            question: `Berechne den Preis für ${anzahl2} Brötchen.`,
+            question: `Berechne den Preis für ${anzahl2} Brötchen (gleicher Preis pro Brötchen) in €.`,
             sol: round2(preis / anzahl1 * anzahl2),
             steps: generateSteps("zuordnung_proportional_brötchen", {anzahl1, preis, anzahl2}, round2(preis / anzahl1 * anzahl2)),
             category: "zuordnung_transfer",
@@ -726,7 +728,7 @@
           const stunden = rand(2, 6) + (rand(0,1) ? 0.5 : 0);
           return {
             text: `${op} Sie: Im Kletterpark kostet der Eintritt ${preis} € pro Stunde.`,
-            question: `Berechne den Preis für ${stunden} Stunden.`,
+            question: `Berechne den Preis für ${stunden} Stunden in €.`,
             sol: preis * stunden,
             steps: generateSteps("zuordnung_proportional_zeit", {preis, stunden}, preis * stunden),
             category: "zuordnung_transfer",
@@ -738,8 +740,8 @@
           const stunden1 = rand(8, 20);
           const anz2 = anz1 + rand(1, 4);
           return {
-            text: `${op} Sie: ${anz1} Arbeiter benötigen ${stunden1} Stunden für eine Arbeit.`,
-            question: `Berechne, wie viele Stunden ${anz2} Arbeiter bei gleicher Leistung benötigen.`,
+            text: `${op} Sie: ${anz1} Arbeiter benötigen für einen Auftrag ${stunden1} Stunden.`,
+            question: `Berechne, wie viele Stunden ${anz2} Arbeiter bei gleicher Leistung für denselben Auftrag benötigen (antiproportionale Zuordnung).`,
             sol: round2(anz1 * stunden1 / anz2),
             steps: generateSteps("zuordnung_antiproportional_arbeiter", {anz1, stunden1, anz2}, round2(anz1 * stunden1 / anz2)),
             category: "zuordnung_transfer",
@@ -752,8 +754,8 @@
           const reduzierteTiere = rand(2, 8);
           const tiere2 = tiere1 - reduzierteTiere;
           return {
-            text: `${op} Sie: Ein Futtervorrat reicht für ${tiere1} Pferde ${tage1} Tage.`,
-            question: `Berechne, wie lange der Vorrat reicht, wenn ${reduzierteTiere} Pferde verkauft werden.`,
+            text: `${op} Sie: Ein Futtervorrat reicht für ${tiere1} Pferde genau ${tage1} Tage.`,
+            question: `Berechne, wie viele Tage der Vorrat reicht, wenn ${reduzierteTiere} Pferde verkauft werden (antiproportionale Zuordnung).`,
             sol: round2(tiere1 * tage1 / tiere2),
             steps: generateSteps("zuordnung_antiproportional_futter", {tiere1, tage1, tiere2}, round2(tiere1 * tage1 / tiere2)),
             category: "zuordnung_transfer",
@@ -766,7 +768,7 @@
           const maschinen2 = rand(4, 10);
           return {
             text: `${op} Sie: ${maschinen1} Maschinen stellen in einer Stunde ${teile} Bauteile her.`,
-            question: `Berechne, wie viele Bauteile ${maschinen2} Maschinen in der gleichen Zeit herstellen.`,
+            question: `Berechne, wie viele Bauteile ${maschinen2} Maschinen in der gleichen Zeit herstellen (proportionale Zuordnung).`,
             sol: round2(teile / maschinen1 * maschinen2),
             steps: generateSteps("zuordnung_proportional_maschinen", {maschinen1, teile, maschinen2}, round2(teile / maschinen1 * maschinen2)),
             category: "zuordnung_transfer",
@@ -778,8 +780,8 @@
           const stunden1 = rand(6, 15);
           const maschinen2 = maschinen1 + rand(1, 3);
           return {
-            text: `${op} Sie: ${maschinen1} Maschinen benötigen ${stunden1} Stunden für einen Auftrag.`,
-            question: `Berechne, wie viele Stunden ${maschinen2} Maschinen benötigen.`,
+            text: `${op} Sie: ${maschinen1} Maschinen benötigen für einen Auftrag ${stunden1} Stunden.`,
+            question: `Berechne, wie viele Stunden ${maschinen2} Maschinen für denselben Auftrag benötigen (antiproportionale Zuordnung).`,
             sol: round2(maschinen1 * stunden1 / maschinen2),
             steps: generateSteps("zuordnung_antiproportional_arbeiter", {anz1: maschinen1, stunden1, anz2: maschinen2}, round2(maschinen1 * stunden1 / maschinen2)),
             category: "zuordnung_transfer",
@@ -803,7 +805,7 @@
           const schirm = rand(65, 85);
           return {
             text: `${op} Sie: Ein Regenschirm ist ${schirm} cm lang. Ein Koffer ist innen ${l} cm lang und ${b} cm breit.`,
-            question: `Kann der Schirm diagonal im Koffer verstaut werden? Begründe rechnerisch.`,
+            question: `Kann der Schirm diagonal im Koffer verstaut werden? Berechne die Länge der Diagonale des Koffers und vergleiche mit der Schirmlänge. Begründe deine Antwort.`,
             sol: d > schirm ? "Ja" : "Nein",
             fullSolution: d > schirm ? "Ja, die Diagonale ist größer." : "Nein, die Diagonale ist kleiner.",
             steps: generateSteps("pythagoras_schirm", {l, b, d, schirm}, d > schirm ? "Ja" : "Nein"),
@@ -830,7 +832,7 @@
           
           return {
             text: `${op} Sie: Ein Dreieck hat die Seitenlängen ${a} cm, ${b} cm und ${c} cm.`,
-            question: `Überprüfe, ob das Dreieck rechtwinklig ist.`,
+            question: `Überprüfe mit dem Satz des Pythagoras, ob das Dreieck rechtwinklig ist.`,
             sol: "Ja",
             steps: generateSteps("pythagoras_rechtwinklig_pruefen", {a, b, c, isRight: true}, "Ja"),
             category: "pythagoras_sachkontext",
@@ -847,7 +849,7 @@
           
           return {
             text: `${op} Sie: Ein Dreieck hat die Seitenlängen ${a} cm, ${b} cm und ${c} cm.`,
-            question: `Überprüfe, ob das Dreieck rechtwinklig ist.`,
+            question: `Überprüfe mit dem Satz des Pythagoras, ob das Dreieck rechtwinklig ist.`,
             sol: "Nein",
             steps: generateSteps("pythagoras_rechtwinklig_pruefen", {a, b, c, isRight: false}, "Nein"),
             category: "pythagoras_sachkontext",
@@ -859,8 +861,8 @@
           const a = rand(5, 15);
           const s = Math.sqrt(h*h + a*a);
           return {
-            text: `${op} Sie: Ein Sendemast ist ${h} m hoch. Er wird mit vier Seilen abgespannt, die jeweils ${a} m vom Mastfuß entfernt am Boden verankert werden.`,
-            question: `Berechne die Gesamtlänge der benötigten Seile (ohne Verschnitt).`,
+            text: `${op} Sie: Ein Sendemast ist ${h} m hoch. Er wird mit vier Seilen abgespannt, die jeweils im Abstand von ${a} m vom Mastfuß am Boden verankert werden.`,
+            question: `Berechne die Länge eines Seils in m und daraus die Gesamtlänge aller vier Seile (ohne Verschnitt).`,
             sol: round2(4 * s),
             steps: generateSteps("pythagoras_sendemast", {h, a, s}, round2(4 * s)),
             category: "pythagoras_sachkontext",
@@ -873,7 +875,7 @@
           const h = Math.sqrt(l*l - a*a);
           return {
             text: `${op} Sie: Eine ${l} m lange Leiter wird an eine Hauswand gelehnt. Der Fuß der Leiter steht ${a.toFixed(2)} m von der Wand entfernt.`,
-            question: `Berechne die Höhe, in der die Leiter die Wand berührt (Runde auf zwei Dezimalstellen).`,
+            question: `Berechne die Höhe in m, in der die Leiter die Wand berührt (Runde auf zwei Dezimalstellen).`,
             sol: round2(h),
             steps: generateSteps("pythagoras_leiter", {l, a, h}, round2(h)),
             category: "pythagoras_sachkontext",
@@ -886,7 +888,7 @@
           const d = Math.sqrt(l*l + b*b);
           return {
             text: `${op} Sie: Ein Bildschirm ist ${l} cm breit und ${b} cm hoch.`,
-            question: `Berechne die Bildschirmdiagonale in cm.`,
+            question: `Berechne die Länge der Bildschirmdiagonale in cm.`,
             sol: round2(d),
             steps: generateSteps("pythagoras_diagonale", {l, b, d}, round2(d)),
             category: "pythagoras_sachkontext",
@@ -898,8 +900,8 @@
           const a = rand(40, 100);
           const h = Math.sqrt(l*l - a*a);
           return {
-            text: `${op} Sie: Ein Drachen wird mit einer ${l} m langen Schnur gehalten. Eine Person steht ${a} m von der Stelle entfernt, über der der Drachen genau ist.`,
-            question: `Berechne die Flughöhe des Drachens.`,
+            text: `${op} Sie: Ein Drachen wird mit einer ${l} m langen Schnur gehalten. Eine Person steht genau ${a} m von der Stelle entfernt, über der der Drachen senkrecht ist.`,
+            question: `Berechne die Flughöhe des Drachens in m.`,
             sol: round2(h),
             steps: generateSteps("pythagoras_drachen", {l, a, h}, round2(h)),
             category: "pythagoras_sachkontext",
@@ -923,8 +925,8 @@
           const volumen = 3.14 * r * r * h;
           const kosten = volumen / 1000 * preisProLiter;
           return {
-            text: `${op} Sie: Eine zylinderförmige Kerze hat r = ${r} cm und h = ${h} cm. 1 Liter Wachs kostet ${preisProLiter} €.`,
-            question: `Berechne das Volumen der Kerze und die Materialkosten.`,
+            text: `${op} Sie: Eine zylinderförmige Kerze hat einen Radius von ${r} cm und eine Höhe von ${h} cm. 1 Liter Wachs kostet ${preisProLiter} €.`,
+            question: `Berechne das Volumen der Kerze in cm³ und Liter sowie die Materialkosten in €.`,
             sol: round2(kosten),
             fullSolution: `Volumen: ${round2(volumen)} cm³ (${round2(volumen/1000)} L), Kosten: ${round2(kosten)} €`,
             steps: generateSteps("koerper_zylinder_kosten", {r, h, preisProLiter}, round2(kosten)),
@@ -938,8 +940,8 @@
           const r = d/2;
           const volumen = 3.14 * r * r * h;
           return {
-            text: `${op} Sie: Ein Glas hat einen Durchmesser von ${d} cm und eine Höhe von ${h} cm.`,
-            question: `Berechne das Volumen in Litern (1 L = 1000 cm³).`,
+            text: `${op} Sie: Ein zylindrisches Glas hat einen Durchmesser von ${d} cm und eine Höhe von ${h} cm.`,
+            question: `Berechne das Volumen in Litern (1 Liter = 1000 cm³).`,
             sol: round2(volumen / 1000),
             steps: generateSteps("koerper_zylinder_volumen_liter", {d, r, h}, round2(volumen / 1000)),
             category: "koerper_mehrschritt",
@@ -952,7 +954,7 @@
           const h = rand(30, 100);
           return {
             text: `${op} Sie: Ein Aquarium ist ${l} cm lang, ${b} cm breit und ${h} cm hoch.`,
-            question: `Berechne das Volumen in Litern.`,
+            question: `Berechne das Volumen des Aquariums in Litern (1 Liter = 1000 cm³).`,
             sol: l * b * h / 1000,
             steps: generateSteps("koerper_quader_liter", {l, b, h}, l * b * h / 1000),
             category: "koerper_mehrschritt",
@@ -964,8 +966,8 @@
           const h = rand(1, 4);
           const l = rand(3, 8);
           return {
-            text: `${op} Sie: Ein Zelt hat die Form eines Dreiecksprismas. Die Grundfläche ist ein Dreieck mit g = ${g} m und h = ${h} m. Das Zelt ist ${l} m lang.`,
-            question: `Berechne das Volumen des Zeltes.`,
+            text: `${op} Sie: Ein Zelt hat die Form eines Dreiecksprismas. Die dreieckige Grundfläche hat eine Grundseite von ${g} m und eine Höhe von ${h} m. Das Zelt ist ${l} m lang.`,
+            question: `Berechne das Volumen des Zeltes in m³.`,
             sol: g * h / 2 * l,
             steps: generateSteps("koerper_prisma_zelt", {g, h, l}, g * h / 2 * l),
             category: "koerper_mehrschritt",
@@ -978,8 +980,8 @@
           const h1 = rand(2, 7);
           const a = rand(1, 4);
           return {
-            text: `${op} Sie: Ein Werkstück besteht aus einem Quader (${l} cm × ${b} cm × ${h1} cm) und einem aufgesetzten Würfel (Seite ${a} cm).`,
-            question: `Berechne das Gesamtvolumen.`,
+            text: `${op} Sie: Ein Werkstück besteht aus einem Quader (${l} cm × ${b} cm × ${h1} cm) und einem aufgesetzten Würfel mit Kantenlänge ${a} cm.`,
+            question: `Berechne das Gesamtvolumen des Werkstücks in cm³.`,
             sol: l * b * h1 + a * a * a,
             steps: generateSteps("koerper_zusammengesetzt_quader_wuerfel", {l, b, h1, a}, l * b * h1 + a * a * a),
             category: "koerper_mehrschritt",
@@ -992,8 +994,8 @@
           const h1 = rand(8, 20);
           const h2 = rand(20, 50);
           return {
-            text: `${op} Sie: Ein Werkstück besteht aus einem Quader (${l} mm × ${b} mm × ${h1} mm) und einem aufgesetzten Dreiecksprisma (Dreieck: Grundseite ${l} mm, Höhe ${h2} mm, Tiefe ${b} mm).`,
-            question: `Berechne das Gesamtvolumen.`,
+            text: `${op} Sie: Ein Werkstück besteht aus einem Quader (${l} mm × ${b} mm × ${h1} mm) und einem aufgesetzten Dreiecksprisma. Das Dreieck hat die Grundseite ${l} mm und die Höhe ${h2} mm, die Tiefe des Prismas beträgt ${b} mm.`,
+            question: `Berechne das Gesamtvolumen in mm³.`,
             sol: l * b * h1 + l * h2 / 2 * b,
             steps: generateSteps("koerper_zusammengesetzt_quader_prisma", {l, b, h1, h2}, l * b * h1 + l * h2 / 2 * b),
             category: "koerper_mehrschritt",
@@ -1006,7 +1008,7 @@
           const h = rand(8, 20);
           return {
             text: `${op} Sie: Eine Konservendose hat einen Durchmesser von ${d} cm und eine Höhe von ${h} cm.`,
-            question: `Berechne die Mantelfläche der Dose (Fläche für das Etikett).`,
+            question: `Berechne die Mantelfläche der Dose in cm² (das ist die Fläche für das Etikett).`,
             sol: round2(2 * 3.14 * r * h),
             steps: generateSteps("koerper_zylinder_mantel", {r, h}, round2(2 * 3.14 * r * h)),
             category: "koerper_mehrschritt",
@@ -1018,7 +1020,7 @@
           const a = Math.round(Math.pow(volumen, 1/3));
           return {
             text: `${op} Sie: Ein Würfel hat ein Volumen von ${a*a*a} cm³.`,
-            question: `Ermittle die Kantenlänge a und die Oberfläche des Würfels.`,
+            question: `Ermittle die Kantenlänge a in cm und die Oberfläche des Würfels in cm².`,
             sol: a,
             fullSolution: `a = ${a} cm, O = ${6 * a * a} cm²`,
             steps: generateSteps("koerper_wuerfel_kante_oberflaeche", {volumen: a*a*a, a}, a),
@@ -1031,8 +1033,8 @@
           const b = rand(2, 8);
           const h = rand(2, 8);
           return {
-            text: `${op} Sie: Ein Quadernetz hat die Maße: ${l} cm, ${b} cm und ${h} cm.`,
-            question: `Berechne das Volumen und die Oberfläche des Quaders.`,
+            text: `${op} Sie: Ein Quadernetz hat die Maße: Länge ${l} cm, Breite ${b} cm, Höhe ${h} cm.`,
+            question: `Berechne das Volumen in cm³ und die Oberfläche in cm² des Quaders.`,
             sol: l * b * h,
             fullSolution: `V = ${l * b * h} cm³, O = ${2 * (l*b + l*h + b*h)} cm²`,
             steps: generateSteps("koerper_quader_netz", {l, b, h}, l * b * h),
@@ -1045,8 +1047,8 @@
           const r = d/2;
           const h = rand(80, 150);
           return {
-            text: `${op} Sie: Eine Regentonne hat einen Durchmesser von ${d} cm und eine Höhe von ${h} cm.`,
-            question: `Berechne das Volumen in Litern.`,
+            text: `${op} Sie: Eine zylindrische Regentonne hat einen Durchmesser von ${d} cm und eine Höhe von ${h} cm.`,
+            question: `Berechne das Volumen der Regentonne in Litern (1 Liter = 1000 cm³).`,
             sol: round2(3.14 * r * r * h / 1000),
             steps: generateSteps("koerper_zylinder_volumen_liter_gross", {d, r, h}, round2(3.14 * r * r * h / 1000)),
             category: "koerper_mehrschritt",
@@ -1068,7 +1070,7 @@
           const summe = noten.reduce((a,b) => a+b, 0);
           return {
             text: `${op} Sie: Ein Schüler hat in vier Arbeiten die Noten: ${noten.join(', ')}.`,
-            question: `Berechne den Durchschnitt.`,
+            question: `Berechne den Notendurchschnitt (arithmetisches Mittel).`,
             sol: round2(summe / 4),
             steps: generateSteps("statistik_mittelwert", {zahlen: noten, summe, anzahl: 4}, round2(summe / 4)),
             category: "statistik_begruendung",
@@ -1080,7 +1082,7 @@
           for (let i = 0; i < 5; i++) zahlen.push(rand(10, 100));
           const summe = zahlen.reduce((a,b) => a+b, 0);
           return {
-            text: `${op} Sie: In einer Tabelle sind die Verkaufszahlen von Montag bis Freitag: ${zahlen.join(', ')}.`,
+            text: `${op} Sie: In einer Tabelle sind die täglichen Verkaufszahlen von Montag bis Freitag: ${zahlen.join(', ')}.`,
             question: `Ermittle den durchschnittlichen Verkauf pro Tag.`,
             sol: round2(summe / 5),
             steps: generateSteps("statistik_mittelwert", {zahlen, summe, anzahl: 5}, round2(summe / 5)),
@@ -1094,8 +1096,8 @@
           const gewichtA = 0.6;
           const gewichtS = 0.4;
           return {
-            text: `${op} Sie: In einem Fach zählen Klassenarbeiten 60% und sonstige Leistungen 40%. Ein Schüler hat in den Arbeiten den Schnitt ${noteA.toFixed(1)} und bei Sonstigem den Schnitt ${noteS.toFixed(1)}.`,
-            question: `Berechne die Gesamtnote.`,
+            text: `${op} Sie: In einem Fach zählen Klassenarbeiten 60% und sonstige Leistungen 40%. Ein Schüler hat in den Arbeiten einen Durchschnitt von ${noteA.toFixed(1)} und bei den sonstigen Leistungen einen Durchschnitt von ${noteS.toFixed(1)}.`,
+            question: `Berechne die gewichtete Gesamtnote.`,
             sol: round2(noteA * gewichtA + noteS * gewichtS),
             steps: generateSteps("statistik_gewichteter_durchschnitt", {noteA, noteS, gewichtA, gewichtS}, round2(noteA * gewichtA + noteS * gewichtS)),
             category: "statistik_begruendung",
@@ -1120,7 +1122,7 @@
           const summeMoSa = mo_sa.reduce((a,b) => a+b, 0);
           const durchschnitt = rand(30, 50);
           return {
-            text: `${op} Sie: Der Koch verkauft von Montag bis Samstag: ${mo_sa.join(', ')} Schnitzel. Der durchschnittliche Verkauf von Montag bis Sonntag beträgt ${durchschnitt} Schnitzel pro Tag.`,
+            text: `${op} Sie: Ein Koch verkauft von Montag bis Samstag folgende Anzahl Schnitzel: ${mo_sa.join(', ')}. Der durchschnittliche Verkauf von Montag bis Sonntag beträgt ${durchschnitt} Schnitzel pro Tag.`,
             question: `Berechne, wie viele Schnitzel am Sonntag verkauft wurden.`,
             sol: 7 * durchschnitt - summeMoSa,
             steps: generateSteps("statistik_fehlender_wert", {bekannte: mo_sa, summeBekannt: summeMoSa, anzahl: 7, durchschnitt}, 7 * durchschnitt - summeMoSa),
@@ -1134,7 +1136,7 @@
           const sortiert = [...daten].sort((a,b) => a-b);
           return {
             text: `${op} Sie: Die Körpergrößen einer Kleingruppe sind (in cm): ${daten.join(', ')}.`,
-            question: `Ermittle den Median und die Spannweite dieser Daten.`,
+            question: `Ermittle den Median (Zentralwert) und die Spannweite dieser Daten.`,
             sol: sortiert[2],
             fullSolution: `Median: ${sortiert[2]} cm, Spannweite: ${sortiert[4] - sortiert[0]} cm`,
             steps: generateSteps("statistik_median_spannweite", {sortiert, median: sortiert[2], min: sortiert[0], max: sortiert[4]}, sortiert[2]),
@@ -1148,8 +1150,8 @@
           const min = Math.min(...daten);
           const max = Math.max(...daten);
           return {
-            text: `${op} Sie: Die Weitsprung-Ergebnisse: ${daten.map(d => d.toFixed(2)).join(' m, ')} m.`,
-            question: `Gib Minimum, Maximum und Spannweite an.`,
+            text: `${op} Sie: Die Weitsprung-Ergebnisse von vier Schüler:innen sind: ${daten.map(d => d.toFixed(2)).join(' m, ')} m.`,
+            question: `Gib das Minimum, das Maximum und die Spannweite an (alle in Metern).`,
             sol: min,
             fullSolution: `Min: ${min.toFixed(2)} m, Max: ${max.toFixed(2)} m, Spannweite: ${(max - min).toFixed(2)} m`,
             steps: generateSteps("statistik_min_max", {min, max}, min),
@@ -1163,8 +1165,8 @@
           const strecke2 = rand(50, 150);
           const zeit2 = rand(30, 90);
           return {
-            text: `${op} Sie: Ein Zug fährt von A nach B (${strecke1} km in ${zeit1} min) und von B nach C (${strecke2} km in ${zeit2} min).`,
-            question: `Berechne die Durchschnittsgeschwindigkeit für die Gesamtstrecke in km/h.`,
+            text: `${op} Sie: Ein Zug fährt von Stadt A nach Stadt B (${strecke1} km in ${zeit1} Minuten) und von Stadt B nach Stadt C (${strecke2} km in ${zeit2} Minuten).`,
+            question: `Berechne die Durchschnittsgeschwindigkeit für die gesamte Strecke von A nach C in km/h.`,
             sol: round2((strecke1 + strecke2) / ((zeit1 + zeit2) / 60)),
             steps: generateSteps("statistik_durchschnittsgeschwindigkeit", {strecke1, zeit1, strecke2, zeit2}, round2((strecke1 + strecke2) / ((zeit1 + zeit2) / 60))),
             category: "statistik_begruendung",
@@ -1175,8 +1177,8 @@
           const gesamt = rand(100, 500);
           const prozent = rand(10, 40);
           return {
-            text: `${op} Sie: Von ${gesamt} Mitarbeitern bringen ${prozent}% ihr Lunchpaket mit.`,
-            question: `Berechne, wie viele Mitarbeiter das sind.`,
+            text: `${op} Sie: Von ${gesamt} Mitarbeiter:innen bringen ${prozent}% ihr eigenes Lunchpaket mit.`,
+            question: `Berechne, wie viele Mitarbeiter:innen das sind.`,
             sol: round2(gesamt * prozent / 100),
             steps: generateSteps("statistik_prozentanteil", {gesamt, prozent}, round2(gesamt * prozent / 100)),
             category: "statistik_begruendung",
@@ -1205,8 +1207,8 @@
           if (x < 0 || x > 50) return this.gleichungen_modellierung(); // Neustart bei ungültigem Ergebnis
           
           return {
-            text: `${op} Sie: Ein Vater ist heute ${vater} Jahre alt, sein Sohn ist ${sohn}.`,
-            question: `In wie vielen Jahren ist der Vater genau ${faktor}mal so alt wie sein Sohn? Stelle eine Gleichung auf.`,
+            text: `${op} Sie: Ein Vater ist heute ${vater} Jahre alt, sein Sohn ist ${sohn} Jahre alt.`,
+            question: `In wie vielen Jahren wird der Vater genau ${faktor}‑mal so alt sein wie sein Sohn? Stelle eine Gleichung auf und löse sie.`,
             sol: round2(x),
             steps: generateSteps("gleichung_altersraetsel", {vater, sohn, faktor}, round2(x)),
             category: "gleichungen_modellierung",
@@ -1222,8 +1224,8 @@
           if (x < 0 || x > 500) return this.gleichungen_modellierung();
           
           return {
-            text: `${op} Sie: Tarif A: ${grund1} € Grundgebühr + ${(preis1*100).toFixed(0)} Cent pro Minute. Tarif B: ${grund2} € Grundgebühr + ${(preis2*100).toFixed(0)} Cent pro Minute.`,
-            question: `Ab wie vielen Minuten ist Tarif B günstiger? Stelle eine Gleichung auf.`,
+            text: `${op} Sie: Zwei Tarife für Mobilfunk: Tarif A: ${grund1} € Grundgebühr + ${(preis1*100).toFixed(0)} Cent pro Minute. Tarif B: ${grund2} € Grundgebühr + ${(preis2*100).toFixed(0)} Cent pro Minute.`,
+            question: `Ab wie vielen Gesprächsminuten pro Monat ist Tarif B günstiger? Stelle eine Gleichung auf und löse sie.`,
             sol: Math.floor(x) + 1,
             steps: generateSteps("gleichung_tarif", {grund1, preis1, grund2, preis2}, Math.floor(x) + 1),
             category: "gleichungen_modellierung",
@@ -1243,8 +1245,8 @@
           const kosten2 = grund2 + preis2SMS * sms + preis2Tel * tel;
           
           return {
-            text: `${op} Sie: Anbieter 1: ${grund1} € Flatrate für SMS, ${(preis1Tel*100).toFixed(0)} Cent pro Minute. Anbieter 2: ${(preis2SMS*100).toFixed(0)} Cent pro SMS, ${(preis2Tel*100).toFixed(0)} Cent pro Minute, ${grund2} € Grundgebühr.`,
-            question: `Tom schreibt ${sms} SMS und telefoniert ${tel} Minuten. Für welchen Anbieter soll er sich entscheiden? Begründe.`,
+            text: `${op} Sie: Zwei Anbieter: Anbieter 1 verlangt ${grund1} € Grundgebühr, SMS kosten ${(preis1SMS*100).toFixed(0)} Cent, Telefonate ${(preis1Tel*100).toFixed(0)} Cent pro Minute. Anbieter 2 verlangt ${grund2} € Grundgebühr, SMS kosten ${(preis2SMS*100).toFixed(0)} Cent, Telefonate ${(preis2Tel*100).toFixed(0)} Cent pro Minute.`,
+            question: `Tom schreibt ${sms} SMS und telefoniert ${tel} Minuten pro Monat. Berechne die monatlichen Kosten für beide Anbieter und entscheide, welcher Anbieter günstiger ist.`,
             sol: kosten1 < kosten2 ? "Anbieter 1" : "Anbieter 2",
             steps: generateSteps("gleichung_tarif_entscheidung", {grund1, preis1SMS, preis1Tel, grund2, preis2SMS, preis2Tel, sms, tel, kosten1, kosten2}, kosten1 < kosten2 ? "Anbieter 1" : "Anbieter 2"),
             category: "gleichungen_modellierung",
@@ -1253,8 +1255,8 @@
         }
         case "zahlenraetsel": {
           return {
-            text: `${op} Sie: Das Dreifache einer Zahl vermehrt um 15 ergibt das Fünffache der Zahl vermindert um 7.`,
-            question: `Bestimme die Zahl mithilfe einer Gleichung.`,
+            text: `${op} Sie: Das Dreifache einer Zahl, vermehrt um 15, ergibt das Fünffache der Zahl, vermindert um 7.`,
+            question: `Bestimme die Zahl, indem du eine Gleichung aufstellst und löst.`,
             sol: 11,
             steps: generateSteps("gleichung_zahlenraetsel", {}, 11),
             category: "gleichungen_modellierung",
@@ -1265,7 +1267,7 @@
           const summe = rand(30, 90);
           return {
             text: `${op} Sie: Zwei Zahlen haben die Summe ${summe}. Die eine Zahl ist doppelt so groß wie die andere.`,
-            question: `Bestimme die beiden Zahlen.`,
+            question: `Bestimme die beiden Zahlen durch Aufstellen einer Gleichung.`,
             sol: summe / 3,
             fullSolution: `${summe/3} und ${2*summe/3}`,
             steps: generateSteps("gleichung_summe", {summe}, summe/3),
@@ -1277,8 +1279,8 @@
           const a = rand(3, 15);
           const umfang = 8*a + 4;
           return {
-            text: `${op} Sie: Eine Figur hat den Umfang ${umfang} cm. Die Seitenlängen sind: 2a, 3a+4, 1,5a, 1,5a.`,
-            question: `Stelle eine Gleichung auf und berechne a.`,
+            text: `${op} Sie: Eine Figur hat den Umfang ${umfang} cm. Die Seitenlängen sind: 2a, 3a+4, 1,5a, 1,5a (alle in cm).`,
+            question: `Stelle eine Gleichung auf und berechne den Wert von a.`,
             sol: a,
             steps: generateSteps("gleichung_umfang", {umfang}, a),
             category: "gleichungen_modellierung",
@@ -1300,7 +1302,7 @@
           const b = rand(5, 30);
           return {
             text: `${op} Sie: Ein rechteckiges Grundstück ist ${l} m lang und ${b} m breit.`,
-            question: `Berechne die Fläche.`,
+            question: `Berechne die Fläche des Grundstücks in m².`,
             sol: l * b,
             steps: generateSteps("flaeche_rechteck", {l, b}, l * b),
             category: "flaeche2d_modellierung",
@@ -1312,7 +1314,7 @@
           const b = rand(0.5, 3) * 2;
           return {
             text: `${op} Sie: Ein Rechteck ist ${l} m lang und ${b.toFixed(1)} m breit.`,
-            question: `Berechne Umfang und Flächeninhalt.`,
+            question: `Berechne den Umfang in m und den Flächeninhalt in m².`,
             sol: 2 * (l + b),
             fullSolution: `U = ${2*(l+b)} m, A = ${l*b} m²`,
             steps: generateSteps("flaeche_rechteck_umfang", {l, b}, 2 * (l + b)),
@@ -1324,8 +1326,8 @@
           const g = rand(5, 20);
           const h = rand(4, 15);
           return {
-            text: `${op} Sie: Ein Dreieck hat eine Grundseite von ${g} cm und eine Höhe von ${h} cm.`,
-            question: `Berechne die Fläche.`,
+            text: `${op} Sie: Ein Dreieck hat eine Grundseite von ${g} cm und eine zugehörige Höhe von ${h} cm.`,
+            question: `Berechne den Flächeninhalt des Dreiecks in cm².`,
             sol: g * h / 2,
             steps: generateSteps("flaeche_dreieck", {g, h}, g * h / 2),
             category: "flaeche2d_modellierung",
@@ -1338,12 +1340,12 @@
           const l2 = rand(2, 6);
           const b2 = rand(2, 5);
           return {
-            text: `${op} Sie: Ein L-förmiger Raum besteht aus einem Rechteck (${l1} m x ${b1} m) und einem angrenzenden Quadrat (Seite ${l2} m).`,
-            question: `Berechne die Gesamtfläche des Raumes.`,
-            sol: l1 * b1 + l2 * l2,
-            steps: generateSteps("flaeche_lform", {l1, b1, l2, b2: l2}, l1 * b1 + l2 * l2),
+            text: `${op} Sie: Ein L‑förmiger Raum besteht aus zwei aneinanderstoßenden Rechtecken: Rechteck 1 hat die Maße ${l1} m × ${b1} m, Rechteck 2 hat die Maße ${l2} m × ${b2} m.`,
+            question: `Berechne die Gesamtfläche des Raumes in m².`,
+            sol: l1 * b1 + l2 * b2,
+            steps: generateSteps("flaeche_lform", {l1, b1, l2, b2}, l1 * b1 + l2 * b2),
             category: "flaeche2d_modellierung",
-            params: {l1, b1, l2}
+            params: {l1, b1, l2, b2}
           };
         }
         case "rechteck_aus_quadraten": {
@@ -1352,8 +1354,8 @@
           const anzahlBreit = rand(2, 4);
           const anzahlHoch = rand(2, 3);
           return {
-            text: `${op} Sie: Ein Rechteck besteht aus ${anzahlBreit * anzahlHoch} gleich großen Quadraten. Jedes Quadrat hat einen Flächeninhalt von ${quadratFlaeche} cm².`,
-            question: `Berechne den Umfang des Rechtecks.`,
+            text: `${op} Sie: Ein Rechteck wird aus ${anzahlBreit * anzahlHoch} gleich großen Quadraten zusammengesetzt. Jedes Quadrat hat einen Flächeninhalt von ${quadratFlaeche} cm².`,
+            question: `Berechne den Umfang des Rechtecks in cm.`,
             sol: 2 * (anzahlBreit * seite + anzahlHoch * seite),
             steps: generateSteps("flaeche_rechteck_aus_quadraten", {quadratFlaeche, seite, anzahlBreit, anzahlHoch}, 2 * (anzahlBreit * seite + anzahlHoch * seite)),
             category: "flaeche2d_modellierung",
@@ -1364,7 +1366,7 @@
           const r = rand(2, 8);
           return {
             text: `${op} Sie: Ein kreisförmiges Blumenbeet hat einen Radius von ${r} m.`,
-            question: `Berechne die Fläche des Beets (π = 3,14).`,
+            question: `Berechne die Fläche des Beetes in m² (verwende π = 3,14).`,
             sol: round2(3.14 * r * r),
             steps: generateSteps("flaeche_kreis", {r}, round2(3.14 * r * r)),
             category: "flaeche2d_modellierung",
@@ -1376,8 +1378,8 @@
           const c = rand(80, 200);
           const h = rand(50, 200);
           return {
-            text: `${op} Sie: Ein Trapez hat die parallelen Seiten a = ${a} m und c = ${c} m. Die Höhe beträgt ${h} m.`,
-            question: `Berechne die Fläche.`,
+            text: `${op} Sie: Ein trapezförmiges Grundstück hat die parallelen Seiten a = ${a} m und c = ${c} m. Die Höhe (Abstand der parallelen Seiten) beträgt ${h} m.`,
+            question: `Berechne die Fläche des Grundstücks in m².`,
             sol: (a + c) * h / 2,
             steps: generateSteps("flaeche_trapez", {a, c, h}, (a + c) * h / 2),
             category: "flaeche2d_modellierung",
@@ -1401,7 +1403,7 @@
           const gesamt = rot + blau + gruen;
           return {
             text: `${op} Sie: In einer Lostrommel sind ${rot} rote, ${blau} blaue und ${gruen} grüne Kugeln.`,
-            question: `Berechne die Wahrscheinlichkeit, eine rote Kugel zu ziehen (in %).`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, eine rote Kugel zu ziehen.`,
             sol: round2(rot / gesamt * 100),
             steps: generateSteps("wsk_einfach", {gunstig: rot, moglich: gesamt}, round2(rot / gesamt * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1413,7 +1415,7 @@
           const gewinnfelder = rand(1, 3);
           return {
             text: `${op} Sie: Ein Glücksrad hat ${felder} gleich große Felder, davon sind ${gewinnfelder} Felder Gewinnfelder.`,
-            question: `Berechne die Wahrscheinlichkeit für ein Gewinnfeld.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, bei einem Dreh ein Gewinnfeld zu erhalten.`,
             sol: round2(gewinnfelder / felder * 100),
             steps: generateSteps("wsk_gluecksrad", {gunstig: gewinnfelder, moglich: felder}, round2(gewinnfelder / felder * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1424,7 +1426,7 @@
           const rotWsk = rand(20, 40) / 100;
           return {
             text: `${op} Sie: Ein Glücksrad hat zwei Sektoren: Blau (${round2((1-rotWsk)*100)}%) und Rot (${round2(rotWsk*100)}%). Es wird zweimal gedreht.`,
-            question: `Berechne die Wahrscheinlichkeit, dass mindestens einmal Rot erscheint.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, dass mindestens einmal Rot erscheint.`,
             sol: round2((1 - (1-rotWsk)*(1-rotWsk)) * 100),
             steps: generateSteps("wsk_mindestens_einmal", {wskRot: rotWsk}, round2((1 - (1-rotWsk)*(1-rotWsk)) * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1439,8 +1441,8 @@
           const rot2 = rot - 1;
           const gesamt2 = gesamt1 - 1;
           return {
-            text: `${op} Sie: In einer Tüte sind ${gelb} gelbe und ${rot} rote Gummibärchen. Du nimmst nacheinander zwei Stück heraus, ohne sie zurückzulegen.`,
-            question: `Berechne die Wahrscheinlichkeit, dass beide Gummibärchen rot sind.`,
+            text: `${op} Sie: In einer Tüte sind ${gelb} gelbe und ${rot} rote Gummibärchen. Du nimmst nacheinander zwei Gummibärchen heraus, ohne sie zurückzulegen.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, dass beide Gummibärchen rot sind.`,
             sol: round2(rot1/gesamt1 * rot2/gesamt2 * 100),
             steps: generateSteps("wsk_ohne_zuruecklegen", {rot1, gesamt1, rot2, gesamt2}, round2(rot1/gesamt1 * rot2/gesamt2 * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1456,8 +1458,8 @@
           const gelb2 = gelb - 1;
           const gesamt2 = gesamt1 - 1;
           return {
-            text: `${op} Sie: Leyla hat ${gelb} gelbe, ${rot} rote und ${blau} blaue Kaugummis. Sie nimmt nacheinander zwei Kaugummis ohne Zurücklegen.`,
-            question: `Berechne die Wahrscheinlichkeit für zwei gelbe Kaugummis.`,
+            text: `${op} Sie: Leyla hat ${gelb} gelbe, ${rot} rote und ${blau} blaue Kaugummis in einer Tüte. Sie nimmt nacheinander zwei Kaugummis heraus, ohne sie zurückzulegen.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, dass beide Kaugummis gelb sind.`,
             sol: round2(gelb1/gesamt1 * gelb2/gesamt2 * 100),
             steps: generateSteps("wsk_ohne_zuruecklegen", {rot1: gelb1, gesamt1, rot2: gelb2, gesamt2}, round2(gelb1/gesamt1 * gelb2/gesamt2 * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1466,8 +1468,8 @@
         }
         case "wuerfel_zweimal": {
           return {
-            text: `${op} Sie: Ein Standardwürfel wird zweimal geworfen.`,
-            question: `Berechne die Wahrscheinlichkeit, zweimal hintereinander eine '6' zu würfeln.`,
+            text: `${op} Sie: Ein fairer Standardwürfel wird zweimal geworfen.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, zweimal hintereinander eine '6' zu würfeln.`,
             sol: round2(1/36 * 100),
             steps: generateSteps("wsk_wuerfel_zweimal", {}, round2(1/36 * 100)),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1476,8 +1478,8 @@
         }
         case "wuerfel_spezial": {
           return {
-            text: `${op} Sie: Tom hat einen Würfel mit dem Netz: 2, 4, 2, 4, 2, 4.`,
-            question: `Berechne die Wahrscheinlichkeit für eine gerade Zahl.`,
+            text: `${op} Sie: Tom hat einen Würfel, dessen Netz die Augenzahlen 2, 4, 2, 4, 2, 4 zeigt.`,
+            question: `Berechne die Wahrscheinlichkeit in Prozent, bei einem Wurf eine gerade Zahl zu würfeln.`,
             sol: 100,
             steps: generateSteps("wsk_wuerfel_spezial", {}, 100),
             category: "wahrscheinlichkeit_mehrstufig",
@@ -1499,11 +1501,13 @@
           const zinsLinear = rand(300, 600);
           const zinsZins = rand(2, 5);
           const jahre = rand(5, 15);
+          const linear = kapital + jahre * zinsLinear;
+          const zinseszins = kapital * Math.pow(1 + zinsZins/100, jahre);
           return {
-            text: `${op} Sie: Zwei Sparpläne für ${kapital} €: A) ${zinsLinear} € feste Zinsen pro Jahr. B) ${zinsZins}% Zinseszins.`,
-            question: `Begründe rechnerisch, ab welchem Jahr Sparplan B lukrativer ist.`,
-            sol: `${Math.ceil(Math.log((kapital + jahre*zinsLinear)/kapital) / Math.log(1 + zinsZins/100))} Jahre`,
-            steps: generateSteps("wachstum_zinseszins_vs_linear", {kapital, zinsLinear, zinsZins, jahre}, `${Math.ceil(Math.log((kapital + jahre*zinsLinear)/kapital) / Math.log(1 + zinsZins/100))} Jahre`),
+            text: `${op} Sie: Zwei Sparpläne für ein Startkapital von ${kapital} €: Plan A (linear) zahlt jährlich feste Zinsen von ${zinsLinear} €. Plan B (Zinseszins) verzinst das Kapital mit ${zinsZins}% pro Jahr.`,
+            question: `Berechne das Kapital nach ${jahre} Jahren für beide Pläne und entscheide, welcher Plan nach dieser Zeit höher ist.`,
+            sol: zinseszins > linear ? "Plan B (Zinseszins)" : "Plan A (linear)",
+            steps: generateSteps("wachstum_zinseszins_vs_linear", {kapital, zinsLinear, zinsZins, jahre}, zinseszins > linear ? "Zinseszins" : "Linear"),
             category: "wachstum_vergleich",
             params: {kapital, zinsLinear, zinsZins, jahre}
           };
@@ -1514,10 +1518,10 @@
           const verlustProzent = rand(10, 20);
           const jahre = rand(2, 5);
           return {
-            text: `${op} Sie: Ein E-Bike kostet ${kapital} €. Modell A verliert jährlich ${verlustLinear} € an Wert (linear). Modell B verliert jährlich ${verlustProzent}% an Wert (prozentual).`,
-            question: `Überprüfe rechnerisch, welches Modell nach ${jahre} Jahren einen höheren Restwert hat.`,
-            sol: kapital * Math.pow(1 - verlustProzent/100, jahre) > kapital - jahre * verlustLinear ? "Modell B" : "Modell A",
-            steps: generateSteps("wachstum_wertverlust_vergleich", {kapital, verlustLinear, verlustProzent, jahre}, kapital * Math.pow(1 - verlustProzent/100, jahre) > kapital - jahre * verlustLinear ? "Modell B" : "Modell A"),
+            text: `${op} Sie: Ein E‑Bike kostet neu ${kapital} €. Modell A verliert jährlich einen festen Betrag von ${verlustLinear} € an Wert (linear). Modell B verliert jährlich ${verlustProzent}% seines aktuellen Wertes (prozentual).`,
+            question: `Berechne den Restwert nach ${jahre} Jahren für beide Modelle und überprüfe, welches Modell den höheren Restwert hat.`,
+            sol: kapital * Math.pow(1 - verlustProzent/100, jahre) > kapital - jahre * verlustLinear ? "Modell B (prozentual)" : "Modell A (linear)",
+            steps: generateSteps("wachstum_wertverlust_vergleich", {kapital, verlustLinear, verlustProzent, jahre}, kapital * Math.pow(1 - verlustProzent/100, jahre) > kapital - jahre * verlustLinear ? "Prozentual" : "Linear"),
             category: "wachstum_vergleich",
             params: {kapital, verlustLinear, verlustProzent, jahre}
           };
@@ -1527,8 +1531,8 @@
           const zins = rand(2, 5);
           const jahre = rand(3, 8);
           return {
-            text: `${op} Sie: Ein Betrag von ${kapital} € wird für ${jahre} Jahre zu einem Zinssatz von ${zins}% (mit Zinseszins) angelegt.`,
-            question: `Berechne das Endkapital nach ${jahre} Jahren.`,
+            text: `${op} Sie: Ein Betrag von ${kapital} € wird für ${jahre} Jahre zu einem jährlichen Zinssatz von ${zins}% mit Zinseszins angelegt.`,
+            question: `Berechne das Endkapital nach ${jahre} Jahren in €.`,
             sol: round2(kapital * Math.pow(1 + zins/100, jahre)),
             steps: generateSteps("wachstum_zinseszins", {kapital, zins, jahre}, round2(kapital * Math.pow(1 + zins/100, jahre))),
             category: "wachstum_vergleich",
@@ -1550,8 +1554,8 @@
           const b = rand(2, 10);
           const h = rand(2, 8);
           return {
-            text: `${op} Sie: Ein Quader hat die Maße l = ${l} cm, b = ${b} cm, h = ${h} cm.`,
-            question: `Berechne das Volumen.`,
+            text: `${op} Sie: Ein Quader hat die Maße Länge l = ${l} cm, Breite b = ${b} cm, Höhe h = ${h} cm.`,
+            question: `Berechne das Volumen des Quaders in cm³.`,
             sol: l * b * h,
             steps: generateSteps("volumen_quader", {l, b, h}, l * b * h),
             category: "volumen_oberflaeche",
@@ -1563,8 +1567,8 @@
           const b = rand(2, 8);
           const h = rand(2, 6);
           return {
-            text: `${op} Sie: Ein Quader hat die Maße l = ${l} cm, b = ${b} cm, h = ${h} cm.`,
-            question: `Berechne die Oberfläche.`,
+            text: `${op} Sie: Ein Quader hat die Maße Länge l = ${l} cm, Breite b = ${b} cm, Höhe h = ${h} cm.`,
+            question: `Berechne die Oberfläche des Quaders in cm².`,
             sol: 2 * (l*b + l*h + b*h),
             steps: generateSteps("oberflaeche_quader", {l, b, h}, 2 * (l*b + l*h + b*h)),
             category: "volumen_oberflaeche",
@@ -1575,8 +1579,8 @@
           const r = rand(2, 8);
           const h = rand(5, 15);
           return {
-            text: `${op} Sie: Ein Zylinder hat r = ${r} cm und h = ${h} cm (π = 3,14).`,
-            question: `Berechne das Volumen.`,
+            text: `${op} Sie: Ein Zylinder hat den Radius r = ${r} cm und die Höhe h = ${h} cm (verwende π = 3,14).`,
+            question: `Berechne das Volumen des Zylinders in cm³.`,
             sol: round2(3.14 * r * r * h),
             steps: generateSteps("volumen_zylinder", {r, h}, round2(3.14 * r * r * h)),
             category: "volumen_oberflaeche",
@@ -1587,7 +1591,7 @@
           const a = rand(3, 9);
           return {
             text: `${op} Sie: Ein Würfel hat die Kantenlänge a = ${a} cm.`,
-            question: `Berechne das Volumen.`,
+            question: `Berechne das Volumen des Würfels in cm³.`,
             sol: a * a * a,
             steps: generateSteps("volumen_wuerfel", {a}, a * a * a),
             category: "volumen_oberflaeche",
@@ -1604,8 +1608,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein Spielzeugauto ist ${laengeModell} cm lang. Es ist im Maßstab 1:${massstab} nachgebaut.`,
-        question: `Berechne die Länge des Autos in Wirklichkeit in Metern.`,
+        text: `${op} Sie: Ein Spielzeugauto ist ${laengeModell} cm lang. Es wurde im Maßstab 1:${massstab} nachgebaut.`,
+        question: `Berechne die tatsächliche Länge des Autos in Metern.`,
         sol: round2(laengeModell * massstab / 100),
         steps: generateSteps("massstab", {laengeModell, massstab}, round2(laengeModell * massstab / 100)),
         category: "massstab",
@@ -1619,8 +1623,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: ${anteil}% der Schüler erhalten einen Siegerpokal.`,
-        question: `Berechne den Winkel im Kreisdiagramm für diesen Anteil.`,
+        text: `${op} Sie: Bei einer Umfrage gaben ${anteil}% der Schüler:innen an, dass sie einen Siegerpokal erhalten möchten.`,
+        question: `Berechne den Mittelpunktswinkel (in Grad), der diesem Anteil in einem Kreisdiagramm entspricht.`,
         sol: round2(360 * anteil / 100),
         steps: generateSteps("diagramm_kreis_winkel", {anteil}, round2(360 * anteil / 100)),
         category: "diagramme",
@@ -1639,8 +1643,8 @@
           const grund = rand(0.5, 1.5);
           const preis1 = rand(1, 2.5);
           return {
-            text: `${op} Sie: Parkgebühren: 1. Stunde ${grund.toFixed(2)} €, jede weitere Stunde ${preis1.toFixed(2)} €.`,
-            question: `Welcher Term ist richtig? ${preis1.toFixed(2)}·x + ${grund.toFixed(2)} oder ${preis1.toFixed(2)}·(x-1) + ${grund.toFixed(2)}? Begründe.`,
+            text: `${op} Sie: In einem Parkhaus kostet die erste Stunde ${grund.toFixed(2)} €, jede weitere Stunde kostet ${preis1.toFixed(2)} €.`,
+            question: `Welcher Term beschreibt die Parkgebühr für x Stunden richtig? (A) ${preis1.toFixed(2)}·x + ${grund.toFixed(2)}  oder (B) ${preis1.toFixed(2)}·(x‑1) + ${grund.toFixed(2)}? Begründe deine Wahl.`,
             sol: `${preis1.toFixed(2)}·(x-1) + ${grund.toFixed(2)}`,
             steps: generateSteps("funktion_parkgebuehr", {grund, preis1}, `${preis1.toFixed(2)}·(x-1) + ${grund.toFixed(2)}`),
             category: "funktionale_zusammenhaenge",
@@ -1652,8 +1656,8 @@
           const preisProMin = rand(5, 15) / 100;
           const minuten = rand(100, 300);
           return {
-            text: `${op} Sie: Monatliche Kosten: ${grund} € Grundgebühr + ${(preisProMin*100).toFixed(0)} Cent pro Minute.`,
-            question: `Berechne die Kosten für ${minuten} Minuten.`,
+            text: `${op} Sie: Ein Handytarif besteht aus einer monatlichen Grundgebühr von ${grund} € und einem Minutenpreis von ${(preisProMin*100).toFixed(0)} Cent.`,
+            question: `Berechne die monatlichen Kosten in €, wenn ${minuten} Minuten telefoniert werden.`,
             sol: round2(grund + preisProMin * minuten),
             steps: generateSteps("funktion_handytarif", {grund, preisProMin, minuten}, round2(grund + preisProMin * minuten)),
             category: "funktionale_zusammenhaenge",
@@ -1673,8 +1677,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein dreiseitiges Prisma hat eine Grundfläche in Form eines rechtwinkligen Dreiecks. Die Katheten sind ${base} cm und ${side} cm lang. Die Höhe des Prismas beträgt ${height} cm.`,
-        question: `Berechne das Volumen des Prismas.`,
+        text: `${op} Sie: Ein dreiseitiges Prisma hat eine Grundfläche in Form eines rechtwinkligen Dreiecks. Die beiden Katheten sind ${base} cm und ${side} cm lang. Die Höhe (Länge) des Prismas beträgt ${height} cm.`,
+        question: `Berechne das Volumen des Prismas in cm³.`,
         sol: base * side / 2 * height,
         steps: generateSteps("prisma_dreiseitig", {base, side, height}, base * side / 2 * height),
         category: "dreiseitiges_prisma",
@@ -1695,8 +1699,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein Dachgeschoss hat die Form eines dreiseitigen Prismas. Das Haus ist ${width} m breit, die Dachhöhe beträgt ${roofHeight} m. Die Tiefe des Hauses (Prismenhöhe) beträgt ${prismDepth} m.`,
-        question: `Berechne das Volumen des Dachgeschosses.`,
+        text: `${op} Sie: Ein Dachgeschoss hat die Form eines dreiseitigen Prismas. Das Haus ist ${width} m breit, die Höhe des Daches (Dreieckshöhe) beträgt ${roofHeight} m. Die Tiefe des Hauses (Prismenhöhe) beträgt ${prismDepth} m.`,
+        question: `Berechne das Volumen des Dachgeschosses in m³.`,
         sol: width * roofHeight / 2 * prismDepth,
         steps: generateSteps("dachgeschoss_prisma", {width, roofHeight, prismDepth}, width * roofHeight / 2 * prismDepth),
         category: "dachgeschoss_prisma",
@@ -1717,8 +1721,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein Zelt hat die Form eines Dreiecksprismas. Die Grundfläche ist ein Dreieck mit g = ${g} m und h = ${h} m. Das Zelt ist ${length} m lang.`,
-        question: `Berechne das Volumen des Zeltes.`,
+        text: `${op} Sie: Ein Zelt hat die Form eines Dreiecksprismas. Die Grundfläche ist ein Dreieck mit Grundseite g = ${g} m und Höhe h = ${h} m. Das Zelt ist ${length} m lang.`,
+        question: `Berechne das Volumen des Zeltes in m³.`,
         sol: g * h / 2 * length,
         steps: generateSteps("zelt_prisma", {g, h, length}, g * h / 2 * length),
         category: "zelt_prisma",
@@ -1743,8 +1747,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Eine Keksverpackung hat die Form eines dreiseitigen Prismas. Die Grundfläche ist ein Dreieck mit den Seitenlängen ${a} cm, ${b} cm und ${c} cm. Die Höhe (Länge) der Verpackung beträgt ${h} cm.`,
-        question: `Berechne das Volumen der Verpackung.`,
+        text: `${op} Sie: Eine Keksverpackung hat die Form eines dreiseitigen Prismas. Die Grundfläche ist ein Dreieck mit den Seitenlängen a = ${a} cm, b = ${b} cm und c = ${c} cm. Die Höhe (Länge) der Verpackung beträgt h = ${h} cm.`,
+        question: `Berechne das Volumen der Verpackung in cm³ (verwende die Heron‑Formel für die Dreiecksfläche).`,
         sol: round2(area * h),
         steps: generateSteps("keksverpackung", {a, b, c, h, s, sa: s-a, sb: s-b, sc: s-c, area}, round2(area * h)),
         category: "keksverpackung",
@@ -1772,8 +1776,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein runder Holztisch hat eine Tischplatte mit Durchmesser ${diameter} cm und Dicke ${thickness} cm. Die vier zylindrischen Tischbeine haben jeweils einen Durchmesser von ${legDiameter} cm und eine Höhe von ${height} cm.`,
-        question: `Berechne das Gesamtvolumen des Tisches in Litern (1 Liter = 1000 cm³).`,
+        text: `${op} Sie: Ein runder Holztisch besteht aus einer Tischplatte mit Durchmesser ${diameter} cm und Dicke ${thickness} cm sowie vier zylindrischen Tischbeinen mit jeweils Durchmesser ${legDiameter} cm und Höhe ${height} cm.`,
+        question: `Berechne das Gesamtvolumen des Tisches in Litern (1 Liter = 1000 cm³, π ≈ 3,14).`,
         sol: round2(volGesamt / 1000),
         steps: generateSteps("holztisch", {diameter, r, thickness, legDiameter, legRadius, height, volGesamt}, round2(volGesamt / 1000)),
         category: "holztisch",
@@ -1795,7 +1799,7 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Eine Skateboardrampe hat die Form eines Prismas mit trapezförmiger Grundfläche. Die untere Breite beträgt ${baseL} cm, die obere Breite ${topL} cm. Die Höhe der Rampe beträgt ${baseH} cm. Die Rampe ist ${width} cm breit.`,
+        text: `${op} Sie: Eine Skateboardrampe hat die Form eines Prismas mit trapezförmiger Grundfläche. Die untere Breite (lange Seite) beträgt ${baseL} cm, die obere Breite (kurze Seite) beträgt ${topL} cm. Die Höhe der Rampe (senkrecht) beträgt ${baseH} cm. Die Rampe ist insgesamt ${width} cm breit.`,
         question: `Berechne das Volumen der Rampe in Litern (1 Liter = 1000 cm³).`,
         sol: round2((baseL + topL) * baseH / 2 * width / 1000),
         steps: generateSteps("skateboardrampe", {baseL, baseH, topL, width}, round2((baseL + topL) * baseH / 2 * width / 1000)),
@@ -1825,8 +1829,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein viereckiges Weideland hat die Seitenlängen a = ${a} m, b = ${b} m, c = ${c} m und d = ${d} m. Die Diagonale zwischen a und b beträgt ${diag} m.`,
-        question: `Berechne die Fläche des Weidelands in Hektar (ha), indem du es in zwei Dreiecke zerlegst. (1 ha = 10.000 m²)`,
+        text: `${op} Sie: Ein viereckiges Grundstück (Weideland) hat die Seitenlängen a = ${a} m, b = ${b} m, c = ${c} m, d = ${d} m. Die Diagonale zwischen den Seiten a und b beträgt ${diag} m.`,
+        question: `Berechne die Fläche des Grundstücks in Hektar (ha), indem du es in zwei Dreiecke zerlegst (1 ha = 10.000 m²).`,
         sol: round2((area1 + area2) / 10000),
         steps: generateSteps("weideland_viereck", {a, b, c, d, diag, s1, s2, area1, area2}, round2((area1 + area2) / 10000)),
         category: "weideland_viereck",
@@ -1848,8 +1852,8 @@
       const op = getOperatorPhrase(pickFrom(["BERECHNE"]));
       
       return {
-        text: `${op} Sie: Ein rechteckiger Garten ist ${outerW} m lang und ${outerH} m breit. In der Mitte befindet sich ein rechteckiges Blumenbeet mit den Maßen ${cutW} m × ${cutH} m.`,
-        question: `Berechne die Rasenfläche (Gartenfläche minus Blumenbeet).`,
+        text: `${op} Sie: Ein rechteckiger Garten ist ${outerW} m lang und ${outerH} m breit. In der Mitte des Gartens befindet sich ein rechteckiges Blumenbeet mit den Maßen ${cutW} m × ${cutH} m.`,
+        question: `Berechne die Rasenfläche (Gartenfläche minus Blumenbeet) in m².`,
         sol: outerW * outerH - cutW * cutH,
         steps: generateSteps("flaechenberechnung_garten", {outerW, outerH, cutW, cutH}, outerW * outerH - cutW * cutH),
         category: "flaechenberechnung_garten",
@@ -1872,8 +1876,8 @@
       const op = getOperatorPhrase(pickFrom(["BEGRUENDE"]));
       
       return {
-        text: `${op} Sie: In einem Dreieck sind die Seitenlängen ${a} cm, ${b} cm und ${c} cm gegeben.`,
-        question: `Begründe, ob das Dreieck einen rechten Winkel hat.`,
+        text: `${op} Sie: In einem Dreieck sind die Seitenlängen a = ${a} cm, b = ${b} cm und c = ${c} cm gegeben.`,
+        question: `Prüfe mit dem Satz des Pythagoras, ob das Dreieck einen rechten Winkel besitzt, und begründe deine Antwort.`,
         sol: "Ja",
         steps: generateSteps("rechte_winkel_argumentation", {a, b, c, isRight: true}, "Ja"),
         category: "rechte_winkel_argumentation",
