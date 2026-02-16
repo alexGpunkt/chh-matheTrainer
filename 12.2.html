@@ -77,7 +77,7 @@ button, select {
 input {
   padding:10px;
   font-size:1.1rem;
-  width:100%;          /* WICHTIG */
+  width:100%;
   border-radius:8px;
   border:1px solid #aaa;
 }
@@ -177,39 +177,64 @@ updateStatus();
 nextTaskRandom();
 }
 
+function getRandomTask() {
+  // Verwende die neue dynamische Generator-Funktion
+  if (typeof window.getTask_113 === 'function') {
+    return window.getTask_113({ level: "anspruchsvoll" });
+  }
+  
+  // Fallback für den Fall, dass pool_113.js nicht geladen wurde
+  alert("Fehler: pool_113.js nicht korrekt geladen!");
+  return null;
+}
+
 function nextTaskRandom(){
 if(!roundActive) return;
 if(taskNumber>=totalTasks) return;
 
 taskNumber++;
 
-const cats=Object.keys(TASKPOOL_113);
-const cat=cats[Math.floor(Math.random()*cats.length)];
-const gen=TASKPOOL_113[cat][Math.floor(Math.random()*TASKPOOL_113[cat].length)];
-const task=gen();
-task.category=cat;
-
-drawTask(task);
+const task = getRandomTask();
+if (task) {
+  drawTask(task);
+}
 }
 
 function nextTaskSameType(){
 if(!roundActive || !lastCategory) return;
 
-const gen=TASKPOOL_113[lastCategory][Math.floor(Math.random()*TASKPOOL_113[lastCategory].length)];
-const task=gen();
-task.category=lastCategory;
-
-drawTask(task,true);
+// Bei gleichem Typ können wir nicht einfach den Generator verwenden,
+// da der nicht direkt nach Kategorie filtert. Stattdessen:
+if (typeof window.TASK_GENERATORS_113 !== 'undefined' && window.TASK_GENERATORS_113[lastCategory]) {
+  const task = window.TASK_GENERATORS_113[lastCategory]();
+  task.category = lastCategory;
+  drawTask(task, true);
+} else {
+  // Fallback: zufällige Aufgabe
+  nextTaskRandom();
+}
 }
 
 function drawTask(task,isSame=false){
 currentTask=task;
-currentAnswer=task.answer;
+currentAnswer=task.sol !== undefined ? task.sol : task.answer;
 lastCategory=task.category;
 
-document.getElementById("task").innerHTML=task.task;
-document.getElementById("solution").innerHTML=
-"<b>Lösung:</b><br>"+(task.solution||"");
+document.getElementById("task").innerHTML = task.text || task.task || "Aufgabe";
+
+// Lösung anzeigen
+let solutionText = "";
+if (task.fullSolution) {
+  solutionText = task.fullSolution;
+} else if (task.solution) {
+  solutionText = task.solution;
+} else if (task.steps) {
+  solutionText = Array.isArray(task.steps) ? task.steps.join("<br>") : task.steps;
+} else {
+  solutionText = currentAnswer;
+}
+
+document.getElementById("solution").innerHTML = "<b>Lösung:</b><br>" + solutionText;
 document.getElementById("solution").style.display="none";
 document.getElementById("feedback").innerHTML="";
 document.getElementById("userAnswer").value="";
@@ -227,7 +252,7 @@ document.getElementById("progress").innerHTML=
 function renderDiagramIfExists(task){
 const area=document.getElementById("diagramArea");
 area.innerHTML="";
-if(task.diagram){
+if(task.diagram && typeof renderDiagram === 'function'){
 const div=document.createElement("div");
 div.className="diagram-container";
 renderDiagram(task.diagram,div);
@@ -238,8 +263,9 @@ area.appendChild(div);
 function addToContainer(task){
 const div=document.createElement("div");
 div.className="aufgabe";
-div.innerHTML="<b>Aufgabe "+taskNumber+" ("+task.category+"):</b><br>"+task.task;
-if(task.diagram){
+div.innerHTML="<b>Aufgabe "+taskNumber+" ("+task.category+"):</b><br>" + (task.text || task.task || "Aufgabe");
+
+if(task.diagram && typeof renderDiagram === 'function'){
 const diag=document.createElement("div");
 diag.className="diagram-container";
 renderDiagram(task.diagram,diag);
@@ -254,7 +280,7 @@ if(getMode()==="cards") return;
 const val=document.getElementById("userAnswer").value.trim();
 
 if(typeof currentAnswer==="string"){
-if(val===currentAnswer){
+if(val.toLowerCase() === currentAnswer.toLowerCase()){
 points+=3;
 document.getElementById("feedback").innerHTML="✔ Richtig!";
 }else{
@@ -292,6 +318,8 @@ document.getElementById("task").innerHTML="Starte eine Runde.";
 document.getElementById("progress").innerHTML="Noch keine Runde gestartet";
 document.getElementById("aufgabenContainer").innerHTML="";
 document.getElementById("diagramArea").innerHTML="";
+document.getElementById("solution").style.display="none";
+document.getElementById("feedback").innerHTML="";
 }
 
 function exportPDF(){
@@ -301,20 +329,38 @@ return;
 }
 
 const win=window.open("");
+win.document.write("<html><head><title>Mathe Aufgabenblatt</title>");
+win.document.write("<style>body{font-family:Arial;padding:20px;} .aufgabe{margin-bottom:30px;}</style>");
+win.document.write("</head><body>");
 win.document.write("<h2>Mathe Aufgabenblatt – Note 2–1</h2>");
 
 exportedTasks.forEach((t,i)=>{
-win.document.write("<hr>");
-win.document.write("<b>Aufgabe "+(i+1)+"</b><br>"+t.task+"<br>");
-if(t.diagram){
-win.document.write("<div id='d"+i+"'></div>");
+win.document.write("<div class='aufgabe'>");
+win.document.write("<h3>Aufgabe "+(i+1)+"</h3>");
+win.document.write("<p>"+(t.text || t.task || "Aufgabe")+"</p>");
+if(t.fullSolution || t.solution || t.steps){
+win.document.write("<p><b>Lösung:</b> ");
+if(t.fullSolution) win.document.write(t.fullSolution);
+else if(t.solution) win.document.write(t.solution);
+else if(t.steps) win.document.write(Array.isArray(t.steps) ? t.steps.join(" ") : t.steps);
+win.document.write("</p>");
 }
-win.document.write("<br><b>Lösung:</b><br>"+(t.solution||"")+"<br>");
+win.document.write("</div>");
 });
 
+win.document.write("</body></html>");
 win.document.close();
 win.print();
 }
+
+// Prüfen ob pool_113.js geladen wurde
+document.addEventListener("DOMContentLoaded", function() {
+  if (typeof window.getTask_113 !== 'function') {
+    console.error("pool_113.js nicht korrekt geladen!");
+    document.getElementById("task").innerHTML = 
+      "<span style='color:red'>Fehler: pool_113.js nicht geladen!</span>";
+  }
+});
 </script>
 
 </body>
