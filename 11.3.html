@@ -154,37 +154,37 @@ let timeLeft = 0;
 let timerInt = null;
 let currentTaskIndex = 0;
 
-let availableCategories = [];
-
 function rand(min, max){
   return Math.floor(Math.random()*(max-min+1))+min;
 }
 
-function initPool(){
-  availableCategories = Object.keys(window.TASKPOOL_113 || {});
-}
-
 function getRandomTask(){
-  const cat = availableCategories[rand(0, availableCategories.length-1)];
-  const list = TASKPOOL_113[cat];
-  const gen = list[rand(0, list.length-1)];
-  const task = gen();
-  task.category = cat;
-  return task;
+  // Prüfen ob getTask_113 verfügbar ist (dynamische Generierung)
+  if (typeof window.getTask_113 === 'function') {
+    return window.getTask_113({ level: "anspruchsvoll" });
+  }
+  
+  // Fallback für den Fall, dass pool_113.js nicht geladen wurde
+  alert("Fehler: pool_113.js nicht korrekt geladen!");
+  return null;
 }
 
 function renderTask(task){
+  if (!task) return;
+  
   const container = document.getElementById("taskContainer");
-  container.innerHTML = `<b>Aufgabe ${currentTaskIndex+1}/${TASKS_TOTAL}</b><br>${task.task}`;
+  container.innerHTML = `<b>Aufgabe ${currentTaskIndex+1}/${TASKS_TOTAL}</b><br>${task.text || task.task}`;
 
   if(task.diagram){
     const wrap = document.createElement("div");
     wrap.className="diagram-container";
-    renderDiagram(task.diagram, wrap);
+    if (typeof renderDiagram === 'function') {
+      renderDiagram(task.diagram, wrap);
+    }
     container.appendChild(wrap);
   }
 
-  currentAnswer = task.answer;
+  currentAnswer = task.sol !== undefined ? task.sol : task.answer;
 }
 
 function startExam(){
@@ -248,7 +248,14 @@ document.getElementById("startBtn").onclick=startExam;
 document.getElementById("nextBtn").onclick=saveAndNext;
 document.getElementById("finishBtn").onclick=finishExam;
 
-document.addEventListener("DOMContentLoaded", initPool);
+// Prüfen ob pool_113.js geladen wurde
+document.addEventListener("DOMContentLoaded", function() {
+  if (typeof window.getTask_113 !== 'function') {
+    console.error("pool_113.js nicht korrekt geladen!");
+    document.getElementById("taskContainer").innerHTML = 
+      "<span style='color:red'>Fehler: pool_113.js nicht geladen!</span>";
+  }
+});
 </script>
 
 </body>
