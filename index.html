@@ -21,6 +21,11 @@
             --border-radius: 10px;
             --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
+            --calculator-bg: #f8f9fa;
+            --calc-button: #e9ecef;
+            --calc-button-hover: #dee2e6;
+            --calc-display: #fff;
+            --calc-operator: #ffb74d;
         }
 
         * {
@@ -63,9 +68,16 @@
             font-size: 1.2rem;
         }
 
-        /* QR BUTTON */
+        /* Header Controls */
+        .header-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
         .qr-button {
-            margin-top: 18px;
             padding: 12px 18px;
             border: none;
             border-radius: 10px;
@@ -80,6 +92,133 @@
         .qr-button:hover {
             background: #388e3c;
             transform: scale(1.03);
+        }
+
+        .calc-toggle-btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            background: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .calc-toggle-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.03);
+        }
+
+        /* Taschenrechner Section */
+        .calculator-section {
+            margin-bottom: 25px;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .calculator-section.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .calculator-container {
+            background-color: var(--calculator-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 25px;
+            border: 1px solid var(--medium-gray);
+        }
+
+        .calculator-display {
+            background-color: var(--calc-display);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: right;
+            font-size: 2rem;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            border: 2px solid var(--medium-gray);
+            min-height: 80px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .calculator-display .expression {
+            font-size: 1rem;
+            color: var(--dark-gray);
+            min-height: 24px;
+            margin-bottom: 5px;
+        }
+
+        .calculator-display .result {
+            font-size: 2.2rem;
+            color: var(--primary-color);
+        }
+
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .calc-btn {
+            padding: 18px 10px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--calc-button);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+            color: var(--text-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .calc-btn:hover {
+            background-color: var(--calc-button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .calc-btn.operator {
+            background-color: var(--calc-operator);
+            color: white;
+        }
+
+        .calc-btn.operator:hover {
+            background-color: #ffa726;
+        }
+
+        .calc-btn.equals {
+            background-color: var(--primary-color);
+            color: white;
+            grid-column: span 2;
+        }
+
+        .calc-btn.equals:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .calc-btn.clear {
+            background-color: #ef5350;
+            color: white;
+        }
+
+        .calc-btn.clear:hover {
+            background-color: #e53935;
         }
 
         .content-wrapper {
@@ -264,17 +403,60 @@
 <div class="container">
 
     <header>
-        <h1><i class="fas fa-calculator"></i> Mathe Trainer</h1>
-        <p class="subtitle">Vier Mathe-Trainer für verschiedene Niveaus und Prüfungsvorbereitungen</p>
+        <h1><i class="fas fa-calculator"></i> CHH - BBR Trainer</h1>
 
-        <!-- QR BUTTON -->
-        <button id="qrBtn" class="qr-button">
-            <i class="fas fa-qrcode"></i> QR-Code anzeigen
-        </button>
+        <div class="header-controls">
+            <button id="calcToggleBtn" class="calc-toggle-btn">
+                <i class="fas fa-calculator"></i> Taschenrechner
+            </button>
+            <button id="qrBtn" class="qr-button">
+                <i class="fas fa-qrcode"></i> QR-Code anzeigen
+            </button>
+        </div>
     </header>
 
-    <div class="content-wrapper">
+    <!-- Taschenrechner Section -->
+    <div class="calculator-section" id="calculatorSection">
+        <div class="calculator-container">
+            <div class="calculator-display">
+                <div class="expression" id="calcExpression"></div>
+                <div class="result" id="calcResult">0</div>
+            </div>
+            <div class="calculator-grid">
+                <button class="calc-btn clear" onclick="clearCalculator()">C</button>
+                <button class="calc-btn" onclick="appendToExpression('(')">(</button>
+                <button class="calc-btn" onclick="appendToExpression(')')">)</button>
+                <button class="calc-btn" onclick="appendToExpression('²')">x²</button>
+                <button class="calc-btn" onclick="appendToExpression('√')">√</button>
+                
+                <button class="calc-btn" onclick="appendToExpression('7')">7</button>
+                <button class="calc-btn" onclick="appendToExpression('8')">8</button>
+                <button class="calc-btn" onclick="appendToExpression('9')">9</button>
+                <button class="calc-btn operator" onclick="appendToExpression('/')">÷</button>
+                <button class="calc-btn" onclick="appendToExpression('←')">←</button>
+                
+                <button class="calc-btn" onclick="appendToExpression('4')">4</button>
+                <button class="calc-btn" onclick="appendToExpression('5')">5</button>
+                <button class="calc-btn" onclick="appendToExpression('6')">6</button>
+                <button class="calc-btn operator" onclick="appendToExpression('*')">×</button>
+                <button class="calc-btn operator" onclick="appendToExpression('+')">+</button>
+                
+                <button class="calc-btn" onclick="appendToExpression('1')">1</button>
+                <button class="calc-btn" onclick="appendToExpression('2')">2</button>
+                <button class="calc-btn" onclick="appendToExpression('3')">3</button>
+                <button class="calc-btn operator" onclick="appendToExpression('-')">−</button>
+                <button class="calc-btn operator" onclick="appendToExpression('-')">−</button>
+                
+                <button class="calc-btn" onclick="appendToExpression('0')">0</button>
+                <button class="calc-btn" onclick="appendToExpression('.')">.</button>
+                <button class="calc-btn" onclick="calculateResult()">=</button>
+                <button class="calc-btn" onclick="appendToExpression('')"> </button>
+                <button class="calc-btn" onclick="appendToExpression('')"> </button>
+            </div>
+        </div>
+    </div>
 
+    <div class="content-wrapper">
         <div class="tabs-container">
             <div class="tabs-header">
                 <button class="tab-btn active" data-tab="tab1">
@@ -319,7 +501,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <footer>
@@ -340,51 +521,163 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    // Calculator state
+    let currentExpression = '';
+    let lastResult = '0';
 
-        /* TAB SWITCHING */
-        const tabBtns = document.querySelectorAll(".tab-btn");
-        const tabContents = document.querySelectorAll(".tab-content");
+    // DOM elements
+    const calcExpressionEl = document.getElementById('calcExpression');
+    const calcResultEl = document.getElementById('calcResult');
+    const calcSection = document.getElementById('calculatorSection');
+    const calcToggleBtn = document.getElementById('calcToggleBtn');
 
-        tabBtns.forEach(btn => {
-            btn.addEventListener("click", function () {
-                tabBtns.forEach(b => b.classList.remove("active"));
-                this.classList.add("active");
-
-                tabContents.forEach(content => content.classList.remove("active"));
-                document.getElementById(this.dataset.tab).classList.add("active");
-            });
-        });
-
-        /* QR MODAL */
-        const qrBtn = document.getElementById("qrBtn");
-        const qrModal = document.getElementById("qrModal");
-        const closeQr = document.getElementById("closeQr");
-        const qrCanvas = document.getElementById("qrCanvas");
-
-        qrBtn.addEventListener("click", () => {
-            qrModal.style.display = "flex";
-
-            QRCode.toCanvas(qrCanvas, window.location.href, {
-                width: 220
-            });
-        });
-
-        closeQr.addEventListener("click", () => {
-            qrModal.style.display = "none";
-        });
-
-        qrModal.addEventListener("click", (e) => {
-            if (e.target === qrModal) {
-                qrModal.style.display = "none";
-            }
-        });
-
+    // Toggle calculator visibility
+    calcToggleBtn.addEventListener('click', () => {
+        calcSection.classList.toggle('show');
+        calcToggleBtn.innerHTML = calcSection.classList.contains('show') ? 
+            '<i class="fas fa-calculator"></i> Taschenrechner ausblenden' : 
+            '<i class="fas fa-calculator"></i> Taschenrechner';
     });
+
+    // Helper function to update display
+    function updateDisplay() {
+        calcExpressionEl.textContent = currentExpression;
+        if (currentExpression === '') {
+            calcResultEl.textContent = lastResult;
+        }
+    }
+
+    // Append to expression
+    function appendToExpression(value) {
+        if (value === '←') {
+            currentExpression = currentExpression.slice(0, -1);
+        } else if (value === 'C') {
+            clearCalculator();
+            return;
+        } else if (value === '√') {
+            currentExpression += 'Math.sqrt(';
+        } else if (value === '²') {
+            currentExpression += '**2';
+        } else {
+            currentExpression += value;
+        }
+        updateDisplay();
+    }
+
+    // Calculate result
+    function calculateResult() {
+        if (currentExpression === '') return;
+        
+        try {
+            // Replace display symbols with JavaScript operators
+            let expression = currentExpression
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/−/g, '-')
+                .replace(/Math\.sqrt\(/g, 'Math.sqrt(');
+            
+            // Handle decimal numbers
+            let result = eval(expression);
+            
+            // Format result (limit to 10 decimal places)
+            if (Number.isFinite(result)) {
+                lastResult = Number(result.toFixed(10)).toString();
+                calcResultEl.textContent = lastResult;
+                currentExpression = '';
+                calcExpressionEl.textContent = '';
+            } else {
+                throw new Error('Ungültiges Ergebnis');
+            }
+        } catch (error) {
+            calcResultEl.textContent = 'Fehler';
+            setTimeout(() => {
+                calcResultEl.textContent = lastResult;
+            }, 1500);
+        }
+    }
+
+    // Clear calculator
+    function clearCalculator() {
+        currentExpression = '';
+        lastResult = '0';
+        calcExpressionEl.textContent = '';
+        calcResultEl.textContent = '0';
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+        const key = e.key;
+        
+        // Only handle if calculator is visible
+        if (!calcSection.classList.contains('show')) return;
+        
+        // Prevent default for calculator keys
+        if (/[0-9\+\-\*\/\(\)\.]/.test(key) || key === 'Enter' || key === 'Backspace' || key === 'Escape') {
+            e.preventDefault();
+        }
+        
+        if (/[0-9\.]/.test(key)) {
+            appendToExpression(key);
+        } else if (key === '+') {
+            appendToExpression('+');
+        } else if (key === '-') {
+            appendToExpression('-');
+        } else if (key === '*') {
+            appendToExpression('*');
+        } else if (key === '/') {
+            appendToExpression('/');
+        } else if (key === '(') {
+            appendToExpression('(');
+        } else if (key === ')') {
+            appendToExpression(')');
+        } else if (key === 'Enter') {
+            calculateResult();
+        } else if (key === 'Backspace') {
+            appendToExpression('←');
+        } else if (key === 'Escape') {
+            clearCalculator();
+        }
+    });
+
+    /* TAB SWITCHING */
+    const tabBtns = document.querySelectorAll(".tab-btn");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener("click", function () {
+            tabBtns.forEach(b => b.classList.remove("active"));
+            this.classList.add("active");
+
+            tabContents.forEach(content => content.classList.remove("active"));
+            document.getElementById(this.dataset.tab).classList.add("active");
+        });
+    });
+
+    /* QR MODAL */
+    const qrBtn = document.getElementById("qrBtn");
+    const qrModal = document.getElementById("qrModal");
+    const closeQr = document.getElementById("closeQr");
+    const qrCanvas = document.getElementById("qrCanvas");
+
+    qrBtn.addEventListener("click", () => {
+        qrModal.style.display = "flex";
+
+        QRCode.toCanvas(qrCanvas, window.location.href, {
+            width: 220
+        });
+    });
+
+    closeQr.addEventListener("click", () => {
+        qrModal.style.display = "none";
+    });
+
+    qrModal.addEventListener("click", (e) => {
+        if (e.target === qrModal) {
+            qrModal.style.display = "none";
+        }
+    });
+
 </script>
 
 </body>
 </html>
-
-
-
